@@ -66,6 +66,22 @@
     .ty-status { font-size: 0.8rem; margin-top: 6px; }
     .ty-ok   { color: #8aba8a; }
     .ty-miss { color: #c8a060; }
+    .etsy-slots { display: flex; flex-direction: column; gap: 10px; }
+    .etsy-slot {
+      display: flex; gap: 12px; align-items: center;
+      background: #1a1a1a; border: 1px solid #222; padding: 10px;
+    }
+    .etsy-slot .slot-thumb {
+      width: 80px; height: 60px; object-fit: contain;
+      background: #111; flex-shrink: 0; display: block;
+    }
+    .etsy-slot video { width: 80px; height: 60px; object-fit: contain; background: #111; flex-shrink: 0; }
+    .etsy-slot .slot-info { flex: 1; }
+    .etsy-slot .slot-label { font-size: 0.85rem; margin-bottom: 2px; }
+    .etsy-slot .slot-path  { font-size: 0.75rem; color: #555; }
+    .etsy-slot .slot-ok    { color: #8aba8a; font-size: 0.8rem; }
+    .etsy-slot .slot-miss  { color: #c8a060; font-size: 0.8rem; }
+    .slot-num { font-size: 0.75rem; color: #555; width: 18px; flex-shrink: 0; text-align: right; }
   </style>
 </head>
 <body>
@@ -136,23 +152,14 @@
   </div>
 </section>
 
-<!-- STEP 6: ETSY CHECKLIST -->
+<!-- STEP 6: ETSY LISTING -->
 <section id="s-etsy">
-  <h2>6. Etsy Listing Checklist</h2>
-  <p class="section-note">Images to prepare before listing. Check them off as you go.</p>
-  <ul class="checklist" id="etsyChecklist">
-    <li>Hero image — mascot + product title + compatibility logos <span class="badge warn">make in Canva / Figma</span></li>
-    <li>Expressions showcase — all states on one image (2×4 grid)</li>
-    <li>Included files preview — folder tree / file list screenshot</li>
-    <li>Veadotube preview / GIF — short loop of the mascot switching states</li>
-    <li>Zoomed detail shot — texture / lineart close-up</li>
-    <li>Thank you / branding card</li>
-    <li>Write Etsy title, tags, description <span class="badge">copy from README</span></li>
-    <li>Set digital delivery — upload the ZIP to Etsy listing</li>
-  </ul>
+  <h2>6. Etsy Listing</h2>
+  <p class="section-note">Drop files into the matching <code>assets/etsy-*/</code> folder. Supports images and GIF/video.</p>
+  <div id="etsySlots"></div>
 
   <div class="gap">
-    <button onclick="copyEtsyDescription()">Copy Etsy Description Draft</button>
+    <button onclick="copyEtsyDescription()">Copy Etsy Description</button>
     <div id="etsyCopyMsg" style="color:#8aba8a;font-size:0.8rem;margin-top:6px;display:none">Copied!</div>
   </div>
 </section>
@@ -172,6 +179,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
   }
   loadThankyouFromAssets();
+  loadEtsySlots();
 
   const [r, e] = await Promise.all([
     fetch('/templates/readme.txt').then(r => r.text()).catch(() => null),
@@ -323,6 +331,76 @@ dropZone.addEventListener('drop', e => {
   dropZone.classList.remove('over');
   handleFiles(e.dataTransfer.files);
 });
+
+// ── Etsy listing slots ────────────────────────────────────────────────────────
+const ETSY_SLOTS = [
+  { slot: 'etsy-hero',        label: 'Hero image',              hint: 'mascot + title + compatibility' },
+  { slot: 'etsy-expressions', label: 'Expressions showcase',    hint: 'all states on one image' },
+  { slot: 'etsy-files',       label: 'Included files preview',  hint: 'folder/file list screenshot' },
+  { slot: 'etsy-preview',     label: 'Veadotube preview / GIF', hint: 'short loop of states switching' },
+  { slot: 'etsy-detail',      label: 'Zoomed detail shot',      hint: 'texture / lineart close-up' },
+  { slot: 'etsy-branding',    label: 'Thank you / branding',    hint: 'your branding card' },
+];
+
+async function loadEtsySlots() {
+  const container = document.getElementById('etsySlots');
+  container.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'etsy-slots';
+
+  await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
+    const url = `/slot/${slot}`;
+    let ok = false;
+    let mimeType = '';
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      ok = res.ok;
+      mimeType = res.headers.get('Content-Type') || '';
+    } catch (_) {}
+
+    const div = document.createElement('div');
+    div.className = 'etsy-slot';
+
+    const num = document.createElement('span');
+    num.className = 'slot-num';
+    num.textContent = i + 1;
+    div.appendChild(num);
+
+    if (ok) {
+      let media;
+      if (mimeType.startsWith('video/') || slot === 'etsy-preview' && mimeType.includes('gif')) {
+        media = document.createElement('video');
+        media.src = url;
+        media.autoplay = true;
+        media.loop = true;
+        media.muted = true;
+        media.playsInline = true;
+      } else {
+        media = document.createElement('img');
+        media.className = 'slot-thumb';
+        media.src = url + '?t=' + Date.now();
+      }
+      div.appendChild(media);
+    } else {
+      const ph = document.createElement('div');
+      ph.style.cssText = 'width:80px;height:60px;background:#111;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#333;font-size:1.4rem';
+      ph.textContent = '?';
+      div.appendChild(ph);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'slot-info';
+    info.innerHTML = `
+      <div class="slot-label">${label}</div>
+      <div class="slot-path">assets/${slot}/</div>
+      <div class="${ok ? 'slot-ok' : 'slot-miss'}">${ok ? '✓ ready' : `— empty (${hint})`}</div>`;
+    div.appendChild(info);
+
+    wrap.appendChild(div);
+  }));
+
+  container.appendChild(wrap);
+}
 
 // ── Data + template fill ──────────────────────────────────────────────────────
 function gatherData() {
