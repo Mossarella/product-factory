@@ -161,6 +161,7 @@
     <input type="file" id="fileInput" multiple accept="image/png,image/gif,image/webp"
       style="display:none" onchange="handleFiles(this.files)" />
   </div>
+  <div id="exprChecklist" style="margin-bottom:10px"></div>
   <div class="file-list" id="fileList"></div>
 </section>
 
@@ -369,6 +370,7 @@ function renderStateTags() {
   states.slice(1).forEach(s => {
     el.innerHTML += `<div class="state-tag">${s} <span style="cursor:pointer;color:#8a3a3a" onclick="removeState('${s}')">✕</span></div>`;
   });
+  renderChecklist();
 }
 
 // ── File handling ─────────────────────────────────────────────────────────────
@@ -389,6 +391,33 @@ function renderAllFileRows() {
   const c = document.getElementById('fileList');
   c.innerHTML = '';
   files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
+  renderChecklist();
+}
+
+function renderChecklist() {
+  const el = document.getElementById('exprChecklist');
+  if (!el) return;
+
+  // build a set of "state|expression" that are covered
+  const covered = new Set(
+    files.filter(f => !f.isProp).map(f => `${f.state}|${f.expression}`)
+  );
+
+  el.innerHTML = states.map(s => {
+    const chips = EXPRESSIONS.map(e => {
+      const done = covered.has(`${s}|${e}`);
+      return `<span style="
+        display:inline-block;padding:2px 7px;margin:2px;font-size:0.75rem;
+        border:1px solid ${done ? '#3a6a3a' : '#2a2a2a'};
+        background:${done ? '#1a3a1a' : '#111'};
+        color:${done ? '#7aba7a' : '#444'}">
+        ${done ? '✓' : '○'} ${e}
+      </span>`;
+    }).join('');
+    return `<div style="margin-bottom:4px;font-size:0.78rem">
+      <span style="color:#555;display:inline-block;width:72px">${s}</span>${chips}
+    </div>`;
+  }).join('');
 }
 
 function buildFileRow(f, i) {
