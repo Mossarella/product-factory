@@ -692,6 +692,11 @@ async function loadEtsySlots() {
         const res = await fetch(serverUrl, { cache: 'no-cache' });
         serverOk = res.ok;
         mimeType = res.headers.get('Content-Type') || '';
+        if (res.ok && !picked) {
+          const blob = await res.clone().blob();
+          const ext  = (mimeType.split('/')[1] || 'png').replace('jpeg','jpg');
+          etsyPicked[slot] = new File([blob], `${slot}.${ext}`, { type: mimeType });
+        }
       } catch (_) {}
     }
 
