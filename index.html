@@ -341,6 +341,19 @@ async function loadProduct(name) {
   }
   renderAllFileRows();
 
+  // clear previous etsy picks then restore from saved etsyFiles
+  Object.keys(etsyPicked).forEach(k => delete etsyPicked[k]);
+  if (config.etsyFiles) {
+    await Promise.all(Object.entries(config.etsyFiles).map(async ([slot, filename]) => {
+      try {
+        const res = await fetch(`/products/${name}/etsy-file/${encodeURIComponent(filename)}`);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        etsyPicked[slot] = new File([blob], filename, { type: blob.type });
+      } catch (_) {}
+    }));
+  }
+
   document.getElementById('etsyNote').textContent = `Drop files into products/${name}/assets/etsy-*/`;
   loadEtsySlots();
 }
@@ -367,6 +380,20 @@ async function saveProduct() {
       mascotFiles.push({ filename, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
     }
 
+    // upload etsy listing images and record filenames
+    const etsyFiles = {};
+    for (const [slot, file] of Object.entries(etsyPicked)) {
+      const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const up = await fetch(`/products/${activeProduct}/etsy-file`, {
+        method: 'POST',
+        headers: { 'X-Slot': slot, 'X-Filename': file.name, 'Content-Type': file.type },
+        body: file,
+      });
+      if (!up.ok) throw new Error(`Etsy file upload failed: ${slot}`);
+      const data = await up.json();
+      etsyFiles[slot] = data.filename;
+    }
+
     const res = await fetch(`/products/${activeProduct}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -377,6 +404,7 @@ async function saveProduct() {
         contact:     document.getElementById('contact').value.trim(),
         states,
         mascotFiles,
+        etsyFiles,
       }, null, 2),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -426,7 +454,7 @@ function renderStateTags() {
 // ── File handling ─────────────────────────────────────────────────────────────
 function handleFiles(fileList) {
   Array.from(fileList).forEach(f => {
-    files.push({ file: f, state: 'Neutral', expression: 'EOMO', isProp: false, propName: '', url: URL.createObjectURL(f) });
+    files.push({ file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
   });
   renderAllFileRows();
 }
@@ -497,7 +525,7 @@ function buildFileRow(f, i) {
     div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => {
       files[i].expression = val;
       renderChecklist();
-    }));
+    }, '— expression —'));
   } else {
     const propInp = document.createElement('input');
     propInp.type = 'text';
@@ -522,8 +550,14 @@ function buildFileRow(f, i) {
   return div;
 }
 
-function buildSelect(options, current, onChange) {
+function buildSelect(options, current, onChange, placeholder) {
   const el = document.createElement('select');
+  if (placeholder !== undefined) {
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = placeholder;
+    if (!current) opt.selected = true;
+    el.appendChild(opt);
+  }
   options.forEach(o => {
     const opt = document.createElement('option');
     opt.value = o; opt.textContent = o;
@@ -575,7 +609,13 @@ function renderFixedAssets() {
       inp.className = 'asset-slot-name';
       inp.placeholder = 'File label (e.g. License)';
       inp.value = a.label;
-      inp.oninput = e => { fixedAssets[i].label = e.target.value; fixedAssets[i].zipName = e.target.value.replace(/\s+/g,'_') + (a.blob ? '.' + (a.blob.name||'').split('.').pop() : '.png'); };
+      inp.oninput = e => {
+        const v = e.target.value;
+        const cv = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+        e.target.value = cv;
+        fixedAssets[i].label = cv;
+        fixedAssets[i].zipName = cv.replace(/\s+/g,'_') + (a.blob ? '.' + (a.blob.name||'').split('.').pop() : '.png');
+      };
       info.appendChild(inp);
       const st = document.createElement('div');
       st.className = a.blob ? 'ok' : 'miss';
@@ -651,6 +691,15 @@ async function loadEtsySlots() {
 
     const div = document.createElement('div');
     div.className = 'etsy-slot';
+    div.addEventListener('dragover',  e => { e.preventDefault(); div.style.borderColor = '#5a4a9a'; });
+    div.addEventListener('dragleave', () => { div.style.borderColor = ''; });
+    div.addEventListener('drop', e => {
+      e.preventDefault();
+      div.style.borderColor = '';
+      const f = e.dataTransfer.files[0]; if (!f) return;
+      etsyPicked[slot] = f;
+      loadEtsySlots();
+    });
 
     // number
     const num = document.createElement('span');
@@ -784,12 +833,16 @@ function buildPreview() {
   });
 
   let tree = `${name}Pack.zip\n`;
+  tree += `├── Artwork/\n`;
   Object.entries(grouped).forEach(([folder, items]) => {
-    tree += `├── ${folder}/\n`;
-    items.forEach(f => { tree += `│   ├── ${resolveFilename(name, f)}\n`; });
+    tree += `│   ├── ${folder}/\n`;
+    items.forEach(f => { tree += `│   │   ├── ${resolveFilename(name, f)}\n`; });
   });
   tree += `├── README.txt\n`;
-  if (thankyouBlob) tree += `└── THANKYOU.png\n`;
+  const loaded = fixedAssets.filter(a => a.blob && a.zipName);
+  loaded.forEach((a, idx) => {
+    tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
+  });
   tree += `\n${'─'.repeat(38)}\nREADME.txt:\n${'─'.repeat(38)}\n`;
   tree += buildReadme();
   document.getElementById('previewBox').textContent = tree;
@@ -810,7 +863,7 @@ async function buildZip() {
 
   for (const f of files) {
     const folder = f.isProp ? 'Extras' : f.state;
-    zip.folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
+    zip.folder('Artwork').folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
   }
   zip.file('README.txt', buildReadme());
   for (const a of fixedAssets) {

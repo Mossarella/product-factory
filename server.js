@@ -148,6 +148,34 @@ async function handle(req, res) {
     return;
   }
 
+  // ── POST /products/:name/etsy-file — upload etsy listing image ───────────────
+  const etsyFileUploadM = pathname.match(/^\/products\/([^/]+)\/etsy-file$/);
+  if (method === 'POST' && etsyFileUploadM) {
+    const slot = (req.headers['x-slot'] || '').replace(/[^\w\-]/g, '');
+    const origExt = path.extname(req.headers['x-filename'] || '').toLowerCase() || '.jpg';
+    if (!slot) { res.writeHead(400); res.end('Bad slot'); return; }
+    const dir  = path.join(PRODUCTS_DIR, etsyFileUploadM[1], 'etsy-files');
+    fs.mkdirSync(dir, { recursive: true });
+    const buffer   = await readBodyBuffer(req);
+    const filename = `${slot}${origExt}`;
+    fs.writeFileSync(path.join(dir, filename), buffer);
+    console.log(`Saved etsy file: ${etsyFileUploadM[1]}/${filename}`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ filename }));
+    return;
+  }
+
+  // ── GET /products/:name/etsy-file/:filename ───────────────────────────────────
+  const etsyFileServeM = pathname.match(/^\/products\/([^/]+)\/etsy-file\/([^/]+)$/);
+  if (method === 'GET' && etsyFileServeM) {
+    const filePath = path.join(PRODUCTS_DIR, etsyFileServeM[1], 'etsy-files', etsyFileServeM[2]);
+    if (!fs.existsSync(filePath)) { res.writeHead(404); res.end(); return; }
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
   // ── GET /products/:name/slot/:slot ───────────────────────────────────────────
   const productSlotM = pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
   if (method === 'GET' && productSlotM) {
