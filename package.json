@@ -1,6 +1,6 @@
 {
   "name": "product-factory",
   "scripts": {
-    "start": "npx serve ."
+    "start": "node server.js"
   }
 }
