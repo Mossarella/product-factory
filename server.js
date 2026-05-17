@@ -35,6 +35,15 @@ function readBody(req) {
   });
 }
 
+function readBodyBuffer(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
 function serveSlot(dir, res) {
   let files = [];
   try { files = fs.readdirSync(dir).filter(f => !f.startsWith('.')); } catch (_) {}
@@ -113,6 +122,29 @@ async function handle(req, res) {
     fs.writeFileSync(configPath, body);
     console.log(`Saved config: ${configPostM[1]}`);
     res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── POST /products/:name/file — upload a mascot file (raw binary) ───────────
+  const fileUploadM = pathname.match(/^\/products\/([^/]+)\/file$/);
+  if (method === 'POST' && fileUploadM) {
+    const filename    = path.basename(req.headers['x-filename'] || 'file.png').replace(/[^\w\-. ]/g, '_');
+    const dir         = path.join(PRODUCTS_DIR, fileUploadM[1], 'mascot-files');
+    fs.mkdirSync(dir, { recursive: true });
+    const buffer = await readBodyBuffer(req);
+    fs.writeFileSync(path.join(dir, filename), buffer);
+    res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── GET /products/:name/file/:filename ────────────────────────────────────────
+  const fileServeM = pathname.match(/^\/products\/([^/]+)\/file\/([^/]+)$/);
+  if (method === 'GET' && fileServeM) {
+    const filePath = path.join(PRODUCTS_DIR, fileServeM[1], 'mascot-files', fileServeM[2]);
+    if (!fs.existsSync(filePath)) { res.writeHead(404); res.end(); return; }
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    fs.createReadStream(filePath).pipe(res);
     return;
   }
 
