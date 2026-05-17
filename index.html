@@ -664,12 +664,20 @@ async function loadEtsySlots() {
   await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
     const serverUrl = `/products/${ep(activeProduct)}/slot/${slot}`;
 
-    let serverOk = false, mimeType = '';
+    let serverOk = false, mimeType = '', isGlobal = false;
     try {
       const res = await fetch(serverUrl, { cache: 'no-cache' });
       serverOk = res.ok;
       mimeType = res.headers.get('Content-Type') || '';
     } catch (_) {}
+    if (!serverOk) {
+      try {
+        const res = await fetch(`/slot/${slot}`, { cache: 'no-cache' });
+        serverOk = res.ok;
+        mimeType = res.headers.get('Content-Type') || '';
+        isGlobal = res.ok;
+      } catch (_) {}
+    }
 
     const div = document.createElement('div');
     div.className = 'etsy-slot';
@@ -690,17 +698,18 @@ async function loadEtsySlots() {
     div.appendChild(num);
 
     // preview
+    const previewUrl = isGlobal ? `/slot/${slot}?t=${Date.now()}` : `${serverUrl}?t=${Date.now()}`;
     if (serverOk) {
       let media;
       if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
         media = document.createElement('video');
-        media.src = serverUrl + '?t=' + Date.now();
+        media.src = previewUrl;
         media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
         media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
       } else {
         media = document.createElement('img');
         media.className = 'slot-thumb';
-        media.src = serverUrl + '?t=' + Date.now();
+        media.src = previewUrl;
       }
       div.appendChild(media);
     } else {
@@ -712,13 +721,14 @@ async function loadEtsySlots() {
     // info + pick button
     const info = document.createElement('div');
     info.className = 'slot-info';
+    const statusText = !serverOk ? `— empty (${hint})` : isGlobal ? '○ placeholder (assets/' + slot + '/)' : '✓ loaded';
     info.innerHTML = `
       <div class="slot-label">${label}</div>
       <div class="slot-path">products/${activeProduct}/assets/${slot}/</div>
-      <div class="${serverOk ? 'ok' : 'miss'}">${serverOk ? '✓ loaded' : `— empty (${hint})`}</div>`;
+      <div class="${serverOk ? 'ok' : 'miss'}">${statusText}</div>`;
 
     const pickBtn = document.createElement('button');
-    pickBtn.textContent = serverOk ? 'Replace' : 'Pick file';
+    pickBtn.textContent = serverOk && !isGlobal ? 'Replace' : 'Pick file';
     pickBtn.style.marginTop = '4px';
     pickBtn.onclick = () => {
       const inp = document.createElement('input');
