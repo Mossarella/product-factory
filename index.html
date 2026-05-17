@@ -548,11 +548,11 @@
     let readmeTemplate = null;
     let etsyTemplate = null;
 
-    // fixed assets — built-ins auto-load from folder, extras are manual picks
-    let fixedAssets = [
-      { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', blob: null },
-      { id: 'howto', label: 'How To Use', slot: '/slot/how-to-use', zipName: 'HOWTO.png', blob: null },
+    const BUILTIN_FIXED = [
+      { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png' },
+      { id: 'howto',    label: 'How To Use',     slot: '/slot/how-to-use',      zipName: 'HOWTO.png'   },
     ];
+    let fixedAssets = [];
 
 
     // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -576,6 +576,11 @@
       if (CONFIG.contact) document.getElementById('contact').value = CONFIG.contact;
       if (CONFIG.description) document.getElementById('description').value = CONFIG.description;
       if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
+
+      const extras = (CONFIG.extraFixedAssets || []).map(a => ({
+        id: a.id, label: a.label, slot: `/slot/${a.slot}`, zipName: a.zipName, blob: null,
+      }));
+      fixedAssets = [...BUILTIN_FIXED.map(a => ({ ...a, blob: null })), ...extras];
     }
 
     // ── Product list ──────────────────────────────────────────────────────────────
@@ -666,7 +671,7 @@
             const blob = await res.blob();
             const displayName = mf.origName || mf.filename;
             const file = new File([blob], displayName, { type: blob.type });
-            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, url: URL.createObjectURL(file) });
+            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, propFrame: mf.propFrame || '', url: URL.createObjectURL(file) });
           } catch (_) { loadFailed++; }
         }));
       }
@@ -697,7 +702,7 @@
             body: f.file,
           });
           if (!up.ok) throw new Error(`File upload failed: ${f.file.name}`);
-          mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
+          mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName, propFrame: f.propFrame || '' });
         }
 
         const res = await fetch(`/products/${ep(activeProduct)}/config`, {
@@ -761,7 +766,7 @@
     // ── File handling ─────────────────────────────────────────────────────────────
     function handleFiles(fileList) {
       Array.from(fileList).forEach(f => {
-        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
+        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
       });
       renderAllFileRows();
     }
@@ -837,15 +842,24 @@
         const propInp = document.createElement('input');
         propInp.type = 'text';
         propInp.style.cssText = 'flex:1;min-width:80px';
-        propInp.placeholder = 'prop name (e.g. Coffee)';
+        propInp.placeholder = 'Prop name (e.g. Cigarette)';
         propInp.value = f.propName;
         propInp.oninput = e => {
           const v = e.target.value;
-          const cap = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
-          e.target.value = cap;
-          files[i].propName = cap;
+          const c = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+          e.target.value = c;
+          files[i].propName = c;
         };
         div.appendChild(propInp);
+
+        const frameInp = document.createElement('input');
+        frameInp.type = 'text';
+        frameInp.style.cssText = 'flex:0 0 56px';
+        frameInp.placeholder = 'Frame';
+        frameInp.title = 'Frame label for multi-frame props (e.g. 1, 2, Open)';
+        frameInp.value = f.propFrame || '';
+        frameInp.oninput = e => { files[i].propFrame = e.target.value.trim(); };
+        div.appendChild(frameInp);
       }
 
       const rm = document.createElement('button');
@@ -1133,7 +1147,9 @@
       const name = document.getElementById('productName').value.trim() || 'YourProduct';
       const grouped = {};
       files.forEach(f => {
-        const folder = f.isProp ? 'Extras' : f.state;
+        const folder = f.isProp
+          ? (f.propFrame ? `Extras/${resolvePropFolder(f)}` : 'Extras')
+          : f.state;
         (grouped[folder] = grouped[folder] || []).push(f);
       });
 
@@ -1153,9 +1169,14 @@
       document.getElementById('previewBox').textContent = tree;
     }
 
+    function resolvePropFolder(f) { return cap(f.propName) || 'Prop'; }
+
     function resolveFilename(productName, f) {
       const ext = f.file.name.split('.').pop();
-      if (f.isProp) return `${productName}_${cap(f.propName || 'Prop')}.${ext}`;
+      if (f.isProp) {
+        const base = cap(f.propName || 'Prop');
+        return f.propFrame ? `${productName}_${base}_${f.propFrame}.${ext}` : `${productName}_${base}.${ext}`;
+      }
       return `${productName}_${f.state}_${f.expression}.${ext}`;
     }
 
@@ -1167,8 +1188,15 @@
       const zip = new JSZip();
 
       for (const f of files) {
-        const folder = f.isProp ? 'Extras' : f.state;
-        zip.folder('Artwork').folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
+        let folder;
+        if (f.isProp) {
+          folder = f.propFrame
+            ? zip.folder('Artwork').folder('Extras').folder(resolvePropFolder(f))
+            : zip.folder('Artwork').folder('Extras');
+        } else {
+          folder = zip.folder('Artwork').folder(f.state);
+        }
+        folder.file(resolveFilename(name, f), await f.file.arrayBuffer());
       }
       zip.file('README.txt', buildReadme());
       for (const a of fixedAssets) {
