@@ -320,57 +320,27 @@ dropZone.addEventListener('drop', e => {
   handleFiles(e.dataTransfer.files);
 });
 
-// ── README builder ───────────────────────────────────────────────────────────
-function getCompatibility() {
-  return (typeof CONFIG !== 'undefined' && CONFIG.compatibility)
-    ? CONFIG.compatibility
-    : ['Veadotube', 'PNGTuber+', 'OBS (as browser source)'];
-}
-
-function getEtsyTags() {
-  return (typeof CONFIG !== 'undefined' && CONFIG.etsyTags)
-    ? CONFIG.etsyTags
-    : 'pngtuber, vtuber, mascot, stream asset, veadotube';
-}
-
-function buildReadme() {
-  const name    = document.getElementById('productName').value.trim() || 'YourProduct';
-  const contact = document.getElementById('contact').value.trim() || 'your contact here';
-  const desc    = document.getElementById('description').value.trim();
-  const notes   = document.getElementById('extraNotes').value.trim();
-  const compat  = getCompatibility();
-
+// ── Data helpers ─────────────────────────────────────────────────────────────
+function gatherData() {
   const stateCounts = {};
   files.filter(f => !f.isProp).forEach(f => {
     stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
   });
-  const props = files.filter(f => f.isProp).map(f => f.propName || f.file.name);
+  return {
+    name:          document.getElementById('productName').value.trim() || 'YourProduct',
+    shopName:      CONFIG.shopName || 'MossarellaStudio',
+    contact:       document.getElementById('contact').value.trim() || 'your contact here',
+    description:   document.getElementById('description').value.trim(),
+    notes:         document.getElementById('extraNotes').value.trim(),
+    compatibility: CONFIG.compatibility || ['Veadotube', 'PNGTuber+', 'OBS (as browser source)'],
+    etsyTags:      CONFIG.etsyTags || 'pngtuber, vtuber, mascot, stream asset, veadotube',
+    states:        Object.entries(stateCounts).map(([label, count]) => ({ label, count })),
+    props:         files.filter(f => f.isProp).map(f => f.propName || f.file.name),
+  };
+}
 
-  let txt = `${name}\n`;
-  txt += `by ${(typeof CONFIG !== 'undefined' && CONFIG.shopName) ? CONFIG.shopName : 'MossarellaStudio'}\n`;
-  txt += `${'─'.repeat(40)}\n\n`;
-  if (desc) txt += `${desc}\n\n`;
-  txt += `COMPATIBLE WITH:\n`;
-  compat.forEach(c => { txt += `  - ${c}\n`; });
-  txt += `\nEXPRESSION STATES:\n`;
-  EXPRESSIONS.forEach(e => { txt += `  ${e} = ${EXPR_LABELS[e]}\n`; });
-  txt += `\nINCLUDED STATES:\n`;
-  Object.entries(stateCounts).forEach(([s, c]) => {
-    txt += `  - ${s} (${c} expression${c !== 1 ? 's' : ''})\n`;
-  });
-  if (props.length) {
-    txt += `\nPROPS / EXTRAS:\n`;
-    props.forEach(p => { txt += `  - ${p}\n`; });
-  }
-  txt += `\nHOW TO USE:\n`;
-  txt += `  1. Import PNG files into Veadotube or PNGTuber+\n`;
-  txt += `  2. Assign states to the matching expression triggers\n`;
-  txt += `  3. Add as browser source in OBS\n\n`;
-  txt += `${'─'.repeat(40)}\n`;
-  txt += `Thank you for your purchase!\n`;
-  txt += `Contact: ${contact}\n`;
-  if (notes) txt += `\nNOTES:\n${notes}\n`;
-  return txt;
+function buildReadme() {
+  return CONFIG.readmeTemplate(gatherData());
 }
 
 // ── Preview ──────────────────────────────────────────────────────────────────
@@ -432,41 +402,8 @@ async function buildZip() {
 
 // ── Etsy description ─────────────────────────────────────────────────────────
 function copyEtsyDescription() {
-  const name    = document.getElementById('productName').value.trim() || 'YourProduct';
-  const contact = document.getElementById('contact').value.trim() || 'your shop link';
-  const compat  = getCompatibility();
-  const tags    = getEtsyTags();
-
-  const stateCounts = {};
-  files.filter(f => !f.isProp).forEach(f => {
-    stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
-  });
-  const props = files.filter(f => f.isProp).map(f => f.propName || f.file.name);
-  const stateLines = Object.entries(stateCounts).map(([s, c]) => `✦ ${s} — ${c} expressions`).join('\n');
-  const propLine = props.length ? `\n✦ Props: ${props.join(', ')}` : '';
-  const compatLines = compat.map(c => `✦ ${c}`).join('\n');
-
-  const desc = `✨ ${name} — PNGTuber Mascot Pack
-
-Bring your stream to life with this handcrafted PNGTuber mascot!
-
-WHAT'S INCLUDED:
-${stateLines}${propLine}
-
-COMPATIBLE WITH:
-${compatLines}
-
-Each state includes all 4 expression variants:
-EOMO | EOMC | ECMO | ECMC
-
-FILES: High-quality PNG, transparent background, ready to import.
-
-QUESTIONS? ${contact}
-
-─────────────────────────────────
-Tags: ${tags}`;
-
-  navigator.clipboard.writeText(desc).then(() => {
+  const text = CONFIG.etsyTemplate(gatherData());
+  navigator.clipboard.writeText(text).then(() => {
     const msg = document.getElementById('etsyCopyMsg');
     msg.style.display = 'block';
     setTimeout(() => { msg.style.display = 'none'; }, 2000);
