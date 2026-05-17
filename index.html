@@ -314,8 +314,7 @@ async function createProduct() {
 
 async function loadProduct(name) {
   const config = await fetch(`/products/${ep(name)}/config`)
-    .then(r => r.ok ? r.json() : null).catch(() => null);
-  if (!config) { alert(`Could not load ${name}`); return; }
+    .then(r => r.ok ? r.json() : null).catch(() => null) ?? {};
 
   setActiveProduct(name);
 
