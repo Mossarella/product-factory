@@ -86,6 +86,8 @@
       <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" />
     </div>
   </div>
+  <label>Description <span style="color:#555;font-size:0.75rem">(from config.js — override per product)</span></label>
+  <textarea id="description" placeholder="e.g. A handcrafted PNGTuber mascot made with love for your stream."></textarea>
   <label>Extra README notes <span style="color:#555;font-size:0.75rem">(from config.js — override per product)</span></label>
   <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit."></textarea>
 </section>
@@ -169,6 +171,7 @@ const EXPR_LABELS = {
 window.addEventListener('DOMContentLoaded', () => {
   if (typeof CONFIG !== 'undefined') {
     if (CONFIG.contact)      document.getElementById('contact').value = CONFIG.contact;
+    if (CONFIG.description)  document.getElementById('description').value = CONFIG.description;
     if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
   }
   loadThankyouFromAssets();
@@ -333,6 +336,7 @@ function getEtsyTags() {
 function buildReadme() {
   const name    = document.getElementById('productName').value.trim() || 'YourProduct';
   const contact = document.getElementById('contact').value.trim() || 'your contact here';
+  const desc    = document.getElementById('description').value.trim();
   const notes   = document.getElementById('extraNotes').value.trim();
   const compat  = getCompatibility();
 
@@ -345,6 +349,7 @@ function buildReadme() {
   let txt = `${name}\n`;
   txt += `by ${(typeof CONFIG !== 'undefined' && CONFIG.shopName) ? CONFIG.shopName : 'MossarellaStudio'}\n`;
   txt += `${'─'.repeat(40)}\n\n`;
+  if (desc) txt += `${desc}\n\n`;
   txt += `COMPATIBLE WITH:\n`;
   compat.forEach(c => { txt += `  - ${c}\n`; });
   txt += `\nEXPRESSION STATES:\n`;

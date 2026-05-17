@@ -6,6 +6,9 @@ const CONFIG = {
   shopName: "MossarellaStudio",
   contact:  "etsy.com/shop/MossarellaStudio",
 
+  // Product description — shown in README under the product name
+  description: "A handcrafted PNGTuber mascot made with love for your stream.",
+
   // Compatibility list in README + Etsy description
   compatibility: [
     "Veadotube",
