@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MossarellaStudio — Product Factory</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .sub { color: #888; font-size: 0.85rem; margin-bottom: 32px; }
+    section { margin-bottom: 32px; border: 1px solid #2a2a2a; padding: 16px; }
+    h2 { font-size: 1rem; margin-bottom: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+    label { display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 4px; margin-top: 12px; }
+    label:first-child { margin-top: 0; }
+    input[type=text], textarea, select {
+      width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #333;
+      color: #e0e0e0; font-family: monospace; font-size: 0.9rem;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    button {
+      padding: 8px 16px; background: #2a2a2a; color: #e0e0e0; border: 1px solid #444;
+      font-family: monospace; cursor: pointer; font-size: 0.9rem;
+    }
+    button:hover { background: #3a3a3a; }
+    button.primary { background: #4a3a8a; border-color: #6a5aaa; }
+    button.primary:hover { background: #5a4a9a; }
+    button.danger { background: #3a1a1a; border-color: #8a3a3a; color: #ff9090; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+    .row > * { flex: 1; min-width: 140px; }
+    .drop-zone {
+      border: 2px dashed #333; padding: 24px; text-align: center;
+      color: #555; cursor: pointer; margin-bottom: 12px;
+    }
+    .drop-zone.over { border-color: #6a5aaa; color: #aaa; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-item {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      background: #1a1a1a; padding: 8px; border: 1px solid #222;
+    }
+    .file-item .fname { font-size: 0.8rem; color: #888; flex: 1; min-width: 120px; word-break: break-all; }
+    .file-item img { width: 40px; height: 40px; object-fit: contain; background: #222; }
+    .file-item select { flex: 1; min-width: 100px; }
+    .file-item button { padding: 4px 8px; font-size: 0.75rem; }
+    .state-tag {
+      display: inline-block; padding: 2px 8px; font-size: 0.75rem;
+      background: #2a2a2a; border: 1px solid #444; margin: 2px;
+    }
+    .output-preview {
+      background: #1a1a1a; padding: 12px; font-size: 0.8rem; color: #aaa;
+      white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+      border: 1px solid #2a2a2a;
+    }
+    .checklist { list-style: none; }
+    .checklist li { padding: 6px 0; border-bottom: 1px solid #1a1a1a; font-size: 0.85rem; }
+    .checklist li::before { content: "☐ "; color: #6a5aaa; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 0.75rem; background: #2a3a2a; border: 1px solid #3a4a3a; color: #8aba8a; margin-left: 8px; }
+    .badge.warn { background: #3a2a1a; border-color: #5a3a1a; color: #c8a060; }
+    .section-note { font-size: 0.8rem; color: #666; margin-bottom: 12px; }
+    .add-state-row { display: flex; gap: 8px; margin-top: 12px; }
+    .add-state-row input { flex: 1; }
+    #thankYouPreview { width: 80px; height: 80px; object-fit: contain; background: #222; display: none; }
+    .gap { margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+<h1>MossarellaStudio — Product Factory</h1>
+<p class="sub">Pack your mascot → generate README → download ZIP → list on Etsy</p>
+
+<!-- STEP 1: PRODUCT INFO -->
+<section id="s-info">
+  <h2>1. Product Info</h2>
+  <div class="row">
+    <div>
+      <label>Product Name</label>
+      <input type="text" id="productName" placeholder="e.g. BunnyMascot" />
+    </div>
+    <div>
+      <label>Your Contact / Shop</label>
+      <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" />
+    </div>
+  </div>
+  <label>Extra README notes (optional)</label>
+  <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit."></textarea>
+</section>
+
+<!-- STEP 2: STATES -->
+<section id="s-states">
+  <h2>2. Expression States</h2>
+  <p class="section-note">Neutral is always included. Add more states (Happy, Angry, Sleepy…) as needed.</p>
+  <div id="stateList">
+    <div class="state-tag">Neutral <span style="color:#555">(built-in)</span></div>
+  </div>
+  <div class="add-state-row">
+    <input type="text" id="newStateName" placeholder="e.g. Happy, Angry, Sleepy" />
+    <button onclick="addState()">+ Add State</button>
+  </div>
+</section>
+
+<!-- STEP 3: FILES -->
+<section id="s-files">
+  <h2>3. Upload Mascot PNGs</h2>
+  <p class="section-note">For each file, pick its State and Expression. Props go to Extras.</p>
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    Click or drag & drop PNG files here
+    <input type="file" id="fileInput" multiple accept="image/png,image/gif,image/webp" style="display:none" onchange="handleFiles(this.files)" />
+  </div>
+  <div class="file-list" id="fileList"></div>
+</section>
+
+<!-- STEP 4: THANKYOU -->
+<section id="s-thankyou">
+  <h2>4. THANKYOU.png</h2>
+  <p class="section-note">Your hand-drawn thank you card. Will be dropped in root of ZIP.</p>
+  <div class="row" style="align-items:center">
+    <div>
+      <button onclick="document.getElementById('tyInput').click()">Choose THANKYOU.png</button>
+      <input type="file" id="tyInput" accept="image/*" style="display:none" onchange="handleThankyou(this.files[0])" />
+    </div>
+    <img id="thankYouPreview" />
+  </div>
+</section>
+
+<!-- STEP 5: PREVIEW + PACK -->
+<section id="s-preview">
+  <h2>5. Preview & Pack</h2>
+  <button onclick="buildPreview()" style="margin-bottom:12px">Refresh Preview</button>
+  <div class="output-preview" id="previewBox">Click "Refresh Preview" to see ZIP structure and README.</div>
+  <div class="gap">
+    <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
+  </div>
+</section>
+
+<!-- STEP 6: ETSY CHECKLIST -->
+<section id="s-etsy">
+  <h2>6. Etsy Listing Checklist</h2>
+  <p class="section-note">Images to prepare before listing. Check them off as you go.</p>
+  <ul class="checklist" id="etsyChecklist">
+    <li>Hero image — mascot + product title + compatibility logos <span class="badge warn">make in Canva / Figma</span></li>
+    <li>Expressions showcase — all states on one image (2×4 grid)</li>
+    <li>Included files preview — folder tree / file list screenshot</li>
+    <li>Veadotube preview / GIF — short loop of the mascot switching states</li>
+    <li>Zoomed detail shot — texture / lineart close-up</li>
+    <li>Thank you / branding card</li>
+    <li>Write Etsy title, tags, description <span class="badge">copy from README</span></li>
+    <li>Set digital delivery — upload the ZIP to Etsy listing</li>
+  </ul>
+
+  <div class="gap">
+    <button onclick="copyEtsyDescription()">Copy Etsy Description Draft</button>
+    <div id="etsyCopyMsg" style="color:#8aba8a;font-size:0.8rem;margin-top:6px;display:none">Copied!</div>
+  </div>
+</section>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const EXPRESSIONS = ['EOMO', 'EOMC', 'ECMO', 'ECMC'];
+const EXPR_LABELS = {
+  EOMO: 'Eyes Open Mouth Open',
+  EOMC: 'Eyes Open Mouth Closed',
+  ECMO: 'Eyes Closed Mouth Open',
+  ECMC: 'Eyes Closed Mouth Closed',
+};
+
+let states = ['Neutral']; // user-defined states
+let files = []; // { file, state, expression, isProp, propName, url }
+let thankyouFile = null;
+let thankyouUrl = null;
+
+// ── State management ────────────────────────────────────────────────────────
+function addState() {
+  const inp = document.getElementById('newStateName');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (states.includes(val)) { inp.value = ''; return; }
+  states.push(val);
+  inp.value = '';
+  renderStateTags();
+  renderAllFileRows(); // update dropdowns
+}
+
+function removeState(s) {
+  if (s === 'Neutral') return;
+  states = states.filter(x => x !== s);
+  files.forEach(f => { if (f.state === s) f.state = 'Neutral'; });
+  renderStateTags();
+  renderAllFileRows();
+}
+
+function renderStateTags() {
+  const el = document.getElementById('stateList');
+  el.innerHTML = `<div class="state-tag">Neutral <span style="color:#555">(built-in)</span></div>`;
+  states.slice(1).forEach(s => {
+    el.innerHTML += `<div class="state-tag">${s} <span style="cursor:pointer;color:#aa5555" onclick="removeState('${s}')">✕</span></div>`;
+  });
+}
+
+// ── File handling ───────────────────────────────────────────────────────────
+function handleFiles(fileList) {
+  Array.from(fileList).forEach(f => {
+    const url = URL.createObjectURL(f);
+    files.push({ file: f, state: 'Neutral', expression: 'EOMO', isProp: false, propName: '', url });
+  });
+  renderAllFileRows();
+}
+
+function handleThankyou(f) {
+  if (!f) return;
+  thankyouFile = f;
+  if (thankyouUrl) URL.revokeObjectURL(thankyouUrl);
+  thankyouUrl = URL.createObjectURL(f);
+  const img = document.getElementById('thankYouPreview');
+  img.src = thankyouUrl;
+  img.style.display = 'block';
+}
+
+function removeFile(idx) {
+  URL.revokeObjectURL(files[idx].url);
+  files.splice(idx, 1);
+  renderAllFileRows();
+}
+
+function renderAllFileRows() {
+  const container = document.getElementById('fileList');
+  container.innerHTML = '';
+  files.forEach((f, i) => {
+    container.appendChild(buildFileRow(f, i));
+  });
+}
+
+function buildFileRow(f, i) {
+  const div = document.createElement('div');
+  div.className = 'file-item';
+  div.dataset.idx = i;
+
+  // thumbnail
+  const img = document.createElement('img');
+  img.src = f.url;
+  div.appendChild(img);
+
+  // filename
+  const nm = document.createElement('span');
+  nm.className = 'fname';
+  nm.textContent = f.file.name;
+  div.appendChild(nm);
+
+  // state select
+  const stateEl = buildSelect(
+    ['Extras (Prop)', ...states],
+    f.isProp ? 'Extras (Prop)' : f.state,
+    val => {
+      if (val === 'Extras (Prop)') {
+        files[i].isProp = true;
+      } else {
+        files[i].isProp = false;
+        files[i].state = val;
+      }
+      renderAllFileRows();
+    }
+  );
+  div.appendChild(stateEl);
+
+  if (!f.isProp) {
+    // expression select
+    const exprEl = buildSelect(EXPRESSIONS, f.expression, val => {
+      files[i].expression = val;
+    });
+    div.appendChild(exprEl);
+  } else {
+    // prop name input
+    const propInp = document.createElement('input');
+    propInp.type = 'text';
+    propInp.style.flex = '1';
+    propInp.style.minWidth = '80px';
+    propInp.placeholder = 'prop name (e.g. coffee)';
+    propInp.value = f.propName;
+    propInp.oninput = e => { files[i].propName = e.target.value.trim(); };
+    div.appendChild(propInp);
+  }
+
+  // remove btn
+  const rm = document.createElement('button');
+  rm.className = 'danger';
+  rm.textContent = '✕';
+  rm.onclick = () => removeFile(i);
+  div.appendChild(rm);
+
+  return div;
+}
+
+function buildSelect(options, current, onChange) {
+  const el = document.createElement('select');
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    if (o === current) opt.selected = true;
+    el.appendChild(opt);
+  });
+  el.onchange = e => onChange(e.target.value);
+  return el;
+}
+
+// ── Drag & drop ─────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  handleFiles(e.dataTransfer.files);
+});
+
+// ── Preview ──────────────────────────────────────────────────────────────────
+function buildReadme() {
+  const name = document.getElementById('productName').value.trim() || 'YourProduct';
+  const contact = document.getElementById('contact').value.trim() || 'your contact here';
+  const notes = document.getElementById('extraNotes').value.trim();
+
+  // count states
+  const stateCounts = {};
+  files.filter(f => !f.isProp).forEach(f => {
+    stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
+  });
+  const props = files.filter(f => f.isProp).map(f => f.propName || f.file.name);
+
+  let txt = `${name}\n`;
+  txt += `by MossarellaStudio\n`;
+  txt += `${'─'.repeat(40)}\n\n`;
+  txt += `COMPATIBLE WITH:\n`;
+  txt += `  - Veadotube\n`;
+  txt += `  - PNGTuber+\n`;
+  txt += `  - OBS (as browser source)\n\n`;
+  txt += `EXPRESSION STATES:\n`;
+  EXPRESSIONS.forEach(e => { txt += `  ${e} = ${EXPR_LABELS[e]}\n`; });
+  txt += `\nINCLUDED STATES:\n`;
+  Object.entries(stateCounts).forEach(([s, c]) => {
+    txt += `  - ${s} (${c} expression${c !== 1 ? 's' : ''})\n`;
+  });
+  if (props.length) {
+    txt += `\nPROPS / EXTRAS:\n`;
+    props.forEach(p => { txt += `  - ${p}\n`; });
+  }
+  txt += `\nHOW TO USE:\n`;
+  txt += `  1. Import PNG files into Veadotube or PNGTuber+\n`;
+  txt += `  2. Assign states to the matching expression triggers\n`;
+  txt += `  3. Add as browser source in OBS\n\n`;
+  txt += `${'─'.repeat(40)}\n`;
+  txt += `Thank you for your purchase!\n`;
+  txt += `Contact: ${contact}\n`;
+  if (notes) txt += `\nNOTES:\n${notes}\n`;
+  return txt;
+}
+
+function buildPreview() {
+  const name = document.getElementById('productName').value.trim() || 'YourProduct';
+  let tree = `${name}Pack.zip\n`;
+  const grouped = {};
+  files.forEach(f => {
+    if (f.isProp) {
+      grouped['Extras'] = grouped['Extras'] || [];
+      grouped['Extras'].push(f);
+    } else {
+      grouped[f.state] = grouped[f.state] || [];
+      grouped[f.state].push(f);
+    }
+  });
+  Object.entries(grouped).forEach(([folder, items]) => {
+    tree += `├── ${folder}/\n`;
+    items.forEach(f => {
+      const fname = resolveFilename(name, f);
+      tree += `│   ├── ${fname}\n`;
+    });
+  });
+  tree += `├── README.txt\n`;
+  if (thankyouFile) tree += `└── THANKYOU.png\n`;
+  tree += `\n${'─'.repeat(40)}\nREADME.txt preview:\n${'─'.repeat(40)}\n`;
+  tree += buildReadme();
+  document.getElementById('previewBox').textContent = tree;
+}
+
+function resolveFilename(productName, f) {
+  const ext = f.file.name.split('.').pop();
+  if (f.isProp) {
+    const pname = f.propName || 'prop';
+    return `${productName}_${capitalize(pname)}.${ext}`;
+  }
+  return `${productName}_${f.state}_${f.expression}.${ext}`;
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// ── ZIP ──────────────────────────────────────────────────────────────────────
+async function buildZip() {
+  const name = document.getElementById('productName').value.trim() || 'YourProduct';
+  const zip = new JSZip();
+
+  // group files
+  for (const f of files) {
+    const folder = f.isProp ? 'Extras' : f.state;
+    const fname = resolveFilename(name, f);
+    const arrayBuffer = await f.file.arrayBuffer();
+    zip.folder(folder).file(fname, arrayBuffer);
+  }
+
+  // README
+  zip.file('README.txt', buildReadme());
+
+  // THANKYOU
+  if (thankyouFile) {
+    const tyBuffer = await thankyouFile.arrayBuffer();
+    zip.file('THANKYOU.png', tyBuffer);
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}Pack.zip`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ── Etsy description ─────────────────────────────────────────────────────────
+function copyEtsyDescription() {
+  const name = document.getElementById('productName').value.trim() || 'YourProduct';
+  const contact = document.getElementById('contact').value.trim() || 'your shop link';
+  const stateCounts = {};
+  files.filter(f => !f.isProp).forEach(f => {
+    stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
+  });
+  const props = files.filter(f => f.isProp).map(f => f.propName || f.file.name);
+  const stateLines = Object.entries(stateCounts).map(([s, c]) => `✦ ${s} — ${c} expressions`).join('\n');
+  const propLine = props.length ? `\n✦ Props: ${props.join(', ')}` : '';
+
+  const desc = `✨ ${name} — PNGTuber Mascot Pack
+
+Bring your stream to life with this handcrafted PNGTuber mascot!
+
+WHAT'S INCLUDED:
+${stateLines}${propLine}
+
+COMPATIBLE WITH:
+✦ Veadotube
+✦ PNGTuber+
+✦ OBS (browser source)
+
+Each state includes all 4 expression variants:
+EOMO | EOMC | ECMO | ECMC
+
+FILES: High-quality PNG, transparent background, ready to import.
+
+QUESTIONS? ${contact}
+
+─────────────────────────────────
+Tags: pngtuber, vtuber, mascot, stream asset, veadotube, twitch overlay, png avatar, digital product`;
+
+  navigator.clipboard.writeText(desc).then(() => {
+    const msg = document.getElementById('etsyCopyMsg');
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
