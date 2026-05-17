@@ -106,8 +106,8 @@
 <!-- PRODUCT -->
 <section id="s-product">
   <h2>Product</h2>
-  <div class="inline">
-    <select id="productSelect" onchange="onProductSelectChange(this.value)">
+  <div style="display:flex;gap:8px;align-items:center">
+    <select id="productSelect" onchange="onProductSelectChange(this.value)" style="flex:1">
       <option value="">— select a product —</option>
     </select>
     <button onclick="showNewProductRow()">+ New</button>
