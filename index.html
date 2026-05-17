@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 860px; }
+    body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 860px; margin: 0 auto; }
     h1 { font-size: 1.4rem; margin-bottom: 4px; }
     .sub { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
     section { margin-bottom: 20px; border: 1px solid #2a2a2a; padding: 16px; }
@@ -328,17 +328,20 @@ async function loadProduct(name) {
 
   // restore mascot files
   files = [];
+  let loadFailed = 0;
   if (config.mascotFiles && config.mascotFiles.length) {
     await Promise.all(config.mascotFiles.map(async mf => {
       try {
         const res = await fetch(`/products/${name}/file/${encodeURIComponent(mf.filename)}`);
-        if (!res.ok) return;
+        if (!res.ok) { loadFailed++; return; }
         const blob = await res.blob();
-        const file = new File([blob], mf.filename, { type: blob.type });
-        files.push({ file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, url: URL.createObjectURL(file) });
-      } catch (_) {}
+        const displayName = mf.origName || mf.filename;
+        const file = new File([blob], displayName, { type: blob.type });
+        files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, url: URL.createObjectURL(file) });
+      } catch (_) { loadFailed++; }
     }));
   }
+  if (loadFailed > 0) alert(`⚠ ${loadFailed} file(s) could not be loaded — they may not have been saved yet. Re-add and save again.`);
   renderAllFileRows();
 
   // clear previous etsy picks then restore from saved etsyFiles
@@ -370,14 +373,15 @@ async function saveProduct() {
     // upload each mascot file and build a manifest
     const mascotFiles = [];
     for (const f of files) {
-      const filename = f.file.name.replace(/[^\w\-. ]/g, '_');
+      const ext      = f.file.name.split('.').pop().toLowerCase() || 'png';
+      const filename = `${f.id}.${ext}`;
       const up = await fetch(`/products/${activeProduct}/file`, {
         method: 'POST',
         headers: { 'X-Filename': filename, 'Content-Type': f.file.type },
         body: f.file,
       });
-      if (!up.ok) throw new Error(`File upload failed: ${filename}`);
-      mascotFiles.push({ filename, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
+      if (!up.ok) throw new Error(`File upload failed: ${f.file.name}`);
+      mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
     }
 
     // upload etsy listing images and record filenames
@@ -451,10 +455,12 @@ function renderStateTags() {
   renderChecklist();
 }
 
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
 // ── File handling ─────────────────────────────────────────────────────────────
 function handleFiles(fileList) {
   Array.from(fileList).forEach(f => {
-    files.push({ file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
+    files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
   });
   renderAllFileRows();
 }
