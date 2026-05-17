@@ -183,8 +183,9 @@ let thankyouBlob = null; // loaded from assets/thankyou.png
 function addState() {
   const inp = document.getElementById('newStateName');
   const val = inp.value.trim();
-  if (!val || states.includes(val)) { inp.value = ''; return; }
-  states.push(val);
+  const capitalized = val.charAt(0).toUpperCase() + val.slice(1);
+  if (states.includes(capitalized)) { inp.value = ''; return; }
+  states.push(capitalized);
   inp.value = '';
   renderStateTags();
   renderAllFileRows();
