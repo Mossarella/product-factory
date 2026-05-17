@@ -222,8 +222,6 @@ let fixedAssets = [
   { id: 'howto',    label: 'How To Use',     slot: '/slot/how-to-use',      zipName: 'HOWTO.png',   blob: null },
 ];
 
-// etsy slots — per-product, picked manually per session
-const etsyPicked = {}; // slot → File
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -344,20 +342,7 @@ async function loadProduct(name) {
   if (loadFailed > 0) alert(`⚠ ${loadFailed} file(s) could not be loaded — they may not have been saved yet. Re-add and save again.`);
   renderAllFileRows();
 
-  // clear previous etsy picks then restore from saved etsyFiles
-  Object.keys(etsyPicked).forEach(k => delete etsyPicked[k]);
-  if (config.etsyFiles) {
-    await Promise.all(Object.entries(config.etsyFiles).map(async ([slot, filename]) => {
-      try {
-        const res = await fetch(`/products/${ep(name)}/etsy-file/${ep(filename)}`);
-        if (!res.ok) return;
-        const blob = await res.blob();
-        etsyPicked[slot] = new File([blob], filename, { type: blob.type });
-      } catch (_) {}
-    }));
-  }
-
-  document.getElementById('etsyNote').textContent = `Drop files into products/${name}/assets/etsy-*/`;
+  document.getElementById('etsyNote').textContent = `Drop or pick files for each etsy slot below`;
   loadEtsySlots();
 }
 
@@ -384,20 +369,6 @@ async function saveProduct() {
       mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
     }
 
-    // upload etsy listing images and record filenames
-    const etsyFiles = {};
-    for (const [slot, file] of Object.entries(etsyPicked)) {
-      const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const up = await fetch(`/products/${ep(activeProduct)}/etsy-file`, {
-        method: 'POST',
-        headers: { 'X-Slot': slot, 'X-Filename': file.name, 'Content-Type': file.type },
-        body: file,
-      });
-      if (!up.ok) throw new Error(`Etsy file upload failed: ${slot}`);
-      const data = await up.json();
-      etsyFiles[slot] = data.filename;
-    }
-
     const res = await fetch(`/products/${ep(activeProduct)}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -408,7 +379,6 @@ async function saveProduct() {
         contact:     document.getElementById('contact').value.trim(),
         states,
         mascotFiles,
-        etsyFiles,
       }, null, 2),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -674,6 +644,15 @@ function addFixedAsset() {
 }
 
 // ── Etsy slots ────────────────────────────────────────────────────────────────
+async function uploadEtsySlot(slot, file) {
+  const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
+  await fetch(`/products/${ep(activeProduct)}/slot/${slot}`, {
+    method: 'POST',
+    headers: { 'X-Filename': file.name, 'Content-Type': file.type },
+    body: file,
+  });
+}
+
 async function loadEtsySlots() {
   const container = document.getElementById('etsySlots');
   container.innerHTML = '';
@@ -684,31 +663,23 @@ async function loadEtsySlots() {
 
   await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
     const serverUrl = `/products/${ep(activeProduct)}/slot/${slot}`;
-    const picked    = etsyPicked[slot];
 
     let serverOk = false, mimeType = '';
-    if (!picked) {
-      try {
-        const res = await fetch(serverUrl, { cache: 'no-cache' });
-        serverOk = res.ok;
-        mimeType = res.headers.get('Content-Type') || '';
-        if (res.ok && !picked) {
-          const blob = await res.clone().blob();
-          const ext  = (mimeType.split('/')[1] || 'png').replace('jpeg','jpg');
-          etsyPicked[slot] = new File([blob], `${slot}.${ext}`, { type: mimeType });
-        }
-      } catch (_) {}
-    }
+    try {
+      const res = await fetch(serverUrl, { cache: 'no-cache' });
+      serverOk = res.ok;
+      mimeType = res.headers.get('Content-Type') || '';
+    } catch (_) {}
 
     const div = document.createElement('div');
     div.className = 'etsy-slot';
     div.addEventListener('dragover',  e => { e.preventDefault(); div.style.borderColor = '#5a4a9a'; });
     div.addEventListener('dragleave', () => { div.style.borderColor = ''; });
-    div.addEventListener('drop', e => {
+    div.addEventListener('drop', async e => {
       e.preventDefault();
       div.style.borderColor = '';
       const f = e.dataTransfer.files[0]; if (!f) return;
-      etsyPicked[slot] = f;
+      await uploadEtsySlot(slot, f);
       loadEtsySlots();
     });
 
@@ -719,22 +690,7 @@ async function loadEtsySlots() {
     div.appendChild(num);
 
     // preview
-    const isReady = picked || serverOk;
-    if (picked) {
-      const mt = picked.type || '';
-      let media;
-      if (mt.startsWith('video/') || mt.includes('gif')) {
-        media = document.createElement('video');
-        media.src = URL.createObjectURL(picked);
-        media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
-        media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
-      } else {
-        media = document.createElement('img');
-        media.className = 'slot-thumb';
-        media.src = URL.createObjectURL(picked);
-      }
-      div.appendChild(media);
-    } else if (serverOk) {
+    if (serverOk) {
       let media;
       if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
         media = document.createElement('video');
@@ -756,23 +712,20 @@ async function loadEtsySlots() {
     // info + pick button
     const info = document.createElement('div');
     info.className = 'slot-info';
-    const statusText = picked
-      ? `✓ ${picked.name}`
-      : serverOk ? '✓ loaded from folder' : `— empty (${hint})`;
     info.innerHTML = `
       <div class="slot-label">${label}</div>
       <div class="slot-path">products/${activeProduct}/assets/${slot}/</div>
-      <div class="${isReady ? 'ok' : 'miss'}">${statusText}</div>`;
+      <div class="${serverOk ? 'ok' : 'miss'}">${serverOk ? '✓ loaded' : `— empty (${hint})`}</div>`;
 
     const pickBtn = document.createElement('button');
-    pickBtn.textContent = picked ? 'Change file' : 'Pick file';
+    pickBtn.textContent = serverOk ? 'Replace' : 'Pick file';
     pickBtn.style.marginTop = '4px';
     pickBtn.onclick = () => {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*,video/*';
-      inp.onchange = e => {
+      inp.onchange = async e => {
         const f = e.target.files[0]; if (!f) return;
-        etsyPicked[slot] = f;
+        await uploadEtsySlot(slot, f);
         loadEtsySlots();
       };
       inp.click();

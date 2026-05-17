@@ -184,6 +184,20 @@ async function handle(req, res) {
     return;
   }
 
+  // ── POST /products/:name/slot/:slot — upload file into asset slot folder ─────
+  if (method === 'POST' && productSlotM) {
+    const dir     = path.join(PRODUCTS_DIR, dec(productSlotM[1]), 'assets', dec(productSlotM[2]));
+    const origExt = path.extname(req.headers['x-filename'] || '').toLowerCase() || '.jpg';
+    fs.mkdirSync(dir, { recursive: true });
+    try { fs.readdirSync(dir).forEach(f => fs.unlinkSync(path.join(dir, f))); } catch (_) {}
+    const buffer   = await readBodyBuffer(req);
+    const filename = `${dec(productSlotM[2])}${origExt}`;
+    fs.writeFileSync(path.join(dir, filename), buffer);
+    console.log(`Slot upload: ${dec(productSlotM[1])}/${dec(productSlotM[2])} → ${filename}`);
+    res.writeHead(200); res.end();
+    return;
+  }
+
   // ── GET /slot/:name — global assets ─────────────────────────────────────────
   const globalSlotM = pathname.match(/^\/slot\/([^/]+)$/);
   if (method === 'GET' && globalSlotM) {
