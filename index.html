@@ -97,7 +97,10 @@
 </head>
 <body>
 
-<h1>MossarellaStudio — Product Factory</h1>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+  <img src="assets/logo.png" alt="logo" style="width:40px;height:40px;object-fit:contain;border-radius:6px" />
+  <h1 style="margin:0">MossarellaStudio — Product Factory</h1>
+</div>
 <p class="sub">Pack your mascot → generate README → download ZIP → list on Etsy</p>
 
 <!-- PRODUCT -->
@@ -106,17 +109,18 @@
   <div class="inline">
     <select id="productSelect" onchange="onProductSelectChange(this.value)">
       <option value="">— select a product —</option>
-      <option value="__new__">+ New product…</option>
     </select>
+    <button onclick="showNewProductRow()">+ New</button>
   </div>
-  <div id="newProductRow">
+  <div id="newProductRow" style="display:none;margin-top:8px">
     <div class="inline">
       <input type="text" id="newProductName" placeholder="Product name, e.g. BunnyMascot"
         onkeydown="if(event.key==='Enter') createProduct()" />
-      <button onclick="createProduct()">Create</button>
+      <button class="primary" onclick="createProduct()">Create</button>
+      <button onclick="hideNewProductRow()">Cancel</button>
     </div>
   </div>
-  <div class="product-actions" style="display:flex">
+  <div class="product-actions" style="display:flex;margin-top:10px">
     <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save product</button>
     <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
     <span class="flash" id="saveMsg">Saved!</span>
@@ -258,26 +262,26 @@ async function refreshProductList(selectAfter = null) {
     opt.value = p; opt.textContent = p;
     sel.appendChild(opt);
   });
-  sel.innerHTML += '<option value="__new__">+ New product…</option>';
 
-  if (prev && prev !== '__new__' && products.includes(prev)) {
+  if (prev && products.includes(prev)) {
     sel.value = prev;
   }
 }
 
 function onProductSelectChange(val) {
-  const newRow = document.getElementById('newProductRow');
-  if (val === '__new__') {
-    newRow.style.display = 'block';
-    document.getElementById('newProductName').focus();
-    setActiveProduct(null);
-  } else if (val) {
-    newRow.style.display = 'none';
-    loadProduct(val);
-  } else {
-    newRow.style.display = 'none';
-    setActiveProduct(null);
-  }
+  hideNewProductRow();
+  if (val) loadProduct(val);
+  else setActiveProduct(null);
+}
+
+function showNewProductRow() {
+  document.getElementById('newProductRow').style.display = 'block';
+  document.getElementById('newProductName').focus();
+}
+
+function hideNewProductRow() {
+  document.getElementById('newProductRow').style.display = 'none';
+  document.getElementById('newProductName').value = '';
 }
 
 async function createProduct() {
@@ -303,8 +307,7 @@ async function createProduct() {
     return;
   }
 
-  inp.value = '';
-  document.getElementById('newProductRow').style.display = 'none';
+  hideNewProductRow();
   await refreshProductList(name);
   document.getElementById('productSelect').value = name;
   await loadProduct(name);
