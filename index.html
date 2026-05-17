@@ -299,13 +299,23 @@ async function createProduct() {
   const name = inp.value.trim();
   if (!name) { inp.focus(); return; }
 
-  const res = await fetch('/products', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
+  let res;
+  try {
+    res = await fetch('/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+  } catch (e) {
+    alert(`Network error — is the server running?\nnpm start\n\n${e.message}`);
+    return;
+  }
 
-  if (!res.ok) { alert('Could not create — check the server terminal'); return; }
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.status);
+    alert(`Could not create product: ${msg}`);
+    return;
+  }
 
   inp.value = '';
   document.getElementById('newProductRow').style.display = 'none';
@@ -342,18 +352,23 @@ function setActiveProduct(name) {
 
 async function saveProduct() {
   if (!activeProduct) return;
-  await fetch(`/products/${activeProduct}/config`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name:        document.getElementById('productName').value.trim(),
-      description: document.getElementById('description').value.trim(),
-      notes:       document.getElementById('extraNotes').value.trim(),
-      contact:     document.getElementById('contact').value.trim(),
-      states,
-    }, null, 2),
-  });
-  flash('saveMsg');
+  try {
+    const res = await fetch(`/products/${activeProduct}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:        document.getElementById('productName').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        notes:       document.getElementById('extraNotes').value.trim(),
+        contact:     document.getElementById('contact').value.trim(),
+        states,
+      }, null, 2),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    flash('saveMsg');
+  } catch (e) {
+    alert(`Save failed: ${e.message}`);
+  }
 }
 
 function flash(id) {

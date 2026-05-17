@@ -45,90 +45,113 @@ function serveSlot(dir, res) {
   fs.createReadStream(file).pipe(res);
 }
 
-function createProductFolders(productDir) {
+function createProductFolders(name) {
+  const productDir = path.join(PRODUCTS_DIR, name);
   fs.mkdirSync(productDir, { recursive: true });
   PRODUCT_SLOTS.forEach(slot => {
     fs.mkdirSync(path.join(productDir, 'assets', slot), { recursive: true });
   });
+  return productDir;
 }
 
-http.createServer(async (req, res) => {
+async function handle(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  const url      = new URL(req.url, `http://localhost:${PORT}`);
-  const pathname = url.pathname;
+  const pathname = new URL(req.url, `http://localhost:${PORT}`).pathname;
   const method   = req.method;
 
-  // GET /products — list all products
+  console.log(`${method} ${pathname}`);
+
+  // ── GET /products ────────────────────────────────────────────────────────────
   if (method === 'GET' && pathname === '/products') {
-    let dirs = [];
-    try {
-      fs.mkdirSync(PRODUCTS_DIR, { recursive: true });
-      dirs = fs.readdirSync(PRODUCTS_DIR)
-        .filter(f => fs.statSync(path.join(PRODUCTS_DIR, f)).isDirectory());
-    } catch (_) {}
+    fs.mkdirSync(PRODUCTS_DIR, { recursive: true });
+    const dirs = fs.readdirSync(PRODUCTS_DIR)
+      .filter(f => fs.statSync(path.join(PRODUCTS_DIR, f)).isDirectory());
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(dirs));
     return;
   }
 
-  // POST /products — create new product
+  // ── POST /products ───────────────────────────────────────────────────────────
   if (method === 'POST' && pathname === '/products') {
-    const body = JSON.parse(await readBody(req));
-    const name = (body.name || '').trim().replace(/[^a-zA-Z0-9_\- ]/g, '');
+    const raw  = await readBody(req);
+    const body = JSON.parse(raw);
+    const name = (body.name || '').trim().replace(/[^\w\- ]/g, '');
     if (!name) { res.writeHead(400); res.end('Bad name'); return; }
-    const productDir = path.join(PRODUCTS_DIR, name);
-    createProductFolders(productDir);
-    const config = { name, description: '', states: ['Neutral'], notes: '' };
-    const configPath = path.join(productDir, 'product.json');
+
+    const productDir  = createProductFolders(name);
+    const configPath  = path.join(productDir, 'product.json');
+    const config      = fs.existsSync(configPath)
+      ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
+      : { name, description: '', states: ['Neutral'], notes: '', contact: '' };
+
     if (!fs.existsSync(configPath)) {
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     }
+
+    console.log(`Created product: ${name} → ${productDir}`);
     res.writeHead(201, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(config));
     return;
   }
 
-  // GET /products/:name/config
-  const configGet = method === 'GET' && pathname.match(/^\/products\/([^/]+)\/config$/);
-  if (configGet) {
-    try {
-      const data = fs.readFileSync(path.join(PRODUCTS_DIR, configGet[1], 'product.json'), 'utf8');
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(data);
-    } catch (_) { res.writeHead(404); res.end(); }
+  // ── GET /products/:name/config ───────────────────────────────────────────────
+  const configGetM = pathname.match(/^\/products\/([^/]+)\/config$/);
+  if (method === 'GET' && configGetM) {
+    const configPath = path.join(PRODUCTS_DIR, configGetM[1], 'product.json');
+    if (!fs.existsSync(configPath)) { res.writeHead(404); res.end('Not found'); return; }
+    const data = fs.readFileSync(configPath, 'utf8');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(data);
     return;
   }
 
-  // POST /products/:name/config — save
-  const configPost = method === 'POST' && pathname.match(/^\/products\/([^/]+)\/config$/);
-  if (configPost) {
+  // ── POST /products/:name/config ──────────────────────────────────────────────
+  const configPostM = pathname.match(/^\/products\/([^/]+)\/config$/);
+  if (method === 'POST' && configPostM) {
+    const configPath = path.join(PRODUCTS_DIR, configPostM[1], 'product.json');
     const body = await readBody(req);
-    fs.writeFileSync(path.join(PRODUCTS_DIR, configPost[1], 'product.json'), body);
+    fs.writeFileSync(configPath, body);
+    console.log(`Saved config: ${configPostM[1]}`);
     res.writeHead(200); res.end();
     return;
   }
 
-  // GET /products/:name/slot/:slot — per-product asset
-  const productSlot = method === 'GET' && pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
-  if (productSlot) {
-    serveSlot(path.join(PRODUCTS_DIR, productSlot[1], 'assets', productSlot[2]), res);
+  // ── GET /products/:name/slot/:slot ───────────────────────────────────────────
+  const productSlotM = pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
+  if (method === 'GET' && productSlotM) {
+    serveSlot(path.join(PRODUCTS_DIR, productSlotM[1], 'assets', productSlotM[2]), res);
     return;
   }
 
-  // GET /slot/:name — global assets (thank-you-image, how-to-use)
-  const globalSlot = method === 'GET' && pathname.match(/^\/slot\/([^/]+)$/);
-  if (globalSlot) {
-    serveSlot(path.join(ROOT, 'assets', globalSlot[1]), res);
+  // ── GET /slot/:name — global assets ─────────────────────────────────────────
+  const globalSlotM = pathname.match(/^\/slot\/([^/]+)$/);
+  if (method === 'GET' && globalSlotM) {
+    serveSlot(path.join(ROOT, 'assets', globalSlotM[1]), res);
     return;
   }
 
-  // static files
+  // ── static files ─────────────────────────────────────────────────────────────
   const file = path.join(ROOT, pathname === '/' ? 'index.html' : pathname);
+  if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; } // path traversal guard
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
     const ext = path.extname(file).toLowerCase();
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'text/plain' });
     res.end(data);
   });
+}
 
-}).listen(PORT, () => console.log(`Product Factory → http://localhost:${PORT}`));
+http.createServer(async (req, res) => {
+  try {
+    await handle(req, res);
+  } catch (err) {
+    console.error('Server error:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end(`Server error: ${err.message}`);
+    }
+  }
+}).listen(PORT, () => {
+  console.log(`Product Factory → http://localhost:${PORT}`);
+  console.log(`Products dir    → ${PRODUCTS_DIR}`);
+});
