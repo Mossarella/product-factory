@@ -60,7 +60,10 @@
     .note { font-size: 0.78rem; color: #555; margin-bottom: 10px; }
     .add-state-row { display: flex; gap: 8px; margin-top: 10px; }
     .add-state-row input { flex: 1; }
-    #thankYouPreview { width: 72px; height: 72px; object-fit: contain; background: #1a1a1a; display: none; }
+    .asset-slot-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+    .asset-slot { display: flex; gap: 10px; align-items: flex-start; }
+    .asset-slot img { width: 72px; height: 72px; object-fit: contain; background: #1a1a1a; display: none; flex-shrink: 0; }
+    .asset-slot-info { display: flex; flex-direction: column; gap: 5px; }
     .gap8  { margin-top: 8px; }
     .gap12 { margin-top: 12px; }
     .ok   { color: #6a9a6a; font-size: 0.78rem; }
@@ -110,11 +113,10 @@
       <button onclick="createProduct()">Create</button>
     </div>
   </div>
-  <div class="product-actions" id="productActions" style="display:none">
-    <button class="save" onclick="saveProduct()">Save product</button>
+  <div class="product-actions" style="display:flex">
+    <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save product</button>
     <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
     <span class="flash" id="saveMsg">Saved!</span>
-    <span class="flash" id="zipMsg">Building…</span>
   </div>
   <div class="active-label" id="activeLabel"></div>
 </section>
@@ -165,13 +167,36 @@
   <div class="file-list" id="fileList"></div>
 </section>
 
-<!-- 4. THANKYOU -->
+<!-- 4. FIXED ASSETS -->
 <section id="s-thankyou">
-  <h2>4. THANKYOU.png</h2>
-  <p class="note">Drop any image into <code>assets/thank-you-image/</code> — shared across all products.</p>
-  <div style="display:flex;gap:12px;align-items:center">
-    <div id="tyStatus"></div>
-    <img id="thankYouPreview" />
+  <h2>4. Fixed Assets</h2>
+  <p class="note">Shared across all products. Auto-loaded from folder — or pick manually to override.</p>
+  <div class="asset-slot-row">
+
+    <div class="asset-slot">
+      <img id="thankYouPreview" />
+      <div class="asset-slot-info">
+        <div style="font-size:0.82rem;color:#aaa">Thank You card</div>
+        <div id="tyStatus" class="miss"></div>
+        <div style="font-size:0.72rem;color:#444">assets/thank-you-image/</div>
+        <button onclick="document.getElementById('tyInput').click()" style="margin-top:2px">Pick file</button>
+        <input type="file" id="tyInput" accept="image/*" style="display:none"
+          onchange="overrideAsset('ty', this.files[0])" />
+      </div>
+    </div>
+
+    <div class="asset-slot">
+      <img id="howtoPreview" />
+      <div class="asset-slot-info">
+        <div style="font-size:0.82rem;color:#aaa">How To Use</div>
+        <div id="howtoStatus" class="miss"></div>
+        <div style="font-size:0.72rem;color:#444">assets/how-to-use/</div>
+        <button onclick="document.getElementById('howtoInput').click()" style="margin-top:2px">Pick file</button>
+        <input type="file" id="howtoInput" accept="image/*,application/pdf" style="display:none"
+          onchange="overrideAsset('howto', this.files[0])" />
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -208,13 +233,15 @@ let activeProduct  = null;
 let states         = ['Neutral'];
 let files          = [];
 let thankyouBlob   = null;
+let howtoBlob      = null;
 let readmeTemplate = null;
 let etsyTemplate   = null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   applyConfig();
-  loadThankyouFromAssets();
+  loadSlot('/slot/thank-you-image', 'tyStatus',    'thankYouPreview', 'assets/thank-you-image/', b => { thankyouBlob = b; });
+  loadSlot('/slot/how-to-use',      'howtoStatus', 'howtoPreview',    'assets/how-to-use/',      b => { howtoBlob   = b; });
 
   const [r, e] = await Promise.all([
     fetch('/templates/readme.txt').then(r => r.ok ? r.text() : null).catch(() => null),
@@ -309,15 +336,8 @@ async function loadProduct(name) {
 
 function setActiveProduct(name) {
   activeProduct = name;
-  const label   = document.getElementById('activeLabel');
-  const actions = document.getElementById('productActions');
-  if (name) {
-    label.textContent    = `Active: products/${name}/`;
-    actions.style.display = 'flex';
-  } else {
-    label.textContent    = '';
-    actions.style.display = 'none';
-  }
+  document.getElementById('activeLabel').textContent = name ? `Active: products/${name}/` : '';
+  document.getElementById('btnSave').disabled = !name;
 }
 
 async function saveProduct() {
@@ -444,7 +464,10 @@ function buildFileRow(f, i) {
   ));
 
   if (!f.isProp) {
-    div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => { files[i].expression = val; }));
+    div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => {
+      files[i].expression = val;
+      renderChecklist();
+    }));
   } else {
     const propInp = document.createElement('input');
     propInp.type = 'text';
@@ -487,24 +510,41 @@ dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.class
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
 
-// ── THANKYOU ──────────────────────────────────────────────────────────────────
-async function loadThankyouFromAssets() {
-  const status = document.getElementById('tyStatus');
-  const img    = document.getElementById('thankYouPreview');
+// ── Fixed assets ──────────────────────────────────────────────────────────────
+async function loadSlot(url, statusId, imgId, label, onLoad) {
+  const status = document.getElementById(statusId);
+  const img    = document.getElementById(imgId);
   try {
-    const res = await fetch('/slot/thank-you-image', { cache: 'no-cache' });
+    const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error();
-    thankyouBlob = await res.blob();
-    img.src = URL.createObjectURL(thankyouBlob);
+    const blob = await res.blob();
+    onLoad(blob);
+    img.src = URL.createObjectURL(blob);
     img.style.display = 'block';
     status.className = 'ok';
-    status.textContent = '✓ assets/thank-you-image/ loaded';
+    status.textContent = `✓ loaded from ${label}`;
   } catch (_) {
-    thankyouBlob = null;
+    onLoad(null);
     img.style.display = 'none';
     status.className = 'miss';
-    status.textContent = '— nothing in assets/thank-you-image/ (skipped in ZIP)';
+    status.textContent = `— nothing in ${label}`;
   }
+}
+
+function overrideAsset(key, file) {
+  if (!file) return;
+  const map = {
+    ty:    { blob: b => { thankyouBlob = b; }, statusId: 'tyStatus',    imgId: 'thankYouPreview' },
+    howto: { blob: b => { howtoBlob   = b; }, statusId: 'howtoStatus', imgId: 'howtoPreview'    },
+  };
+  const m = map[key];
+  m.blob(file);
+  const img = document.getElementById(m.imgId);
+  img.src = URL.createObjectURL(file);
+  img.style.display = 'block';
+  const status = document.getElementById(m.statusId);
+  status.className = 'ok';
+  status.textContent = `✓ ${file.name} (manual)`;
 }
 
 // ── Etsy slots ────────────────────────────────────────────────────────────────
