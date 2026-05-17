@@ -60,10 +60,13 @@
     .note { font-size: 0.78rem; color: #555; margin-bottom: 10px; }
     .add-state-row { display: flex; gap: 8px; margin-top: 10px; }
     .add-state-row input { flex: 1; }
-    .asset-slot-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
-    .asset-slot { display: flex; gap: 10px; align-items: flex-start; }
-    .asset-slot img { width: 72px; height: 72px; object-fit: contain; background: #1a1a1a; display: none; flex-shrink: 0; }
-    .asset-slot-info { display: flex; flex-direction: column; gap: 5px; }
+    .asset-slot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+    .asset-slot { display: flex; gap: 10px; align-items: flex-start; background: #111; border: 1px solid #1e1e1e; padding: 10px; }
+    .asset-slot img { width: 72px; height: 72px; object-fit: contain; background: #0a0a0a; display: none; flex-shrink: 0; }
+    .asset-slot-info { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+    .asset-slot-label { font-size: 0.82rem; color: #aaa; }
+    .asset-slot-name { width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #2e2e2e; color: #e0e0e0; font-family: monospace; font-size: 0.82rem; }
+    .asset-ph { width: 72px; height: 72px; background: #0a0a0a; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #222; font-size: 1.4rem; }
     .gap8  { margin-top: 8px; }
     .gap12 { margin-top: 12px; }
     .ok   { color: #6a9a6a; font-size: 0.78rem; }
@@ -170,33 +173,10 @@
 <!-- 4. FIXED ASSETS -->
 <section id="s-thankyou">
   <h2>4. Fixed Assets</h2>
-  <p class="note">Shared across all products. Auto-loaded from folder — or pick manually to override.</p>
-  <div class="asset-slot-row">
-
-    <div class="asset-slot">
-      <img id="thankYouPreview" />
-      <div class="asset-slot-info">
-        <div style="font-size:0.82rem;color:#aaa">Thank You card</div>
-        <div id="tyStatus" class="miss"></div>
-        <div style="font-size:0.72rem;color:#444">assets/thank-you-image/</div>
-        <button onclick="document.getElementById('tyInput').click()" style="margin-top:2px">Pick file</button>
-        <input type="file" id="tyInput" accept="image/*" style="display:none"
-          onchange="overrideAsset('ty', this.files[0])" />
-      </div>
-    </div>
-
-    <div class="asset-slot">
-      <img id="howtoPreview" />
-      <div class="asset-slot-info">
-        <div style="font-size:0.82rem;color:#aaa">How To Use</div>
-        <div id="howtoStatus" class="miss"></div>
-        <div style="font-size:0.72rem;color:#444">assets/how-to-use/</div>
-        <button onclick="document.getElementById('howtoInput').click()" style="margin-top:2px">Pick file</button>
-        <input type="file" id="howtoInput" accept="image/*,application/pdf" style="display:none"
-          onchange="overrideAsset('howto', this.files[0])" />
-      </div>
-    </div>
-
+  <p class="note">Shared across all products. Auto-loaded from folder — or pick manually.</p>
+  <div class="asset-slot-row" id="fixedAssetGrid"></div>
+  <div style="margin-top:10px">
+    <button onclick="addFixedAsset()">+ Add fixed asset</button>
   </div>
 </section>
 
@@ -232,16 +212,23 @@ const ETSY_SLOTS   = [
 let activeProduct  = null;
 let states         = ['Neutral'];
 let files          = [];
-let thankyouBlob   = null;
-let howtoBlob      = null;
 let readmeTemplate = null;
 let etsyTemplate   = null;
+
+// fixed assets — built-ins auto-load from folder, extras are manual picks
+let fixedAssets = [
+  { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', blob: null },
+  { id: 'howto',    label: 'How To Use',     slot: '/slot/how-to-use',      zipName: 'HOWTO.png',   blob: null },
+];
+
+// etsy slots — per-product, picked manually per session
+const etsyPicked = {}; // slot → File
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   applyConfig();
-  loadSlot('/slot/thank-you-image', 'tyStatus',    'thankYouPreview', 'assets/thank-you-image/', b => { thankyouBlob = b; });
-  loadSlot('/slot/how-to-use',      'howtoStatus', 'howtoPreview',    'assets/how-to-use/',      b => { howtoBlob   = b; });
+  renderFixedAssets();
+  autoLoadFixedAssets();
 
   const [r, e] = await Promise.all([
     fetch('/templates/readme.txt').then(r => r.ok ? r.text() : null).catch(() => null),
@@ -526,40 +513,90 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
 
 // ── Fixed assets ──────────────────────────────────────────────────────────────
-async function loadSlot(url, statusId, imgId, label, onLoad) {
-  const status = document.getElementById(statusId);
-  const img    = document.getElementById(imgId);
-  try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (!res.ok) throw new Error();
-    const blob = await res.blob();
-    onLoad(blob);
-    img.src = URL.createObjectURL(blob);
-    img.style.display = 'block';
-    status.className = 'ok';
-    status.textContent = `✓ loaded from ${label}`;
-  } catch (_) {
-    onLoad(null);
-    img.style.display = 'none';
-    status.className = 'miss';
-    status.textContent = `— nothing in ${label}`;
-  }
+function renderFixedAssets() {
+  const grid = document.getElementById('fixedAssetGrid');
+  grid.innerHTML = '';
+  fixedAssets.forEach((a, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'asset-slot';
+
+    // preview
+    if (a.blob) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(a.blob);
+      img.style.display = 'block';
+      slot.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'asset-ph'; ph.textContent = '?';
+      slot.appendChild(ph);
+    }
+
+    // info
+    const info = document.createElement('div');
+    info.className = 'asset-slot-info';
+
+    if (a.slot) {
+      // built-in: fixed label
+      info.innerHTML = `<div class="asset-slot-label">${a.label}</div>
+        <div class="${a.blob ? 'ok' : 'miss'}" id="fa-status-${i}">${a.blob ? '✓ loaded' : '— not loaded'}</div>
+        <div style="font-size:0.72rem;color:#444">${a.slot}</div>`;
+    } else {
+      // custom: editable label + zip name
+      const inp = document.createElement('input');
+      inp.className = 'asset-slot-name';
+      inp.placeholder = 'File label (e.g. License)';
+      inp.value = a.label;
+      inp.oninput = e => { fixedAssets[i].label = e.target.value; fixedAssets[i].zipName = e.target.value.replace(/\s+/g,'_') + (a.blob ? '.' + (a.blob.name||'').split('.').pop() : '.png'); };
+      info.appendChild(inp);
+      const st = document.createElement('div');
+      st.className = a.blob ? 'ok' : 'miss';
+      st.textContent = a.blob ? `✓ ${a.blob.name}` : '— no file picked';
+      info.appendChild(st);
+    }
+
+    const btn = document.createElement('button');
+    btn.textContent = 'Pick file';
+    btn.style.marginTop = '4px';
+    btn.onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*,application/pdf,video/*';
+      inp.onchange = e => {
+        const f = e.target.files[0]; if (!f) return;
+        fixedAssets[i].blob = f;
+        if (!fixedAssets[i].zipName) fixedAssets[i].zipName = f.name;
+        renderFixedAssets();
+      };
+      inp.click();
+    };
+    info.appendChild(btn);
+
+    if (!a.slot) {
+      const rm = document.createElement('button');
+      rm.textContent = '✕'; rm.className = 'danger'; rm.style.marginTop = '2px';
+      rm.onclick = () => { fixedAssets.splice(i, 1); renderFixedAssets(); };
+      info.appendChild(rm);
+    }
+
+    slot.appendChild(info);
+    grid.appendChild(slot);
+  });
 }
 
-function overrideAsset(key, file) {
-  if (!file) return;
-  const map = {
-    ty:    { blob: b => { thankyouBlob = b; }, statusId: 'tyStatus',    imgId: 'thankYouPreview' },
-    howto: { blob: b => { howtoBlob   = b; }, statusId: 'howtoStatus', imgId: 'howtoPreview'    },
-  };
-  const m = map[key];
-  m.blob(file);
-  const img = document.getElementById(m.imgId);
-  img.src = URL.createObjectURL(file);
-  img.style.display = 'block';
-  const status = document.getElementById(m.statusId);
-  status.className = 'ok';
-  status.textContent = `✓ ${file.name} (manual)`;
+async function autoLoadFixedAssets() {
+  await Promise.all(fixedAssets.filter(a => a.slot).map(async (a, i) => {
+    try {
+      const res = await fetch(a.slot, { cache: 'no-cache' });
+      if (!res.ok) return;
+      a.blob = await res.blob();
+    } catch (_) {}
+  }));
+  renderFixedAssets();
+}
+
+function addFixedAsset() {
+  fixedAssets.push({ id: 'custom_' + Date.now(), label: '', slot: null, zipName: '', blob: null });
+  renderFixedAssets();
 }
 
 // ── Etsy slots ────────────────────────────────────────────────────────────────
@@ -572,48 +609,87 @@ async function loadEtsySlots() {
   wrap.className = 'etsy-slots';
 
   await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
-    const url = `/products/${activeProduct}/slot/${slot}`;
-    let ok = false, mimeType = '';
-    try {
-      const res = await fetch(url, { cache: 'no-cache' });
-      ok = res.ok;
-      mimeType = res.headers.get('Content-Type') || '';
-    } catch (_) {}
+    const serverUrl = `/products/${activeProduct}/slot/${slot}`;
+    const picked    = etsyPicked[slot];
+
+    let serverOk = false, mimeType = '';
+    if (!picked) {
+      try {
+        const res = await fetch(serverUrl, { cache: 'no-cache' });
+        serverOk = res.ok;
+        mimeType = res.headers.get('Content-Type') || '';
+      } catch (_) {}
+    }
 
     const div = document.createElement('div');
     div.className = 'etsy-slot';
 
+    // number
     const num = document.createElement('span');
     num.className = 'slot-num';
     num.textContent = i + 1;
     div.appendChild(num);
 
-    if (ok) {
+    // preview
+    const isReady = picked || serverOk;
+    if (picked) {
+      const mt = picked.type || '';
       let media;
-      if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
+      if (mt.startsWith('video/') || mt.includes('gif')) {
         media = document.createElement('video');
-        media.src = url + '?t=' + Date.now();
+        media.src = URL.createObjectURL(picked);
         media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
         media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
       } else {
         media = document.createElement('img');
         media.className = 'slot-thumb';
-        media.src = url + '?t=' + Date.now();
+        media.src = URL.createObjectURL(picked);
+      }
+      div.appendChild(media);
+    } else if (serverOk) {
+      let media;
+      if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
+        media = document.createElement('video');
+        media.src = serverUrl + '?t=' + Date.now();
+        media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
+        media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
+      } else {
+        media = document.createElement('img');
+        media.className = 'slot-thumb';
+        media.src = serverUrl + '?t=' + Date.now();
       }
       div.appendChild(media);
     } else {
       const ph = document.createElement('div');
-      ph.className = 'slot-ph';
-      ph.textContent = '?';
+      ph.className = 'slot-ph'; ph.textContent = '?';
       div.appendChild(ph);
     }
 
+    // info + pick button
     const info = document.createElement('div');
     info.className = 'slot-info';
+    const statusText = picked
+      ? `✓ ${picked.name}`
+      : serverOk ? '✓ loaded from folder' : `— empty (${hint})`;
     info.innerHTML = `
       <div class="slot-label">${label}</div>
       <div class="slot-path">products/${activeProduct}/assets/${slot}/</div>
-      <div class="${ok ? 'ok' : 'miss'}">${ok ? '✓ ready' : `— empty  (${hint})`}</div>`;
+      <div class="${isReady ? 'ok' : 'miss'}">${statusText}</div>`;
+
+    const pickBtn = document.createElement('button');
+    pickBtn.textContent = picked ? 'Change file' : 'Pick file';
+    pickBtn.style.marginTop = '4px';
+    pickBtn.onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*,video/*';
+      inp.onchange = e => {
+        const f = e.target.files[0]; if (!f) return;
+        etsyPicked[slot] = f;
+        loadEtsySlots();
+      };
+      inp.click();
+    };
+    info.appendChild(pickBtn);
     div.appendChild(info);
 
     wrap.appendChild(div);
@@ -709,7 +785,9 @@ async function buildZip() {
     zip.folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
   }
   zip.file('README.txt', buildReadme());
-  if (thankyouBlob) zip.file('THANKYOU.png', await thankyouBlob.arrayBuffer());
+  for (const a of fixedAssets) {
+    if (a.blob && a.zipName) zip.file(a.zipName, await a.blob.arrayBuffer());
+  }
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const url  = URL.createObjectURL(blob);
