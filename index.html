@@ -1,864 +1,1193 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MossarellaStudio — Product Factory</title>
   <script src="config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 860px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; margin-bottom: 4px; }
-    .sub { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
-    section { margin-bottom: 20px; border: 1px solid #2a2a2a; padding: 16px; }
-    h2 { font-size: 0.85rem; margin-bottom: 12px; color: #777; text-transform: uppercase; letter-spacing: 1px; }
-    label { display: block; font-size: 0.82rem; color: #888; margin-bottom: 3px; margin-top: 10px; }
-    label:first-child { margin-top: 0; }
-    input[type=text], textarea, select {
-      width: 100%; padding: 7px 9px; background: #151515; border: 1px solid #2e2e2e;
-      color: #e0e0e0; font-family: monospace; font-size: 0.88rem;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    input[type=text]:focus, textarea:focus, select:focus { outline: none; border-color: #5a4a9a; }
-    textarea { resize: vertical; min-height: 72px; }
+
+    body {
+      font-family: monospace;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 24px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      color: #888;
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+
+    section {
+      margin-bottom: 20px;
+      border: 1px solid #2a2a2a;
+      padding: 16px;
+    }
+
+    h2 {
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 3px;
+      margin-top: 10px;
+    }
+
+    label:first-child {
+      margin-top: 0;
+    }
+
+    input[type=text],
+    textarea,
+    select {
+      width: 100%;
+      padding: 7px 9px;
+      background: #151515;
+      border: 1px solid #2e2e2e;
+      color: #e0e0e0;
+      font-family: monospace;
+      font-size: 0.88rem;
+    }
+
+    input[type=text]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #5a4a9a;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
     button {
-      padding: 7px 14px; background: #222; color: #ccc; border: 1px solid #3a3a3a;
-      font-family: monospace; cursor: pointer; font-size: 0.85rem;
+      padding: 7px 14px;
+      background: #222;
+      color: #ccc;
+      border: 1px solid #3a3a3a;
+      font-family: monospace;
+      cursor: pointer;
+      font-size: 0.85rem;
     }
-    button:hover { background: #2e2e2e; }
-    button.primary  { background: #3a2a7a; border-color: #5a4a9a; color: #d0c8ff; }
-    button.primary:hover  { background: #4a3a8a; }
-    button.save     { background: #1e3a1e; border-color: #3a6a3a; color: #8aba8a; }
-    button.save:hover { background: #2a4a2a; }
-    button.danger   { background: #2a1010; border-color: #6a2a2a; color: #ff9090; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
-    .row > * { flex: 1; min-width: 140px; }
-    .inline { display: flex; gap: 8px; align-items: center; }
-    .inline input { flex: 1; }
+
+    button:hover {
+      background: #2e2e2e;
+    }
+
+    button.primary {
+      background: #3a2a7a;
+      border-color: #5a4a9a;
+      color: #d0c8ff;
+    }
+
+    button.primary:hover {
+      background: #4a3a8a;
+    }
+
+    button.save {
+      background: #1e3a1e;
+      border-color: #3a6a3a;
+      color: #8aba8a;
+    }
+
+    button.save:hover {
+      background: #2a4a2a;
+    }
+
+    button.danger {
+      background: #2a1010;
+      border-color: #6a2a2a;
+      color: #ff9090;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .row>* {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline input {
+      flex: 1;
+    }
+
     .drop-zone {
-      border: 2px dashed #2a2a2a; padding: 20px; text-align: center;
-      color: #444; cursor: pointer; margin-bottom: 10px; font-size: 0.85rem;
+      border: 2px dashed #2a2a2a;
+      padding: 20px;
+      text-align: center;
+      color: #444;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
     }
-    .drop-zone.over { border-color: #5a4a9a; color: #aaa; }
-    .file-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .drop-zone.over {
+      border-color: #5a4a9a;
+      color: #aaa;
+    }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
     .file-item {
-      display: flex; gap: 7px; align-items: center; flex-wrap: wrap;
-      background: #151515; padding: 7px; border: 1px solid #1e1e1e;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #151515;
+      padding: 7px;
+      border: 1px solid #1e1e1e;
     }
-    .file-item .fname { font-size: 0.78rem; color: #777; flex: 1; min-width: 100px; word-break: break-all; }
-    .file-item img { width: 36px; height: 36px; object-fit: contain; background: #1e1e1e; }
-    .file-item select { flex: 1; min-width: 90px; }
-    .file-item button { padding: 3px 7px; font-size: 0.72rem; }
+
+    .file-item .fname {
+      font-size: 0.78rem;
+      color: #777;
+      flex: 1;
+      min-width: 100px;
+      word-break: break-all;
+    }
+
+    .file-item img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+      background: #1e1e1e;
+    }
+
+    .file-item select {
+      flex: 1;
+      min-width: 90px;
+    }
+
+    .file-item button {
+      padding: 3px 7px;
+      font-size: 0.72rem;
+    }
+
     .state-tag {
-      display: inline-block; padding: 2px 8px; font-size: 0.75rem;
-      background: #1e1e1e; border: 1px solid #333; margin: 2px;
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      margin: 2px;
     }
+
     .output-preview {
-      background: #111; padding: 12px; font-size: 0.78rem; color: #888;
-      white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #222;
+      background: #111;
+      padding: 12px;
+      font-size: 0.78rem;
+      color: #888;
+      white-space: pre-wrap;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid #222;
     }
-    .note { font-size: 0.78rem; color: #555; margin-bottom: 10px; }
-    .add-state-row { display: flex; gap: 8px; margin-top: 10px; }
-    .add-state-row input { flex: 1; }
-    .asset-slot-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-    .asset-slot { display: flex; gap: 10px; align-items: flex-start; background: #111; border: 1px solid #1e1e1e; padding: 10px; }
-    .asset-slot img { width: 72px; height: 72px; object-fit: contain; background: #0a0a0a; display: none; flex-shrink: 0; }
-    .asset-slot-info { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
-    .asset-slot-label { font-size: 0.82rem; color: #aaa; }
-    .asset-slot-name { width: 100%; padding: 4px 6px; background: #1a1a1a; border: 1px solid #2e2e2e; color: #e0e0e0; font-family: monospace; font-size: 0.82rem; }
-    .asset-ph { width: 72px; height: 72px; background: #0a0a0a; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #222; font-size: 1.4rem; }
-    .gap8  { margin-top: 8px; }
-    .gap12 { margin-top: 12px; }
-    .ok   { color: #6a9a6a; font-size: 0.78rem; }
-    .miss { color: #9a7a3a; font-size: 0.78rem; }
+
+    .note {
+      font-size: 0.78rem;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    .add-state-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .add-state-row input {
+      flex: 1;
+    }
+
+    .asset-slot-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .asset-slot {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: #111;
+      border: 1px solid #1e1e1e;
+      padding: 10px;
+    }
+
+    .asset-slot img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      background: #0a0a0a;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    .asset-slot-info {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .asset-slot-label {
+      font-size: 0.82rem;
+      color: #aaa;
+    }
+
+    .asset-slot-name {
+      width: 100%;
+      padding: 4px 6px;
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      color: #e0e0e0;
+      font-family: monospace;
+      font-size: 0.82rem;
+    }
+
+    .asset-ph {
+      width: 72px;
+      height: 72px;
+      background: #0a0a0a;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #222;
+      font-size: 1.4rem;
+    }
+
+    .gap8 {
+      margin-top: 8px;
+    }
+
+    .gap12 {
+      margin-top: 12px;
+    }
+
+    .ok {
+      color: #6a9a6a;
+      font-size: 0.78rem;
+    }
+
+    .miss {
+      color: #9a7a3a;
+      font-size: 0.78rem;
+    }
 
     /* product section */
-    #s-product { border-color: #2a2a4a; background: #0c0c14; }
-    #s-product h2 { color: #6a5a9a; }
-    .product-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
-    .active-label { font-size: 0.78rem; color: #5a4a8a; margin-top: 6px; }
-    .flash { font-size: 0.78rem; color: #6a9a6a; margin-left: 6px; display: none; }
-    #newProductRow { display: none; margin-top: 8px; }
+    #s-product {
+      border-color: #2a2a4a;
+      background: #0c0c14;
+    }
+
+    #s-product h2 {
+      color: #6a5a9a;
+    }
+
+    .product-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      align-items: center;
+    }
+
+    .active-label {
+      font-size: 0.78rem;
+      color: #5a4a8a;
+      margin-top: 6px;
+    }
+
+    .flash {
+      font-size: 0.78rem;
+      color: #6a9a6a;
+      margin-left: 6px;
+      display: none;
+    }
+
+    #newProductRow {
+      display: none;
+      margin-top: 8px;
+    }
 
     /* etsy slots */
-    .etsy-slots { display: flex; flex-direction: column; gap: 8px; }
-    .etsy-slot {
-      display: flex; gap: 10px; align-items: center;
-      background: #111; border: 1px solid #1e1e1e; padding: 8px;
+    .etsy-slots {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .slot-thumb { width: 80px; height: 56px; object-fit: contain; background: #0a0a0a; flex-shrink: 0; display: block; }
-    .etsy-slot video { width: 80px; height: 56px; object-fit: contain; background: #0a0a0a; flex-shrink: 0; }
-    .slot-ph { width: 80px; height: 56px; background: #0a0a0a; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #222; font-size: 1.2rem; }
-    .slot-info { flex: 1; }
-    .slot-label { font-size: 0.82rem; margin-bottom: 1px; }
-    .slot-path  { font-size: 0.72rem; color: #444; margin-bottom: 2px; }
-    .slot-num   { font-size: 0.72rem; color: #444; width: 16px; flex-shrink: 0; text-align: right; }
+
+    .etsy-slot {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #111;
+      border: 1px solid #1e1e1e;
+      padding: 8px;
+    }
+
+    .slot-thumb {
+      width: 80px;
+      height: 56px;
+      object-fit: contain;
+      background: #0a0a0a;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .etsy-slot video {
+      width: 80px;
+      height: 56px;
+      object-fit: contain;
+      background: #0a0a0a;
+      flex-shrink: 0;
+    }
+
+    .slot-ph {
+      width: 80px;
+      height: 56px;
+      background: #0a0a0a;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #222;
+      font-size: 1.2rem;
+    }
+
+    .slot-info {
+      flex: 1;
+    }
+
+    .slot-label {
+      font-size: 0.82rem;
+      margin-bottom: 1px;
+    }
+
+    .slot-path {
+      font-size: 0.72rem;
+      color: #444;
+      margin-bottom: 2px;
+    }
+
+    .slot-num {
+      font-size: 0.72rem;
+      color: #444;
+      width: 16px;
+      flex-shrink: 0;
+      text-align: right;
+    }
   </style>
 </head>
+
 <body>
 
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
-  <img src="assets/logo.png" alt="logo" style="width:40px;height:40px;object-fit:contain;border-radius:6px" />
-  <h1 style="margin:0">MossarellaStudio — Product Factory</h1>
-</div>
-<p class="sub">Pack your mascot → generate README → download ZIP → list on Etsy</p>
-
-<!-- PRODUCT -->
-<section id="s-product">
-  <h2>Product</h2>
-  <div style="display:flex;gap:8px;align-items:center">
-    <select id="productSelect" onchange="onProductSelectChange(this.value)" style="flex:1">
-      <option value="">— select a product —</option>
-    </select>
-    <button onclick="showNewProductRow()">+ New</button>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+    <img src="assets/logo/logo.png" alt="logo" style="width:40px;height:40px;object-fit:contain;border-radius:6px" />
+    <h1 style="margin:0">MossarellaStudio — Product Factory</h1>
   </div>
-  <div id="newProductRow" style="display:none;margin-top:8px">
+  <p class="sub">Pack your mascot → generate README → download ZIP → list on Etsy</p>
+
+  <!-- PRODUCT -->
+  <section id="s-product">
+    <h2>Product</h2>
     <div class="inline">
-      <input type="text" id="newProductName" placeholder="Product name, e.g. BunnyMascot"
-        onkeydown="if(event.key==='Enter') createProduct()" />
-      <button class="primary" onclick="createProduct()">Create</button>
-      <button onclick="hideNewProductRow()">Cancel</button>
+      <select id="productSelect" onchange="onProductSelectChange(this.value)" style="flex:1">
+        <option value="">— select a product —</option>
+      </select>
+      <button onclick="showNewProductRow()">+ New</button>
     </div>
-  </div>
-  <div class="product-actions" style="display:flex;margin-top:10px">
-    <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save product</button>
-    <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
-    <span class="flash" id="saveMsg">Saved!</span>
-  </div>
-  <div class="active-label" id="activeLabel"></div>
-</section>
-
-<!-- 1. PRODUCT INFO -->
-<section id="s-info">
-  <h2>1. Product Info</h2>
-  <div class="row">
-    <div>
-      <label>Product Name</label>
-      <input type="text" id="productName" placeholder="e.g. BunnyMascot" />
+    <div id="newProductRow" style="display:none;margin-top:8px">
+      <div class="inline">
+        <input type="text" id="newProductName" placeholder="Product name, e.g. BunnyMascot"
+          onkeydown="if(event.key==='Enter') createProduct()" />
+        <button class="primary" onclick="createProduct()">Create</button>
+        <button onclick="hideNewProductRow()">Cancel</button>
+      </div>
     </div>
-    <div>
-      <label>Contact / Shop</label>
-      <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" />
+    <div class="product-actions" style="display:flex;margin-top:10px">
+      <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save
+        product</button>
+      <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
+      <span class="flash" id="saveMsg">Saved!</span>
     </div>
-  </div>
-  <label>Description</label>
-  <textarea id="description" placeholder="A handcrafted PNGTuber mascot made with love for your stream."></textarea>
-  <label>Extra README notes</label>
-  <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit."></textarea>
-</section>
+    <div class="active-label" id="activeLabel"></div>
+  </section>
 
-<!-- 2. STATES -->
-<section id="s-states">
-  <h2>2. Expression States</h2>
-  <p class="note">Neutral is always included. Add more states as needed.</p>
-  <div id="stateList">
-    <div class="state-tag">Neutral <span style="color:#444">(built-in)</span></div>
-  </div>
-  <div class="add-state-row">
-    <input type="text" id="newStateName" placeholder="e.g. Happy, Angry, Sleepy"
-      onkeydown="if(event.key==='Enter') addState()" />
-    <button onclick="addState()">+ Add</button>
-  </div>
-</section>
+  <!-- 1. PRODUCT INFO -->
+  <section id="s-info">
+    <h2>1. Product Info</h2>
+    <div class="row">
+      <div>
+        <label>Product Name</label>
+        <input type="text" id="productName" placeholder="e.g. BunnyMascot" />
+      </div>
+      <div>
+        <label>Contact / Shop</label>
+        <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" />
+      </div>
+    </div>
+    <label>Description</label>
+    <textarea id="description" placeholder="A handcrafted PNGTuber mascot made with love for your stream."></textarea>
+    <label>Extra README notes</label>
+    <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit."></textarea>
+  </section>
 
-<!-- 3. FILES -->
-<section id="s-files">
-  <h2>3. Mascot PNGs</h2>
-  <p class="note">Assign each file a State + Expression. Props go to Extras.</p>
-  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-    Click or drag & drop PNG files here
-    <input type="file" id="fileInput" multiple accept="image/png,image/gif,image/webp"
-      style="display:none" onchange="handleFiles(this.files)" />
-  </div>
-  <div id="exprChecklist" style="margin-bottom:10px"></div>
-  <div class="file-list" id="fileList"></div>
-</section>
+  <!-- 2. STATES -->
+  <section id="s-states">
+    <h2>2. Expression States</h2>
+    <p class="note">Neutral is always included. Add more states as needed.</p>
+    <div id="stateList">
+      <div class="state-tag">Neutral <span style="color:#444">(built-in)</span></div>
+    </div>
+    <div class="add-state-row">
+      <input type="text" id="newStateName" placeholder="e.g. Happy, Angry, Sleepy"
+        onkeydown="if(event.key==='Enter') addState()" />
+      <button onclick="addState()">+ Add</button>
+    </div>
+  </section>
 
-<!-- 4. FIXED ASSETS -->
-<section id="s-thankyou">
-  <h2>4. Fixed Assets</h2>
-  <p class="note">Shared across all products. Auto-loaded from folder — or pick manually.</p>
-  <div class="asset-slot-row" id="fixedAssetGrid"></div>
-  <div style="margin-top:10px">
-    <button onclick="addFixedAsset()">+ Add fixed asset</button>
-  </div>
-</section>
+  <!-- 3. FILES -->
+  <section id="s-files">
+    <h2>3. Mascot PNGs</h2>
+    <p class="note">Assign each file a State + Expression. Props go to Extras.</p>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      Click or drag & drop PNG files here
+      <input type="file" id="fileInput" multiple accept="image/png,image/gif,image/webp" style="display:none"
+        onchange="handleFiles(this.files)" />
+    </div>
+    <div id="exprChecklist" style="margin-bottom:10px"></div>
+    <div class="file-list" id="fileList"></div>
+  </section>
 
-<!-- 5. README PREVIEW -->
-<section id="s-preview">
-  <h2>5. README Preview</h2>
-  <button onclick="buildPreview()" style="margin-bottom:10px">Refresh</button>
-  <div class="output-preview" id="previewBox">Click Refresh to see ZIP structure and README.</div>
-</section>
+  <!-- 4. FIXED ASSETS -->
+  <section id="s-thankyou">
+    <h2>4. Fixed Assets</h2>
+    <p class="note">Shared across all products. Auto-loaded from folder — or pick manually.</p>
+    <div class="asset-slot-row" id="fixedAssetGrid"></div>
+    <div style="margin-top:10px">
+      <button onclick="addFixedAsset()">+ Add fixed asset</button>
+    </div>
+  </section>
 
-<!-- 6. ETSY LISTING -->
-<section id="s-etsy">
-  <h2>6. Etsy Listing</h2>
-  <p class="note" id="etsyNote">Select a product to see its listing slots.</p>
-  <div id="etsySlots"></div>
-  <div class="gap12">
-    <button onclick="copyEtsyDescription()">Copy Etsy Description</button>
-    <span class="flash" id="copyMsg" style="display:none">Copied!</span>
-  </div>
-</section>
+  <!-- 5. README PREVIEW -->
+  <section id="s-preview">
+    <h2>5. README Preview</h2>
+    <button onclick="buildPreview()" style="margin-bottom:10px">Refresh</button>
+    <div class="output-preview" id="previewBox">Click Refresh to see ZIP structure and README.</div>
+  </section>
 
-<script>
-const EXPRESSIONS  = ['EOMO', 'EOMC', 'ECMO', 'ECMC'];
-const ep = n => encodeURIComponent(n); // encode product name for URLs
-const ETSY_SLOTS   = [
-  { slot: 'etsy-hero',        label: 'Hero image',              hint: 'mascot + title + compatibility' },
-  { slot: 'etsy-expressions', label: 'Expressions showcase',    hint: 'all states on one image' },
-  { slot: 'etsy-files',       label: 'Included files preview',  hint: 'folder/file list screenshot' },
-  { slot: 'etsy-preview',     label: 'Veadotube preview / GIF', hint: 'short loop of states switching' },
-  { slot: 'etsy-detail',      label: 'Zoomed detail shot',      hint: 'texture / lineart close-up' },
-  { slot: 'etsy-branding',    label: 'Thank you / branding',    hint: 'your branding card' },
-];
+  <!-- 6. ETSY LISTING -->
+  <section id="s-etsy">
+    <h2>6. Etsy Listing</h2>
+    <p class="note" id="etsyNote">Select a product to see its listing slots.</p>
+    <div id="etsySlots"></div>
+    <div class="gap12">
+      <button onclick="copyEtsyDescription()">Copy Etsy Description</button>
+      <span class="flash" id="copyMsg" style="display:none">Copied!</span>
+    </div>
+  </section>
 
-let activeProduct  = null;
-let states         = ['Neutral'];
-let files          = [];
-let readmeTemplate = null;
-let etsyTemplate   = null;
+  <script>
+    const EXPRESSIONS = ['EOMO', 'EOMC', 'ECMO', 'ECMC'];
+    const ep = n => encodeURIComponent(n); // encode product name for URLs
+    const ETSY_SLOTS = [
+      { slot: 'etsy-hero', label: 'Hero image', hint: 'mascot + title + compatibility' },
+      { slot: 'etsy-expressions', label: 'Expressions showcase', hint: 'all states on one image' },
+      { slot: 'etsy-files', label: 'Included files preview', hint: 'folder/file list screenshot' },
+      { slot: 'etsy-preview', label: 'Veadotube preview / GIF', hint: 'short loop of states switching' },
+      { slot: 'etsy-detail', label: 'Zoomed detail shot', hint: 'texture / lineart close-up' },
+      { slot: 'etsy-branding', label: 'Thank you / branding', hint: 'your branding card' },
+    ];
 
-// fixed assets — built-ins auto-load from folder, extras are manual picks
-let fixedAssets = [
-  { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', blob: null },
-  { id: 'howto',    label: 'How To Use',     slot: '/slot/how-to-use',      zipName: 'HOWTO.png',   blob: null },
-];
+    let activeProduct = null;
+    let states = ['Neutral'];
+    let files = [];
+    let readmeTemplate = null;
+    let etsyTemplate = null;
+
+    // fixed assets — built-ins auto-load from folder, extras are manual picks
+    let fixedAssets = [
+      { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', blob: null },
+      { id: 'howto', label: 'How To Use', slot: '/slot/how-to-use', zipName: 'HOWTO.png', blob: null },
+    ];
 
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
-  applyConfig();
-  renderFixedAssets();
-  autoLoadFixedAssets();
+    // ── Boot ──────────────────────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      applyConfig();
+      renderFixedAssets();
+      autoLoadFixedAssets();
 
-  const [r, e] = await Promise.all([
-    fetch('/templates/readme.txt').then(r => r.ok ? r.text() : null).catch(() => null),
-    fetch('/templates/etsy.txt').then(r => r.ok ? r.text() : null).catch(() => null),
-  ]);
-  readmeTemplate = r;
-  etsyTemplate   = e;
+      const [r, e] = await Promise.all([
+        fetch('/templates/readme.txt').then(r => r.ok ? r.text() : null).catch(() => null),
+        fetch('/templates/etsy.txt').then(r => r.ok ? r.text() : null).catch(() => null),
+      ]);
+      readmeTemplate = r;
+      etsyTemplate = e;
 
-  await refreshProductList();
-});
-
-function applyConfig() {
-  if (typeof CONFIG === 'undefined') return;
-  if (CONFIG.contact)      document.getElementById('contact').value      = CONFIG.contact;
-  if (CONFIG.description)  document.getElementById('description').value  = CONFIG.description;
-  if (CONFIG.readmeFooter) document.getElementById('extraNotes').value   = CONFIG.readmeFooter;
-}
-
-// ── Product list ──────────────────────────────────────────────────────────────
-async function refreshProductList(selectAfter = null) {
-  const products = await fetch('/products').then(r => r.json()).catch(() => []);
-  const sel = document.getElementById('productSelect');
-  const prev = selectAfter || (activeProduct ? activeProduct : sel.value);
-
-  sel.innerHTML = '<option value="">— select a product —</option>';
-  products.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p; opt.textContent = p;
-    sel.appendChild(opt);
-  });
-
-  if (prev && products.includes(prev)) {
-    sel.value = prev;
-  }
-}
-
-function onProductSelectChange(val) {
-  hideNewProductRow();
-  if (val) loadProduct(val);
-  else setActiveProduct(null);
-}
-
-function showNewProductRow() {
-  document.getElementById('newProductRow').style.display = 'block';
-  document.getElementById('newProductName').focus();
-}
-
-function hideNewProductRow() {
-  document.getElementById('newProductRow').style.display = 'none';
-  document.getElementById('newProductName').value = '';
-}
-
-async function createProduct() {
-  const inp  = document.getElementById('newProductName');
-  const name = inp.value.trim();
-  if (!name) { inp.focus(); return; }
-
-  let res;
-  try {
-    res = await fetch('/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      await refreshProductList();
     });
-  } catch (e) {
-    alert(`Network error — is the server running?\nnpm start\n\n${e.message}`);
-    return;
-  }
 
-  if (!res.ok) {
-    const msg = await res.text().catch(() => res.status);
-    alert(`Could not create product: ${msg}`);
-    return;
-  }
-
-  hideNewProductRow();
-  await refreshProductList(name);
-  document.getElementById('productSelect').value = name;
-  await loadProduct(name);
-}
-
-async function loadProduct(name) {
-  const config = await fetch(`/products/${ep(name)}/config`)
-    .then(r => r.ok ? r.json() : null).catch(() => null) ?? {};
-
-  setActiveProduct(name);
-
-  document.getElementById('productName').value  = config.name        || name;
-  document.getElementById('description').value  = config.description || (CONFIG?.description  || '');
-  document.getElementById('extraNotes').value   = config.notes       || (CONFIG?.readmeFooter || '');
-  document.getElementById('contact').value      = config.contact     || (CONFIG?.contact      || '');
-
-  states = (config.states && config.states.length) ? config.states : ['Neutral'];
-  renderStateTags();
-
-  // restore mascot files
-  files = [];
-  let loadFailed = 0;
-  if (config.mascotFiles && config.mascotFiles.length) {
-    await Promise.all(config.mascotFiles.map(async mf => {
-      try {
-        const res = await fetch(`/products/${ep(name)}/file/${ep(mf.filename)}`);
-        if (!res.ok) { loadFailed++; return; }
-        const blob = await res.blob();
-        const displayName = mf.origName || mf.filename;
-        const file = new File([blob], displayName, { type: blob.type });
-        files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, url: URL.createObjectURL(file) });
-      } catch (_) { loadFailed++; }
-    }));
-  }
-  if (loadFailed > 0) alert(`⚠ ${loadFailed} file(s) could not be loaded — they may not have been saved yet. Re-add and save again.`);
-  renderAllFileRows();
-
-  document.getElementById('etsyNote').textContent = `Drop or pick files for each etsy slot below`;
-  loadEtsySlots();
-}
-
-function setActiveProduct(name) {
-  activeProduct = name;
-  document.getElementById('activeLabel').textContent = name ? `Active: products/${name}/` : '';
-  document.getElementById('btnSave').disabled = !name;
-}
-
-async function saveProduct() {
-  if (!activeProduct) return;
-  try {
-    // upload each mascot file and build a manifest
-    const mascotFiles = [];
-    for (const f of files) {
-      const ext      = f.file.name.split('.').pop().toLowerCase() || 'png';
-      const filename = `${f.id}.${ext}`;
-      const up = await fetch(`/products/${ep(activeProduct)}/file`, {
-        method: 'POST',
-        headers: { 'X-Filename': filename, 'Content-Type': f.file.type },
-        body: f.file,
-      });
-      if (!up.ok) throw new Error(`File upload failed: ${f.file.name}`);
-      mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
+    function applyConfig() {
+      if (typeof CONFIG === 'undefined') return;
+      if (CONFIG.contact) document.getElementById('contact').value = CONFIG.contact;
+      if (CONFIG.description) document.getElementById('description').value = CONFIG.description;
+      if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
     }
 
-    const res = await fetch(`/products/${ep(activeProduct)}/config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name:        document.getElementById('productName').value.trim(),
-        description: document.getElementById('description').value.trim(),
-        notes:       document.getElementById('extraNotes').value.trim(),
-        contact:     document.getElementById('contact').value.trim(),
-        states,
-        mascotFiles,
-      }, null, 2),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    flash('saveMsg');
-  } catch (e) {
-    alert(`Save failed: ${e.message}`);
-  }
-}
+    // ── Product list ──────────────────────────────────────────────────────────────
+    async function refreshProductList(selectAfter = null) {
+      const products = await fetch('/products').then(r => r.json()).catch(() => []);
+      const sel = document.getElementById('productSelect');
+      const prev = selectAfter || (activeProduct ? activeProduct : sel.value);
 
-function flash(id) {
-  const el = document.getElementById(id);
-  el.style.display = 'inline';
-  setTimeout(() => { el.style.display = 'none'; }, 2000);
-}
+      sel.innerHTML = '<option value="">— select a product —</option>';
+      products.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p;
+        sel.appendChild(opt);
+      });
 
-// ── States ────────────────────────────────────────────────────────────────────
-function addState() {
-  const inp = document.getElementById('newStateName');
-  const val = inp.value.trim();
-  if (!val) return;
-  const cap = val.charAt(0).toUpperCase() + val.slice(1);
-  if (!states.includes(cap)) {
-    states.push(cap);
-    renderStateTags();
-    renderAllFileRows();
-  }
-  inp.value = '';
-}
+      if (prev && products.includes(prev)) {
+        sel.value = prev;
+      }
+    }
 
-function removeState(s) {
-  if (s === 'Neutral') return;
-  states = states.filter(x => x !== s);
-  files.forEach(f => { if (f.state === s) f.state = 'Neutral'; });
-  renderStateTags();
-  renderAllFileRows();
-}
+    function onProductSelectChange(val) {
+      hideNewProductRow();
+      if (val) loadProduct(val);
+      else setActiveProduct(null);
+    }
 
-function renderStateTags() {
-  const el = document.getElementById('stateList');
-  el.innerHTML = `<div class="state-tag">Neutral <span style="color:#444">(built-in)</span></div>`;
-  states.slice(1).forEach(s => {
-    el.innerHTML += `<div class="state-tag">${s} <span style="cursor:pointer;color:#8a3a3a" onclick="removeState('${s}')">✕</span></div>`;
-  });
-  renderChecklist();
-}
+    function showNewProductRow() {
+      document.getElementById('newProductRow').style.display = 'block';
+      document.getElementById('newProductName').focus();
+    }
 
-function uid() { return Math.random().toString(36).slice(2, 10); }
+    function hideNewProductRow() {
+      document.getElementById('newProductRow').style.display = 'none';
+      document.getElementById('newProductName').value = '';
+    }
 
-// ── File handling ─────────────────────────────────────────────────────────────
-function handleFiles(fileList) {
-  Array.from(fileList).forEach(f => {
-    files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
-  });
-  renderAllFileRows();
-}
+    async function createProduct() {
+      const inp = document.getElementById('newProductName');
+      const name = inp.value.trim();
+      if (!name) { inp.focus(); return; }
 
-function removeFile(idx) {
-  URL.revokeObjectURL(files[idx].url);
-  files.splice(idx, 1);
-  renderAllFileRows();
-}
+      let res;
+      try {
+        res = await fetch('/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+      } catch (e) {
+        alert(`Network error — is the server running?\nnpm start\n\n${e.message}`);
+        return;
+      }
 
-function renderAllFileRows() {
-  const c = document.getElementById('fileList');
-  c.innerHTML = '';
-  files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
-  renderChecklist();
-}
+      if (!res.ok) {
+        const msg = await res.text().catch(() => res.status);
+        alert(`Could not create product: ${msg}`);
+        return;
+      }
 
-function renderChecklist() {
-  const el = document.getElementById('exprChecklist');
-  if (!el) return;
+      hideNewProductRow();
+      await refreshProductList(name);
+      document.getElementById('productSelect').value = name;
+      await loadProduct(name);
+    }
 
-  // build a set of "state|expression" that are covered
-  const covered = new Set(
-    files.filter(f => !f.isProp).map(f => `${f.state}|${f.expression}`)
-  );
+    async function loadProduct(name) {
+      const config = await fetch(`/products/${ep(name)}/config`)
+        .then(r => r.ok ? r.json() : null).catch(() => null) ?? {};
 
-  el.innerHTML = states.map(s => {
-    const chips = EXPRESSIONS.map(e => {
-      const done = covered.has(`${s}|${e}`);
-      return `<span style="
+      setActiveProduct(name);
+
+      document.getElementById('productName').value = config.name || name;
+      document.getElementById('description').value = config.description || (CONFIG?.description || '');
+      document.getElementById('extraNotes').value = config.notes || (CONFIG?.readmeFooter || '');
+      document.getElementById('contact').value = config.contact || (CONFIG?.contact || '');
+
+      states = (config.states && config.states.length) ? config.states : ['Neutral'];
+      renderStateTags();
+
+      // restore mascot files
+      files = [];
+      let loadFailed = 0;
+      if (config.mascotFiles && config.mascotFiles.length) {
+        await Promise.all(config.mascotFiles.map(async mf => {
+          try {
+            const res = await fetch(`/products/${ep(name)}/file/${ep(mf.filename)}`);
+            if (!res.ok) { loadFailed++; return; }
+            const blob = await res.blob();
+            const displayName = mf.origName || mf.filename;
+            const file = new File([blob], displayName, { type: blob.type });
+            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, url: URL.createObjectURL(file) });
+          } catch (_) { loadFailed++; }
+        }));
+      }
+      if (loadFailed > 0) alert(`⚠ ${loadFailed} file(s) could not be loaded — they may not have been saved yet. Re-add and save again.`);
+      renderAllFileRows();
+
+      document.getElementById('etsyNote').textContent = `Drop or pick files for each etsy slot below`;
+      loadEtsySlots();
+    }
+
+    function setActiveProduct(name) {
+      activeProduct = name;
+      document.getElementById('activeLabel').textContent = name ? `Active: products/${name}/` : '';
+      document.getElementById('btnSave').disabled = !name;
+    }
+
+    async function saveProduct() {
+      if (!activeProduct) return;
+      try {
+        // upload each mascot file and build a manifest
+        const mascotFiles = [];
+        for (const f of files) {
+          const ext = f.file.name.split('.').pop().toLowerCase() || 'png';
+          const filename = `${f.id}.${ext}`;
+          const up = await fetch(`/products/${ep(activeProduct)}/file`, {
+            method: 'POST',
+            headers: { 'X-Filename': filename, 'Content-Type': f.file.type },
+            body: f.file,
+          });
+          if (!up.ok) throw new Error(`File upload failed: ${f.file.name}`);
+          mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName });
+        }
+
+        const res = await fetch(`/products/${ep(activeProduct)}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('productName').value.trim(),
+            description: document.getElementById('description').value.trim(),
+            notes: document.getElementById('extraNotes').value.trim(),
+            contact: document.getElementById('contact').value.trim(),
+            states,
+            mascotFiles,
+          }, null, 2),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        flash('saveMsg');
+      } catch (e) {
+        alert(`Save failed: ${e.message}`);
+      }
+    }
+
+    function flash(id) {
+      const el = document.getElementById(id);
+      el.style.display = 'inline';
+      setTimeout(() => { el.style.display = 'none'; }, 2000);
+    }
+
+    // ── States ────────────────────────────────────────────────────────────────────
+    function addState() {
+      const inp = document.getElementById('newStateName');
+      const val = inp.value.trim();
+      if (!val) return;
+      const cap = val.charAt(0).toUpperCase() + val.slice(1);
+      if (!states.includes(cap)) {
+        states.push(cap);
+        renderStateTags();
+        renderAllFileRows();
+      }
+      inp.value = '';
+    }
+
+    function removeState(s) {
+      if (s === 'Neutral') return;
+      states = states.filter(x => x !== s);
+      files.forEach(f => { if (f.state === s) f.state = 'Neutral'; });
+      renderStateTags();
+      renderAllFileRows();
+    }
+
+    function renderStateTags() {
+      const el = document.getElementById('stateList');
+      el.innerHTML = `<div class="state-tag">Neutral <span style="color:#444">(built-in)</span></div>`;
+      states.slice(1).forEach(s => {
+        el.innerHTML += `<div class="state-tag">${s} <span style="cursor:pointer;color:#8a3a3a" onclick="removeState('${s}')">✕</span></div>`;
+      });
+      renderChecklist();
+    }
+
+    function uid() { return Math.random().toString(36).slice(2, 10); }
+
+    // ── File handling ─────────────────────────────────────────────────────────────
+    function handleFiles(fileList) {
+      Array.from(fileList).forEach(f => {
+        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', url: URL.createObjectURL(f) });
+      });
+      renderAllFileRows();
+    }
+
+    function removeFile(idx) {
+      URL.revokeObjectURL(files[idx].url);
+      files.splice(idx, 1);
+      renderAllFileRows();
+    }
+
+    function renderAllFileRows() {
+      const c = document.getElementById('fileList');
+      c.innerHTML = '';
+      files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
+      renderChecklist();
+    }
+
+    function renderChecklist() {
+      const el = document.getElementById('exprChecklist');
+      if (!el) return;
+
+      // build a set of "state|expression" that are covered
+      const covered = new Set(
+        files.filter(f => !f.isProp).map(f => `${f.state}|${f.expression}`)
+      );
+
+      el.innerHTML = states.map(s => {
+        const chips = EXPRESSIONS.map(e => {
+          const done = covered.has(`${s}|${e}`);
+          return `<span style="
         display:inline-block;padding:2px 7px;margin:2px;font-size:0.75rem;
         border:1px solid ${done ? '#3a6a3a' : '#2a2a2a'};
         background:${done ? '#1a3a1a' : '#111'};
         color:${done ? '#7aba7a' : '#444'}">
         ${done ? '✓' : '○'} ${e}
       </span>`;
-    }).join('');
-    return `<div style="margin-bottom:4px;font-size:0.78rem">
+        }).join('');
+        return `<div style="margin-bottom:4px;font-size:0.78rem">
       <span style="color:#555;display:inline-block;width:72px">${s}</span>${chips}
     </div>`;
-  }).join('');
-}
-
-function buildFileRow(f, i) {
-  const div = document.createElement('div');
-  div.className = 'file-item';
-
-  const img = document.createElement('img');
-  img.src = f.url;
-  div.appendChild(img);
-
-  const nm = document.createElement('span');
-  nm.className = 'fname';
-  nm.textContent = f.file.name;
-  div.appendChild(nm);
-
-  div.appendChild(buildSelect(
-    ['Extras (Prop)', ...states],
-    f.isProp ? 'Extras (Prop)' : f.state,
-    val => {
-      files[i].isProp = val === 'Extras (Prop)';
-      if (!files[i].isProp) files[i].state = val;
-      renderAllFileRows();
+      }).join('');
     }
-  ));
 
-  if (!f.isProp) {
-    div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => {
-      files[i].expression = val;
-      renderChecklist();
-    }, '— expression —'));
-  } else {
-    const propInp = document.createElement('input');
-    propInp.type = 'text';
-    propInp.style.cssText = 'flex:1;min-width:80px';
-    propInp.placeholder = 'prop name (e.g. Coffee)';
-    propInp.value = f.propName;
-    propInp.oninput = e => {
-      const v = e.target.value;
-      const cap = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
-      e.target.value = cap;
-      files[i].propName = cap;
-    };
-    div.appendChild(propInp);
-  }
+    function buildFileRow(f, i) {
+      const div = document.createElement('div');
+      div.className = 'file-item';
 
-  const rm = document.createElement('button');
-  rm.className = 'danger';
-  rm.textContent = '✕';
-  rm.onclick = () => removeFile(i);
-  div.appendChild(rm);
-
-  return div;
-}
-
-function buildSelect(options, current, onChange, placeholder) {
-  const el = document.createElement('select');
-  if (placeholder !== undefined) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.textContent = placeholder;
-    if (!current) opt.selected = true;
-    el.appendChild(opt);
-  }
-  options.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = o; opt.textContent = o;
-    if (o === current) opt.selected = true;
-    el.appendChild(opt);
-  });
-  el.onchange = e => onChange(e.target.value);
-  return el;
-}
-
-// ── Drag & drop ───────────────────────────────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
-
-// ── Fixed assets ──────────────────────────────────────────────────────────────
-function renderFixedAssets() {
-  const grid = document.getElementById('fixedAssetGrid');
-  grid.innerHTML = '';
-  fixedAssets.forEach((a, i) => {
-    const slot = document.createElement('div');
-    slot.className = 'asset-slot';
-
-    // preview
-    if (a.blob) {
       const img = document.createElement('img');
-      img.src = URL.createObjectURL(a.blob);
-      img.style.display = 'block';
-      slot.appendChild(img);
-    } else {
-      const ph = document.createElement('div');
-      ph.className = 'asset-ph'; ph.textContent = '?';
-      slot.appendChild(ph);
+      img.src = f.url;
+      div.appendChild(img);
+
+      const nm = document.createElement('span');
+      nm.className = 'fname';
+      nm.textContent = f.file.name;
+      div.appendChild(nm);
+
+      div.appendChild(buildSelect(
+        ['Extras (Prop)', ...states],
+        f.isProp ? 'Extras (Prop)' : f.state,
+        val => {
+          files[i].isProp = val === 'Extras (Prop)';
+          if (!files[i].isProp) files[i].state = val;
+          renderAllFileRows();
+        }
+      ));
+
+      if (!f.isProp) {
+        div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => {
+          files[i].expression = val;
+          renderChecklist();
+        }, '— expression —'));
+      } else {
+        const propInp = document.createElement('input');
+        propInp.type = 'text';
+        propInp.style.cssText = 'flex:1;min-width:80px';
+        propInp.placeholder = 'prop name (e.g. Coffee)';
+        propInp.value = f.propName;
+        propInp.oninput = e => {
+          const v = e.target.value;
+          const cap = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+          e.target.value = cap;
+          files[i].propName = cap;
+        };
+        div.appendChild(propInp);
+      }
+
+      const rm = document.createElement('button');
+      rm.className = 'danger';
+      rm.textContent = '✕';
+      rm.onclick = () => removeFile(i);
+      div.appendChild(rm);
+
+      return div;
     }
 
-    // info
-    const info = document.createElement('div');
-    info.className = 'asset-slot-info';
+    function buildSelect(options, current, onChange, placeholder) {
+      const el = document.createElement('select');
+      if (placeholder !== undefined) {
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = placeholder;
+        if (!current) opt.selected = true;
+        el.appendChild(opt);
+      }
+      options.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o; opt.textContent = o;
+        if (o === current) opt.selected = true;
+        el.appendChild(opt);
+      });
+      el.onchange = e => onChange(e.target.value);
+      return el;
+    }
 
-    if (a.slot) {
-      // built-in: fixed label
-      info.innerHTML = `<div class="asset-slot-label">${a.label}</div>
+    // ── Drag & drop ───────────────────────────────────────────────────────────────
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+
+    // ── Fixed assets ──────────────────────────────────────────────────────────────
+    function renderFixedAssets() {
+      const grid = document.getElementById('fixedAssetGrid');
+      grid.innerHTML = '';
+      fixedAssets.forEach((a, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'asset-slot';
+
+        // preview
+        if (a.blob) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(a.blob);
+          img.style.display = 'block';
+          slot.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'asset-ph'; ph.textContent = '?';
+          slot.appendChild(ph);
+        }
+
+        // info
+        const info = document.createElement('div');
+        info.className = 'asset-slot-info';
+
+        if (a.slot) {
+          // built-in: fixed label
+          info.innerHTML = `<div class="asset-slot-label">${a.label}</div>
         <div class="${a.blob ? 'ok' : 'miss'}" id="fa-status-${i}">${a.blob ? '✓ loaded' : '— not loaded'}</div>
         <div style="font-size:0.72rem;color:#444">${a.slot}</div>`;
-    } else {
-      // custom: editable label + zip name
-      const inp = document.createElement('input');
-      inp.className = 'asset-slot-name';
-      inp.placeholder = 'File label (e.g. License)';
-      inp.value = a.label;
-      inp.oninput = e => {
-        const v = e.target.value;
-        const cv = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
-        e.target.value = cv;
-        fixedAssets[i].label = cv;
-        fixedAssets[i].zipName = cv.replace(/\s+/g,'_') + (a.blob ? '.' + (a.blob.name||'').split('.').pop() : '.png');
-      };
-      info.appendChild(inp);
-      const st = document.createElement('div');
-      st.className = a.blob ? 'ok' : 'miss';
-      st.textContent = a.blob ? `✓ ${a.blob.name}` : '— no file picked';
-      info.appendChild(st);
+        } else {
+          // custom: editable label + zip name
+          const inp = document.createElement('input');
+          inp.className = 'asset-slot-name';
+          inp.placeholder = 'File label (e.g. License)';
+          inp.value = a.label;
+          inp.oninput = e => {
+            const v = e.target.value;
+            const cv = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+            e.target.value = cv;
+            fixedAssets[i].label = cv;
+            fixedAssets[i].zipName = cv.replace(/\s+/g, '_') + (a.blob ? '.' + (a.blob.name || '').split('.').pop() : '.png');
+          };
+          info.appendChild(inp);
+          const st = document.createElement('div');
+          st.className = a.blob ? 'ok' : 'miss';
+          st.textContent = a.blob ? `✓ ${a.blob.name}` : '— no file picked';
+          info.appendChild(st);
+        }
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Pick file';
+        btn.style.marginTop = '4px';
+        btn.onclick = () => {
+          const inp = document.createElement('input');
+          inp.type = 'file'; inp.accept = 'image/*,application/pdf,video/*';
+          inp.onchange = e => {
+            const f = e.target.files[0]; if (!f) return;
+            fixedAssets[i].blob = f;
+            if (!fixedAssets[i].zipName) fixedAssets[i].zipName = f.name;
+            renderFixedAssets();
+          };
+          inp.click();
+        };
+        info.appendChild(btn);
+
+        if (!a.slot) {
+          const rm = document.createElement('button');
+          rm.textContent = '✕'; rm.className = 'danger'; rm.style.marginTop = '2px';
+          rm.onclick = () => { fixedAssets.splice(i, 1); renderFixedAssets(); };
+          info.appendChild(rm);
+        }
+
+        slot.appendChild(info);
+        grid.appendChild(slot);
+      });
     }
 
-    const btn = document.createElement('button');
-    btn.textContent = 'Pick file';
-    btn.style.marginTop = '4px';
-    btn.onclick = () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = 'image/*,application/pdf,video/*';
-      inp.onchange = e => {
-        const f = e.target.files[0]; if (!f) return;
-        fixedAssets[i].blob = f;
-        if (!fixedAssets[i].zipName) fixedAssets[i].zipName = f.name;
-        renderFixedAssets();
-      };
-      inp.click();
-    };
-    info.appendChild(btn);
-
-    if (!a.slot) {
-      const rm = document.createElement('button');
-      rm.textContent = '✕'; rm.className = 'danger'; rm.style.marginTop = '2px';
-      rm.onclick = () => { fixedAssets.splice(i, 1); renderFixedAssets(); };
-      info.appendChild(rm);
+    async function autoLoadFixedAssets() {
+      await Promise.all(fixedAssets.filter(a => a.slot).map(async (a, i) => {
+        try {
+          const res = await fetch(a.slot, { cache: 'no-cache' });
+          if (!res.ok) return;
+          a.blob = await res.blob();
+        } catch (_) { }
+      }));
+      renderFixedAssets();
     }
 
-    slot.appendChild(info);
-    grid.appendChild(slot);
-  });
-}
-
-async function autoLoadFixedAssets() {
-  await Promise.all(fixedAssets.filter(a => a.slot).map(async (a, i) => {
-    try {
-      const res = await fetch(a.slot, { cache: 'no-cache' });
-      if (!res.ok) return;
-      a.blob = await res.blob();
-    } catch (_) {}
-  }));
-  renderFixedAssets();
-}
-
-function addFixedAsset() {
-  fixedAssets.push({ id: 'custom_' + Date.now(), label: '', slot: null, zipName: '', blob: null });
-  renderFixedAssets();
-}
-
-// ── Etsy slots ────────────────────────────────────────────────────────────────
-async function uploadEtsySlot(slot, file) {
-  const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
-  await fetch(`/products/${ep(activeProduct)}/slot/${slot}`, {
-    method: 'POST',
-    headers: { 'X-Filename': file.name, 'Content-Type': file.type },
-    body: file,
-  });
-}
-
-async function loadEtsySlots() {
-  const container = document.getElementById('etsySlots');
-  container.innerHTML = '';
-  if (!activeProduct) return;
-
-  const wrap = document.createElement('div');
-  wrap.className = 'etsy-slots';
-
-  await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
-    const serverUrl = `/products/${ep(activeProduct)}/slot/${slot}`;
-
-    let serverOk = false, mimeType = '', isGlobal = false;
-    try {
-      const res = await fetch(serverUrl, { cache: 'no-cache' });
-      serverOk = res.ok;
-      mimeType = res.headers.get('Content-Type') || '';
-    } catch (_) {}
-    if (!serverOk) {
-      try {
-        const res = await fetch(`/slot/${slot}`, { cache: 'no-cache' });
-        serverOk = res.ok;
-        mimeType = res.headers.get('Content-Type') || '';
-        isGlobal = res.ok;
-      } catch (_) {}
+    function addFixedAsset() {
+      fixedAssets.push({ id: 'custom_' + Date.now(), label: '', slot: null, zipName: '', blob: null });
+      renderFixedAssets();
     }
 
-    const div = document.createElement('div');
-    div.className = 'etsy-slot';
-    div.addEventListener('dragover',  e => { e.preventDefault(); div.style.borderColor = '#5a4a9a'; });
-    div.addEventListener('dragleave', () => { div.style.borderColor = ''; });
-    div.addEventListener('drop', async e => {
-      e.preventDefault();
-      div.style.borderColor = '';
-      const f = e.dataTransfer.files[0]; if (!f) return;
-      await uploadEtsySlot(slot, f);
-      loadEtsySlots();
-    });
-
-    // number
-    const num = document.createElement('span');
-    num.className = 'slot-num';
-    num.textContent = i + 1;
-    div.appendChild(num);
-
-    // preview
-    const previewUrl = isGlobal ? `/slot/${slot}?t=${Date.now()}` : `${serverUrl}?t=${Date.now()}`;
-    if (serverOk) {
-      let media;
-      if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
-        media = document.createElement('video');
-        media.src = previewUrl;
-        media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
-        media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
-      } else {
-        media = document.createElement('img');
-        media.className = 'slot-thumb';
-        media.src = previewUrl;
-      }
-      div.appendChild(media);
-    } else {
-      const ph = document.createElement('div');
-      ph.className = 'slot-ph'; ph.textContent = '?';
-      div.appendChild(ph);
+    // ── Etsy slots ────────────────────────────────────────────────────────────────
+    async function uploadEtsySlot(slot, file) {
+      const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
+      await fetch(`/products/${ep(activeProduct)}/slot/${slot}`, {
+        method: 'POST',
+        headers: { 'X-Filename': file.name, 'Content-Type': file.type },
+        body: file,
+      });
     }
 
-    // info + pick button
-    const info = document.createElement('div');
-    info.className = 'slot-info';
-    const statusText = !serverOk ? `— empty (${hint})` : isGlobal ? '○ placeholder (assets/' + slot + '/)' : '✓ loaded';
-    info.innerHTML = `
+    async function loadEtsySlots() {
+      const container = document.getElementById('etsySlots');
+      container.innerHTML = '';
+      if (!activeProduct) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'etsy-slots';
+
+      await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
+        const serverUrl = `/products/${ep(activeProduct)}/slot/${slot}`;
+
+        let serverOk = false, mimeType = '', isGlobal = false;
+        try {
+          const res = await fetch(serverUrl, { cache: 'no-cache' });
+          serverOk = res.ok;
+          mimeType = res.headers.get('Content-Type') || '';
+        } catch (_) { }
+        if (!serverOk) {
+          try {
+            const res = await fetch(`/slot/${slot}`, { cache: 'no-cache' });
+            serverOk = res.ok;
+            mimeType = res.headers.get('Content-Type') || '';
+            isGlobal = res.ok;
+          } catch (_) { }
+        }
+
+        const div = document.createElement('div');
+        div.className = 'etsy-slot';
+        div.addEventListener('dragover', e => { e.preventDefault(); div.style.borderColor = '#5a4a9a'; });
+        div.addEventListener('dragleave', () => { div.style.borderColor = ''; });
+        div.addEventListener('drop', async e => {
+          e.preventDefault();
+          div.style.borderColor = '';
+          const f = e.dataTransfer.files[0]; if (!f) return;
+          await uploadEtsySlot(slot, f);
+          loadEtsySlots();
+        });
+
+        // number
+        const num = document.createElement('span');
+        num.className = 'slot-num';
+        num.textContent = i + 1;
+        div.appendChild(num);
+
+        // preview
+        const previewUrl = isGlobal ? `/slot/${slot}?t=${Date.now()}` : `${serverUrl}?t=${Date.now()}`;
+        if (serverOk) {
+          let media;
+          if (mimeType.startsWith('video/') || mimeType.includes('gif')) {
+            media = document.createElement('video');
+            media.src = previewUrl;
+            media.autoplay = true; media.loop = true; media.muted = true; media.playsInline = true;
+            media.style.cssText = 'width:80px;height:56px;object-fit:contain;background:#0a0a0a;flex-shrink:0';
+          } else {
+            media = document.createElement('img');
+            media.className = 'slot-thumb';
+            media.src = previewUrl;
+          }
+          div.appendChild(media);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'slot-ph'; ph.textContent = '?';
+          div.appendChild(ph);
+        }
+
+        // info + pick button
+        const info = document.createElement('div');
+        info.className = 'slot-info';
+        const statusText = !serverOk ? `— empty (${hint})` : isGlobal ? '○ placeholder (assets/' + slot + '/)' : '✓ loaded';
+        info.innerHTML = `
       <div class="slot-label">${label}</div>
       <div class="slot-path">products/${activeProduct}/assets/${slot}/</div>
       <div class="${serverOk ? 'ok' : 'miss'}">${statusText}</div>`;
 
-    const pickBtn = document.createElement('button');
-    pickBtn.textContent = serverOk && !isGlobal ? 'Replace' : 'Pick file';
-    pickBtn.style.marginTop = '4px';
-    pickBtn.onclick = () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = 'image/*,video/*';
-      inp.onchange = async e => {
-        const f = e.target.files[0]; if (!f) return;
-        await uploadEtsySlot(slot, f);
-        loadEtsySlots();
+        const pickBtn = document.createElement('button');
+        pickBtn.textContent = serverOk && !isGlobal ? 'Replace' : 'Pick file';
+        pickBtn.style.marginTop = '4px';
+        pickBtn.onclick = () => {
+          const inp = document.createElement('input');
+          inp.type = 'file'; inp.accept = 'image/*,video/*';
+          inp.onchange = async e => {
+            const f = e.target.files[0]; if (!f) return;
+            await uploadEtsySlot(slot, f);
+            loadEtsySlots();
+          };
+          inp.click();
+        };
+        info.appendChild(pickBtn);
+        div.appendChild(info);
+
+        wrap.appendChild(div);
+      }));
+
+      container.appendChild(wrap);
+    }
+
+    // ── Data helpers ──────────────────────────────────────────────────────────────
+    function gatherData() {
+      const stateCounts = {};
+      files.filter(f => !f.isProp).forEach(f => {
+        stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
+      });
+      return {
+        name: document.getElementById('productName').value.trim() || 'YourProduct',
+        shopName: CONFIG?.shopName || 'MossarellaStudio',
+        contact: document.getElementById('contact').value.trim() || 'your contact here',
+        description: document.getElementById('description').value.trim(),
+        notes: document.getElementById('extraNotes').value.trim(),
+        compatibility: CONFIG?.compatibility || ['Veadotube', 'PNGTuber+', 'OBS (as browser source)'],
+        etsyTags: CONFIG?.etsyTags || 'pngtuber, vtuber, mascot, stream asset, veadotube',
+        states: Object.entries(stateCounts).map(([label, count]) => ({ label, count })),
+        props: files.filter(f => f.isProp).map(f => f.propName || f.file.name),
       };
-      inp.click();
-    };
-    info.appendChild(pickBtn);
-    div.appendChild(info);
+    }
 
-    wrap.appendChild(div);
-  }));
+    function fillTemplate(template, d, style = 'readme') {
+      if (!template) return '(template not loaded — check templates/ folder)';
+      const bullet = style === 'etsy' ? '✦' : ' -';
+      const statesText = d.states.map(s =>
+        style === 'etsy'
+          ? `✦ ${s.label} — ${s.count} expressions`
+          : `  - ${s.label} (${s.count} expression${s.count !== 1 ? 's' : ''})`
+      ).join('\n');
+      const propsText = d.props.length
+        ? (style === 'etsy'
+          ? `✦ Props: ${d.props.join(', ')}`
+          : `PROPS / EXTRAS:\n${d.props.map(p => `  - ${p}`).join('\n')}`)
+        : '';
+      const compatText = d.compatibility.map(c => `${bullet} ${c}`).join('\n');
 
-  container.appendChild(wrap);
-}
+      return template
+        .replace(/{{name}}/g, d.name)
+        .replace(/{{shopName}}/g, d.shopName)
+        .replace(/{{contact}}/g, d.contact)
+        .replace(/{{description}}/g, d.description)
+        .replace(/{{notes}}/g, d.notes)
+        .replace(/{{compatibility}}/g, compatText)
+        .replace(/{{states}}/g, statesText)
+        .replace(/{{props}}/g, propsText)
+        .replace(/{{etsyTags}}/g, d.etsyTags);
+    }
 
-// ── Data helpers ──────────────────────────────────────────────────────────────
-function gatherData() {
-  const stateCounts = {};
-  files.filter(f => !f.isProp).forEach(f => {
-    stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
-  });
-  return {
-    name:          document.getElementById('productName').value.trim() || 'YourProduct',
-    shopName:      CONFIG?.shopName      || 'MossarellaStudio',
-    contact:       document.getElementById('contact').value.trim()     || 'your contact here',
-    description:   document.getElementById('description').value.trim(),
-    notes:         document.getElementById('extraNotes').value.trim(),
-    compatibility: CONFIG?.compatibility || ['Veadotube', 'PNGTuber+', 'OBS (as browser source)'],
-    etsyTags:      CONFIG?.etsyTags      || 'pngtuber, vtuber, mascot, stream asset, veadotube',
-    states:        Object.entries(stateCounts).map(([label, count]) => ({ label, count })),
-    props:         files.filter(f => f.isProp).map(f => f.propName || f.file.name),
-  };
-}
+    function buildReadme() { return fillTemplate(readmeTemplate, gatherData(), 'readme'); }
 
-function fillTemplate(template, d, style = 'readme') {
-  if (!template) return '(template not loaded — check templates/ folder)';
-  const bullet     = style === 'etsy' ? '✦' : ' -';
-  const statesText = d.states.map(s =>
-    style === 'etsy'
-      ? `✦ ${s.label} — ${s.count} expressions`
-      : `  - ${s.label} (${s.count} expression${s.count !== 1 ? 's' : ''})`
-  ).join('\n');
-  const propsText = d.props.length
-    ? (style === 'etsy'
-        ? `✦ Props: ${d.props.join(', ')}`
-        : `PROPS / EXTRAS:\n${d.props.map(p => `  - ${p}`).join('\n')}`)
-    : '';
-  const compatText = d.compatibility.map(c => `${bullet} ${c}`).join('\n');
+    // ── Preview ───────────────────────────────────────────────────────────────────
+    function buildPreview() {
+      const name = document.getElementById('productName').value.trim() || 'YourProduct';
+      const grouped = {};
+      files.forEach(f => {
+        const folder = f.isProp ? 'Extras' : f.state;
+        (grouped[folder] = grouped[folder] || []).push(f);
+      });
 
-  return template
-    .replace(/{{name}}/g,          d.name)
-    .replace(/{{shopName}}/g,      d.shopName)
-    .replace(/{{contact}}/g,       d.contact)
-    .replace(/{{description}}/g,   d.description)
-    .replace(/{{notes}}/g,         d.notes)
-    .replace(/{{compatibility}}/g, compatText)
-    .replace(/{{states}}/g,        statesText)
-    .replace(/{{props}}/g,         propsText)
-    .replace(/{{etsyTags}}/g,      d.etsyTags);
-}
+      let tree = `${name}Pack.zip\n`;
+      tree += `├── Artwork/\n`;
+      Object.entries(grouped).forEach(([folder, items]) => {
+        tree += `│   ├── ${folder}/\n`;
+        items.forEach(f => { tree += `│   │   ├── ${resolveFilename(name, f)}\n`; });
+      });
+      tree += `├── README.txt\n`;
+      const loaded = fixedAssets.filter(a => a.blob && a.zipName);
+      loaded.forEach((a, idx) => {
+        tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
+      });
+      tree += `\n${'─'.repeat(38)}\nREADME.txt:\n${'─'.repeat(38)}\n`;
+      tree += buildReadme();
+      document.getElementById('previewBox').textContent = tree;
+    }
 
-function buildReadme() { return fillTemplate(readmeTemplate, gatherData(), 'readme'); }
+    function resolveFilename(productName, f) {
+      const ext = f.file.name.split('.').pop();
+      if (f.isProp) return `${productName}_${cap(f.propName || 'Prop')}.${ext}`;
+      return `${productName}_${f.state}_${f.expression}.${ext}`;
+    }
 
-// ── Preview ───────────────────────────────────────────────────────────────────
-function buildPreview() {
-  const name = document.getElementById('productName').value.trim() || 'YourProduct';
-  const grouped = {};
-  files.forEach(f => {
-    const folder = f.isProp ? 'Extras' : f.state;
-    (grouped[folder] = grouped[folder] || []).push(f);
-  });
+    function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-  let tree = `${name}Pack.zip\n`;
-  tree += `├── Artwork/\n`;
-  Object.entries(grouped).forEach(([folder, items]) => {
-    tree += `│   ├── ${folder}/\n`;
-    items.forEach(f => { tree += `│   │   ├── ${resolveFilename(name, f)}\n`; });
-  });
-  tree += `├── README.txt\n`;
-  const loaded = fixedAssets.filter(a => a.blob && a.zipName);
-  loaded.forEach((a, idx) => {
-    tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
-  });
-  tree += `\n${'─'.repeat(38)}\nREADME.txt:\n${'─'.repeat(38)}\n`;
-  tree += buildReadme();
-  document.getElementById('previewBox').textContent = tree;
-}
+    // ── ZIP ───────────────────────────────────────────────────────────────────────
+    async function buildZip() {
+      const name = document.getElementById('productName').value.trim() || 'YourProduct';
+      const zip = new JSZip();
 
-function resolveFilename(productName, f) {
-  const ext = f.file.name.split('.').pop();
-  if (f.isProp) return `${productName}_${cap(f.propName || 'Prop')}.${ext}`;
-  return `${productName}_${f.state}_${f.expression}.${ext}`;
-}
+      for (const f of files) {
+        const folder = f.isProp ? 'Extras' : f.state;
+        zip.folder('Artwork').folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
+      }
+      zip.file('README.txt', buildReadme());
+      for (const a of fixedAssets) {
+        if (a.blob && a.zipName) zip.file(a.zipName, await a.blob.arrayBuffer());
+      }
 
-function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${name}Pack.zip`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
 
-// ── ZIP ───────────────────────────────────────────────────────────────────────
-async function buildZip() {
-  const name = document.getElementById('productName').value.trim() || 'YourProduct';
-  const zip  = new JSZip();
-
-  for (const f of files) {
-    const folder = f.isProp ? 'Extras' : f.state;
-    zip.folder('Artwork').folder(folder).file(resolveFilename(name, f), await f.file.arrayBuffer());
-  }
-  zip.file('README.txt', buildReadme());
-  for (const a of fixedAssets) {
-    if (a.blob && a.zipName) zip.file(a.zipName, await a.blob.arrayBuffer());
-  }
-
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `${name}Pack.zip`; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
-
-// ── Etsy description ──────────────────────────────────────────────────────────
-function copyEtsyDescription() {
-  const text = fillTemplate(etsyTemplate, gatherData(), 'etsy');
-  navigator.clipboard.writeText(text).then(() => flash('copyMsg'));
-}
-</script>
+    // ── Etsy description ──────────────────────────────────────────────────────────
+    function copyEtsyDescription() {
+      const text = fillTemplate(etsyTemplate, gatherData(), 'etsy');
+      navigator.clipboard.writeText(text).then(() => flash('copyMsg'));
+    }
+  </script>
 </body>
+
 </html>
