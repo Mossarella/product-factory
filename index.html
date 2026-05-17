@@ -160,21 +160,25 @@
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
 const EXPRESSIONS = ['EOMO', 'EOMC', 'ECMO', 'ECMC'];
-const EXPR_LABELS = {
-  EOMO: 'Eyes Open Mouth Open',
-  EOMC: 'Eyes Open Mouth Closed',
-  ECMO: 'Eyes Closed Mouth Open',
-  ECMC: 'Eyes Closed Mouth Closed',
-};
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+let readmeTemplate = null;
+let etsyTemplate   = null;
+
+window.addEventListener('DOMContentLoaded', async () => {
   if (typeof CONFIG !== 'undefined') {
     if (CONFIG.contact)      document.getElementById('contact').value = CONFIG.contact;
     if (CONFIG.description)  document.getElementById('description').value = CONFIG.description;
     if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
   }
   loadThankyouFromAssets();
+
+  const [r, e] = await Promise.all([
+    fetch('/templates/readme.txt').then(r => r.text()).catch(() => null),
+    fetch('/templates/etsy.txt').then(r => r.text()).catch(() => null),
+  ]);
+  readmeTemplate = r;
+  etsyTemplate   = e;
 });
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -320,7 +324,7 @@ dropZone.addEventListener('drop', e => {
   handleFiles(e.dataTransfer.files);
 });
 
-// ── Data helpers ─────────────────────────────────────────────────────────────
+// ── Data + template fill ──────────────────────────────────────────────────────
 function gatherData() {
   const stateCounts = {};
   files.filter(f => !f.isProp).forEach(f => {
@@ -339,8 +343,34 @@ function gatherData() {
   };
 }
 
+function fillTemplate(template, d, style = 'readme') {
+  const bullet = style === 'etsy' ? '✦' : ' -';
+  const statesText = d.states.map(s =>
+    style === 'etsy'
+      ? `✦ ${s.label} — ${s.count} expressions`
+      : `  - ${s.label} (${s.count} expression${s.count !== 1 ? 's' : ''})`
+  ).join('\n');
+  const propsText = d.props.length
+    ? (style === 'etsy'
+        ? `✦ Props: ${d.props.join(', ')}`
+        : `PROPS / EXTRAS:\n${d.props.map(p => `  - ${p}`).join('\n')}`)
+    : '';
+  const compatText = d.compatibility.map(c => `${bullet} ${c}`).join('\n');
+
+  return template
+    .replace(/{{name}}/g,          d.name)
+    .replace(/{{shopName}}/g,      d.shopName)
+    .replace(/{{contact}}/g,       d.contact)
+    .replace(/{{description}}/g,   d.description)
+    .replace(/{{notes}}/g,         d.notes)
+    .replace(/{{compatibility}}/g, compatText)
+    .replace(/{{states}}/g,        statesText)
+    .replace(/{{props}}/g,         propsText)
+    .replace(/{{etsyTags}}/g,      d.etsyTags);
+}
+
 function buildReadme() {
-  return CONFIG.readmeTemplate(gatherData());
+  return fillTemplate(readmeTemplate, gatherData(), 'readme');
 }
 
 // ── Preview ──────────────────────────────────────────────────────────────────
@@ -402,7 +432,7 @@ async function buildZip() {
 
 // ── Etsy description ─────────────────────────────────────────────────────────
 function copyEtsyDescription() {
-  const text = CONFIG.etsyTemplate(gatherData());
+  const text = fillTemplate(etsyTemplate, gatherData(), 'etsy');
   navigator.clipboard.writeText(text).then(() => {
     const msg = document.getElementById('etsyCopyMsg');
     msg.style.display = 'block';

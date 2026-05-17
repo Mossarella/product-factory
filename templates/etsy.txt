@@ -1,0 +1,20 @@
+✨ {{name}} — PNGTuber Mascot Pack
+
+Bring your stream to life with this handcrafted PNGTuber mascot!
+
+WHAT'S INCLUDED:
+{{states}}
+{{props}}
+
+COMPATIBLE WITH:
+{{compatibility}}
+
+Each state includes all 4 expression variants:
+EOMO | EOMC | ECMO | ECMC
+
+FILES: High-quality PNG, transparent background, ready to import.
+
+QUESTIONS? {{contact}}
+
+─────────────────────────────────
+Tags: {{etsyTags}}
