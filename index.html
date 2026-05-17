@@ -200,6 +200,7 @@
 
 <script>
 const EXPRESSIONS  = ['EOMO', 'EOMC', 'ECMO', 'ECMC'];
+const ep = n => encodeURIComponent(n); // encode product name for URLs
 const ETSY_SLOTS   = [
   { slot: 'etsy-hero',        label: 'Hero image',              hint: 'mascot + title + compatibility' },
   { slot: 'etsy-expressions', label: 'Expressions showcase',    hint: 'all states on one image' },
@@ -312,7 +313,7 @@ async function createProduct() {
 }
 
 async function loadProduct(name) {
-  const config = await fetch(`/products/${name}/config`)
+  const config = await fetch(`/products/${ep(name)}/config`)
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!config) { alert(`Could not load ${name}`); return; }
 
@@ -332,7 +333,7 @@ async function loadProduct(name) {
   if (config.mascotFiles && config.mascotFiles.length) {
     await Promise.all(config.mascotFiles.map(async mf => {
       try {
-        const res = await fetch(`/products/${name}/file/${encodeURIComponent(mf.filename)}`);
+        const res = await fetch(`/products/${ep(name)}/file/${ep(mf.filename)}`);
         if (!res.ok) { loadFailed++; return; }
         const blob = await res.blob();
         const displayName = mf.origName || mf.filename;
@@ -349,7 +350,7 @@ async function loadProduct(name) {
   if (config.etsyFiles) {
     await Promise.all(Object.entries(config.etsyFiles).map(async ([slot, filename]) => {
       try {
-        const res = await fetch(`/products/${name}/etsy-file/${encodeURIComponent(filename)}`);
+        const res = await fetch(`/products/${ep(name)}/etsy-file/${ep(filename)}`);
         if (!res.ok) return;
         const blob = await res.blob();
         etsyPicked[slot] = new File([blob], filename, { type: blob.type });
@@ -375,7 +376,7 @@ async function saveProduct() {
     for (const f of files) {
       const ext      = f.file.name.split('.').pop().toLowerCase() || 'png';
       const filename = `${f.id}.${ext}`;
-      const up = await fetch(`/products/${activeProduct}/file`, {
+      const up = await fetch(`/products/${ep(activeProduct)}/file`, {
         method: 'POST',
         headers: { 'X-Filename': filename, 'Content-Type': f.file.type },
         body: f.file,
@@ -388,7 +389,7 @@ async function saveProduct() {
     const etsyFiles = {};
     for (const [slot, file] of Object.entries(etsyPicked)) {
       const ext = '.' + (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const up = await fetch(`/products/${activeProduct}/etsy-file`, {
+      const up = await fetch(`/products/${ep(activeProduct)}/etsy-file`, {
         method: 'POST',
         headers: { 'X-Slot': slot, 'X-Filename': file.name, 'Content-Type': file.type },
         body: file,
@@ -398,7 +399,7 @@ async function saveProduct() {
       etsyFiles[slot] = data.filename;
     }
 
-    const res = await fetch(`/products/${activeProduct}/config`, {
+    const res = await fetch(`/products/${ep(activeProduct)}/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -683,7 +684,7 @@ async function loadEtsySlots() {
   wrap.className = 'etsy-slots';
 
   await Promise.all(ETSY_SLOTS.map(async ({ slot, label, hint }, i) => {
-    const serverUrl = `/products/${activeProduct}/slot/${slot}`;
+    const serverUrl = `/products/${ep(activeProduct)}/slot/${slot}`;
     const picked    = etsyPicked[slot];
 
     let serverOk = false, mimeType = '';
