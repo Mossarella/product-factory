@@ -67,6 +67,7 @@ async function handle(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const pathname = new URL(req.url, `http://localhost:${PORT}`).pathname;
   const method   = req.method;
+  const dec      = s => decodeURIComponent(s);
 
   console.log(`${method} ${pathname}`);
 
@@ -106,7 +107,7 @@ async function handle(req, res) {
   // ── GET /products/:name/config ───────────────────────────────────────────────
   const configGetM = pathname.match(/^\/products\/([^/]+)\/config$/);
   if (method === 'GET' && configGetM) {
-    const configPath = path.join(PRODUCTS_DIR, configGetM[1], 'product.json');
+    const configPath = path.join(PRODUCTS_DIR, dec(configGetM[1]), 'product.json');
     if (!fs.existsSync(configPath)) { res.writeHead(404); res.end('Not found'); return; }
     const data = fs.readFileSync(configPath, 'utf8');
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -117,10 +118,10 @@ async function handle(req, res) {
   // ── POST /products/:name/config ──────────────────────────────────────────────
   const configPostM = pathname.match(/^\/products\/([^/]+)\/config$/);
   if (method === 'POST' && configPostM) {
-    const configPath = path.join(PRODUCTS_DIR, configPostM[1], 'product.json');
+    const configPath = path.join(PRODUCTS_DIR, dec(configPostM[1]), 'product.json');
     const body = await readBody(req);
     fs.writeFileSync(configPath, body);
-    console.log(`Saved config: ${configPostM[1]}`);
+    console.log(`Saved config: ${dec(configPostM[1])}`);
     res.writeHead(200); res.end();
     return;
   }
@@ -129,7 +130,7 @@ async function handle(req, res) {
   const fileUploadM = pathname.match(/^\/products\/([^/]+)\/file$/);
   if (method === 'POST' && fileUploadM) {
     const filename    = path.basename(req.headers['x-filename'] || 'file.png').replace(/[^\w\-. ]/g, '_');
-    const dir         = path.join(PRODUCTS_DIR, fileUploadM[1], 'mascot-files');
+    const dir         = path.join(PRODUCTS_DIR, dec(fileUploadM[1]), 'mascot-files');
     fs.mkdirSync(dir, { recursive: true });
     const buffer = await readBodyBuffer(req);
     fs.writeFileSync(path.join(dir, filename), buffer);
@@ -140,7 +141,7 @@ async function handle(req, res) {
   // ── GET /products/:name/file/:filename ────────────────────────────────────────
   const fileServeM = pathname.match(/^\/products\/([^/]+)\/file\/([^/]+)$/);
   if (method === 'GET' && fileServeM) {
-    const filePath = path.join(PRODUCTS_DIR, fileServeM[1], 'mascot-files', fileServeM[2]);
+    const filePath = path.join(PRODUCTS_DIR, dec(fileServeM[1]), 'mascot-files', dec(fileServeM[2]));
     if (!fs.existsSync(filePath)) { res.writeHead(404); res.end(); return; }
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
@@ -154,12 +155,12 @@ async function handle(req, res) {
     const slot = (req.headers['x-slot'] || '').replace(/[^\w\-]/g, '');
     const origExt = path.extname(req.headers['x-filename'] || '').toLowerCase() || '.jpg';
     if (!slot) { res.writeHead(400); res.end('Bad slot'); return; }
-    const dir  = path.join(PRODUCTS_DIR, etsyFileUploadM[1], 'etsy-files');
+    const dir  = path.join(PRODUCTS_DIR, dec(etsyFileUploadM[1]), 'etsy-files');
     fs.mkdirSync(dir, { recursive: true });
     const buffer   = await readBodyBuffer(req);
     const filename = `${slot}${origExt}`;
     fs.writeFileSync(path.join(dir, filename), buffer);
-    console.log(`Saved etsy file: ${etsyFileUploadM[1]}/${filename}`);
+    console.log(`Saved etsy file: ${dec(etsyFileUploadM[1])}/${filename}`);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ filename }));
     return;
@@ -168,7 +169,7 @@ async function handle(req, res) {
   // ── GET /products/:name/etsy-file/:filename ───────────────────────────────────
   const etsyFileServeM = pathname.match(/^\/products\/([^/]+)\/etsy-file\/([^/]+)$/);
   if (method === 'GET' && etsyFileServeM) {
-    const filePath = path.join(PRODUCTS_DIR, etsyFileServeM[1], 'etsy-files', etsyFileServeM[2]);
+    const filePath = path.join(PRODUCTS_DIR, dec(etsyFileServeM[1]), 'etsy-files', dec(etsyFileServeM[2]));
     if (!fs.existsSync(filePath)) { res.writeHead(404); res.end(); return; }
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
@@ -179,7 +180,7 @@ async function handle(req, res) {
   // ── GET /products/:name/slot/:slot ───────────────────────────────────────────
   const productSlotM = pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
   if (method === 'GET' && productSlotM) {
-    serveSlot(path.join(PRODUCTS_DIR, productSlotM[1], 'assets', productSlotM[2]), res);
+    serveSlot(path.join(PRODUCTS_DIR, dec(productSlotM[1]), 'assets', dec(productSlotM[2])), res);
     return;
   }
 
