@@ -63,8 +63,9 @@
     .add-state-row input { flex: 1; }
     #thankYouPreview { width: 80px; height: 80px; object-fit: contain; background: #222; display: none; }
     .gap { margin-top: 12px; }
-    .ty-status { font-size: 0.8rem; color: #8aba8a; margin-top: 6px; display: none; }
-    .ty-clear { font-size: 0.75rem; color: #aa5555; cursor: pointer; margin-left: 8px; }
+    .ty-status { font-size: 0.8rem; margin-top: 6px; }
+    .ty-ok   { color: #8aba8a; }
+    .ty-miss { color: #c8a060; }
   </style>
 </head>
 <body>
@@ -116,15 +117,9 @@
 <!-- STEP 4: THANKYOU -->
 <section id="s-thankyou">
   <h2>4. THANKYOU.png</h2>
-  <p class="section-note">Your hand-drawn thank you card. Saved in browser — upload once, remembered forever.</p>
+  <p class="section-note">Drop your file at <code>assets/thankyou.png</code> — the app loads it automatically.</p>
   <div class="row" style="align-items:center">
-    <div>
-      <button onclick="document.getElementById('tyInput').click()">Choose THANKYOU.png</button>
-      <input type="file" id="tyInput" accept="image/*" style="display:none" onchange="handleThankyou(this.files[0])" />
-      <div class="ty-status" id="tyStatus">
-        Loaded from memory <span class="ty-clear" onclick="clearThankyou()">✕ clear</span>
-      </div>
-    </div>
+    <div id="tyStatus" class="ty-status"></div>
     <img id="thankYouPreview" />
   </div>
 </section>
@@ -169,23 +164,20 @@ const EXPR_LABELS = {
   ECMO: 'Eyes Closed Mouth Open',
   ECMC: 'Eyes Closed Mouth Closed',
 };
-const LS_THANKYOU = 'mossa_thankyou_b64';
 
-// ── Boot: apply config.js values ────────────────────────────────────────────
+// ── Boot ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  if (typeof CONFIG === 'undefined') {
-    console.warn('config.js not loaded — using empty defaults');
-    return;
+  if (typeof CONFIG !== 'undefined') {
+    if (CONFIG.contact)      document.getElementById('contact').value = CONFIG.contact;
+    if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
   }
-  if (CONFIG.contact)      document.getElementById('contact').value = CONFIG.contact;
-  if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
-  restoreThankyou();
+  loadThankyouFromAssets();
 });
 
 // ── State ──────────────────────────────────────────────────────────────────
 let states = ['Neutral'];
 let files = [];
-let thankyouDataUrl = null; // base64 stored in localStorage
+let thankyouBlob = null; // loaded from assets/thankyou.png
 
 // ── State management ────────────────────────────────────────────────────────
 function addState() {
@@ -223,39 +215,24 @@ function handleFiles(fileList) {
   renderAllFileRows();
 }
 
-// ── THANKYOU persistence ─────────────────────────────────────────────────────
-function handleThankyou(f) {
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    thankyouDataUrl = e.target.result;
-    try { localStorage.setItem(LS_THANKYOU, thankyouDataUrl); } catch (_) {}
-    showThankyouPreview();
-  };
-  reader.readAsDataURL(f);
-}
-
-function restoreThankyou() {
+// ── THANKYOU from assets/ ────────────────────────────────────────────────────
+async function loadThankyouFromAssets() {
+  const status = document.getElementById('tyStatus');
+  const img    = document.getElementById('thankYouPreview');
   try {
-    const saved = localStorage.getItem(LS_THANKYOU);
-    if (saved) { thankyouDataUrl = saved; showThankyouPreview(); }
-  } catch (_) {}
-}
-
-function clearThankyou() {
-  thankyouDataUrl = null;
-  try { localStorage.removeItem(LS_THANKYOU); } catch (_) {}
-  const img = document.getElementById('thankYouPreview');
-  img.src = '';
-  img.style.display = 'none';
-  document.getElementById('tyStatus').style.display = 'none';
-}
-
-function showThankyouPreview() {
-  const img = document.getElementById('thankYouPreview');
-  img.src = thankyouDataUrl;
-  img.style.display = 'block';
-  document.getElementById('tyStatus').style.display = 'block';
+    const res = await fetch('./assets/thankyou.png', { cache: 'no-cache' });
+    if (!res.ok) throw new Error('not found');
+    thankyouBlob = await res.blob();
+    img.src = URL.createObjectURL(thankyouBlob);
+    img.style.display = 'block';
+    status.className = 'ty-status ty-ok';
+    status.textContent = '✓ assets/thankyou.png loaded';
+  } catch (_) {
+    thankyouBlob = null;
+    img.style.display = 'none';
+    status.className = 'ty-status ty-miss';
+    status.textContent = '— no assets/thankyou.png found (will be skipped in ZIP)';
+  }
 }
 
 // ── File rows ────────────────────────────────────────────────────────────────
@@ -406,7 +383,7 @@ function buildPreview() {
     items.forEach(f => { tree += `│   ├── ${resolveFilename(name, f)}\n`; });
   });
   tree += `├── README.txt\n`;
-  if (thankyouDataUrl) tree += `└── THANKYOU.png\n`;
+  if (thankyouBlob) tree += `└── THANKYOU.png\n`;
   tree += `\n${'─'.repeat(40)}\nREADME.txt preview:\n${'─'.repeat(40)}\n`;
   tree += buildReadme();
   document.getElementById('previewBox').textContent = tree;
@@ -434,10 +411,8 @@ async function buildZip() {
 
   zip.file('README.txt', buildReadme());
 
-  if (thankyouDataUrl) {
-    // convert base64 data URL to binary
-    const base64 = thankyouDataUrl.split(',')[1];
-    zip.file('THANKYOU.png', base64, { base64: true });
+  if (thankyouBlob) {
+    zip.file('THANKYOU.png', await thankyouBlob.arrayBuffer());
   }
 
   const blob = await zip.generateAsync({ type: 'blob' });
