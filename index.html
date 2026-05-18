@@ -515,10 +515,14 @@
     <div class="product-actions" style="display:flex;margin-top:10px">
       <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save product</button>
       <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
+      <button onclick="toggleZipPreview()" id="btnZipPreview">Preview ZIP</button>
       <button onclick="showRenameRow()" id="btnRename" disabled style="margin-left:auto">Rename</button>
       <span class="flash" id="saveMsg">Saved!</span>
     </div>
     <div class="active-label" id="activeLabel"></div>
+    <div id="zipPreviewPanel" style="display:none;margin-top:10px">
+      <pre id="zipPreviewBox" style="background:#0a0a0a;border:1px solid #222;padding:10px;font-size:0.76rem;color:#777;overflow-x:auto;white-space:pre;line-height:1.5"></pre>
+    </div>
   </section>
 
   <!-- 1. PRODUCT INFO -->
@@ -613,6 +617,7 @@
     let states = ['Neutral'];
     let files = [];
     let selectedIds = new Set();
+    let groupByState = false;
     let readmeTemplate = null;
     let etsyTemplate = null;
 
@@ -743,6 +748,9 @@
       // restore mascot files
       files = [];
       selectedIds.clear();
+      groupByState = false;
+      document.getElementById('zipPreviewPanel').style.display = 'none';
+      document.getElementById('btnZipPreview').textContent = 'Preview ZIP';
       let loadFailed = 0;
       if (config.mascotFiles && config.mascotFiles.length) {
         await Promise.all(config.mascotFiles.map(async mf => {
@@ -921,12 +929,12 @@
       const c = document.getElementById('fileList');
       c.innerHTML = '';
 
-      // ── Select-all header row ──────────────────────────────────────────────────
+      // ── Select-all / group header ──────────────────────────────────────────────
       if (files.length > 0) {
         const header = document.createElement('div');
         header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 7px;font-size:0.78rem;color:#555;border-bottom:1px solid #1e1e1e;margin-bottom:2px';
 
-        const allChecked = files.length > 0 && files.every(f => selectedIds.has(f.id));
+        const allChecked = files.every(f => selectedIds.has(f.id));
         const headerCb = document.createElement('input');
         headerCb.type = 'checkbox';
         headerCb.checked = allChecked;
@@ -939,6 +947,13 @@
         };
         header.appendChild(headerCb);
         header.appendChild(Object.assign(document.createElement('span'), { textContent: 'Select all' }));
+
+        const groupBtn = document.createElement('button');
+        groupBtn.textContent = groupByState ? 'Ungroup' : 'Group by state';
+        groupBtn.style.cssText = 'margin-left:auto;font-size:0.72rem;padding:2px 8px';
+        groupBtn.onclick = () => { groupByState = !groupByState; renderAllFileRows(); };
+        header.appendChild(groupBtn);
+
         c.appendChild(header);
       }
 
@@ -986,7 +1001,24 @@
         c.appendChild(toolbar);
       }
 
-      files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
+      if (groupByState && files.length > 0) {
+        // group under state headers
+        const groups = {};
+        files.forEach((f, i) => {
+          const key = f.isProp ? '— Props / Extras —' : f.state;
+          (groups[key] = groups[key] || []).push({ f, i });
+        });
+        const order = [...states, '— Props / Extras —'].filter(k => groups[k]);
+        order.forEach(key => {
+          const heading = document.createElement('div');
+          heading.style.cssText = 'padding:4px 7px;font-size:0.75rem;color:#666;background:#0f0f0f;border-top:1px solid #1e1e1e;margin-top:4px;letter-spacing:0.04em;text-transform:uppercase';
+          heading.textContent = key;
+          c.appendChild(heading);
+          groups[key].forEach(({ f, i }) => c.appendChild(buildFileRow(f, i)));
+        });
+      } else {
+        files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
+      }
       renderChecklist();
     }
 
@@ -1445,6 +1477,55 @@
     function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
     // ── ZIP ───────────────────────────────────────────────────────────────────────
+    function buildZipTree() {
+      const name = document.getElementById('productName').value.trim() || 'YourProduct';
+      const grouped = {};
+      files.forEach(f => {
+        const folder = f.isProp
+          ? (f.propFrame ? `Extras/${resolvePropFolder(f)}` : 'Extras')
+          : f.state;
+        (grouped[folder] = grouped[folder] || []).push(f);
+      });
+
+      const folderKeys = Object.keys(grouped);
+      const loaded = fixedAssets.filter(a => a.blob && a.zipName);
+      const totalTopItems = 1 + (folderKeys.length ? 1 : 0) + 1 + loaded.length; // README + Artwork + fixed
+
+      let tree = `${name}Pack.zip\n`;
+      if (folderKeys.length) {
+        tree += `├── Artwork/\n`;
+        folderKeys.forEach((folder, fi) => {
+          const isLastFolder = fi === folderKeys.length - 1;
+          const fc = isLastFolder ? '└' : '├';
+          tree += `│   ${fc}── ${folder}/\n`;
+          grouped[folder].forEach((f, ii) => {
+            const isLastFile = ii === grouped[folder].length - 1;
+            const ic = isLastFolder ? ' ' : '│';
+            const fc2 = isLastFile ? '└' : '├';
+            tree += `│   ${ic}   ${fc2}── ${resolveFilename(name, f)}\n`;
+          });
+        });
+      }
+      tree += `├── README.txt\n`;
+      loaded.forEach((a, idx) => {
+        tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
+      });
+      return tree;
+    }
+
+    function toggleZipPreview() {
+      const panel = document.getElementById('zipPreviewPanel');
+      const btn = document.getElementById('btnZipPreview');
+      if (panel.style.display === 'none') {
+        document.getElementById('zipPreviewBox').textContent = buildZipTree();
+        panel.style.display = 'block';
+        btn.textContent = 'Hide ZIP Preview';
+      } else {
+        panel.style.display = 'none';
+        btn.textContent = 'Preview ZIP';
+      }
+    }
+
     async function buildZip() {
       if (!validateFiles()) return;
       const name = document.getElementById('productName').value.trim() || 'YourProduct';
