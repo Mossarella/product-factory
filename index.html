@@ -488,17 +488,6 @@
     }
 
     /* search */
-    #productSearch {
-      width: 100%;
-      padding: 6px 9px;
-      background: #151515;
-      border: 1px solid #2e2e2e;
-      color: #e0e0e0;
-      font-family: monospace;
-      font-size: 0.85rem;
-      margin-bottom: 6px;
-    }
-    #productSearch:focus { outline: none; border-color: #5a4a9a; }
 
     /* completion dot */
     .dot-done { color: #6a9a6a; margin-right: 4px; }
@@ -522,7 +511,6 @@
   <!-- PRODUCT -->
   <section id="s-product">
     <h2>Product</h2>
-    <input type="text" id="productSearch" placeholder="Search products…" oninput="filterProducts(this.value)" />
     <div style="display:flex;gap:8px;align-items:center">
       <select id="productSelect" onchange="onProductSelectChange(this.value)" style="flex:1">
         <option value="">— select a product —</option>
@@ -718,31 +706,21 @@
 
     async function refreshProductList(selectAfter = null) {
       allProducts = await fetch('/products').then(r => r.json()).catch(() => []);
-      const prev = selectAfter || (activeProduct || document.getElementById('productSelect').value);
-      renderProductOptions(document.getElementById('productSearch').value);
-      if (prev && allProducts.find(p => p.name === prev)) {
-        document.getElementById('productSelect').value = prev;
-      }
+      const toSelect = selectAfter || activeProduct;
+      renderProductOptions(toSelect);
     }
 
-    function renderProductOptions(filter = '') {
+    function renderProductOptions(selectName) {
       const sel = document.getElementById('productSelect');
-      const current = sel.value || activeProduct;
-      const q = filter.toLowerCase();
+      const current = selectName !== undefined ? selectName : (activeProduct || sel.value);
       sel.innerHTML = '<option value="">— select a product —</option>';
-      allProducts
-        .filter(p => p.name.toLowerCase().includes(q))
-        .forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.name;
-          opt.textContent = (p.complete ? '✓ ' : '○ ') + p.name + (p.createdAt ? `  · ${p.createdAt}` : '');
-          if (p.name === current) opt.selected = true;
-          sel.appendChild(opt);
-        });
-    }
-
-    function filterProducts(q) {
-      renderProductOptions(q);
+      allProducts.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = (p.complete ? '✓ ' : '○ ') + p.name + (p.createdAt ? `  · ${p.createdAt}` : '');
+        if (p.name === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
     }
 
     function onProductSelectChange(val) {
@@ -890,7 +868,7 @@
         // update local list so dot reflects immediately
         const entry = allProducts.find(p => p.name === activeProduct);
         if (entry) entry.complete = complete;
-        renderProductOptions(document.getElementById('productSearch').value);
+        renderProductOptions(activeProduct);
         flash('saveMsg');
         markClean();
       } catch (e) {
