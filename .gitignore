@@ -1,0 +1,10 @@
+# Product catalog — local only, not shared via git
+products/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+node_modules/
