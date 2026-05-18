@@ -202,6 +202,36 @@
       font-size: 0.72rem;
     }
 
+    .file-item.selected {
+      border-color: #3a5a8a;
+      background: #111a22;
+    }
+
+    .file-item input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: #5a9ade;
+    }
+
+    #bulkToolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 7px 10px;
+      background: #0e1a26;
+      border: 1px solid #3a5a8a;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+    }
+
+    #bulkToolbar select {
+      flex: 1;
+      min-width: 90px;
+    }
+
     .state-tag {
       display: inline-block;
       padding: 2px 8px;
@@ -582,6 +612,7 @@
     let activeProduct = null;
     let states = ['Neutral'];
     let files = [];
+    let selectedIds = new Set();
     let readmeTemplate = null;
     let etsyTemplate = null;
 
@@ -711,6 +742,7 @@
 
       // restore mascot files
       files = [];
+      selectedIds.clear();
       let loadFailed = 0;
       if (config.mascotFiles && config.mascotFiles.length) {
         await Promise.all(config.mascotFiles.map(async mf => {
@@ -878,8 +910,56 @@
     function renderAllFileRows() {
       const c = document.getElementById('fileList');
       c.innerHTML = '';
+
+      if (selectedIds.size > 0) {
+        const toolbar = document.createElement('div');
+        toolbar.id = 'bulkToolbar';
+
+        const label = document.createElement('span');
+        label.style.color = '#8ab4de';
+        label.textContent = `${selectedIds.size} selected →`;
+        toolbar.appendChild(label);
+
+        const stateDropdown = buildSelect(['Extras (Prop)', ...states], '', val => { toolbar._bulkState = val; }, '— state —');
+        toolbar._bulkState = '';
+        toolbar.appendChild(stateDropdown);
+
+        const exprDropdown = buildSelect(EXPRESSIONS, '', val => { toolbar._bulkExpr = val; }, '— expression —');
+        toolbar._bulkExpr = '';
+        toolbar.appendChild(exprDropdown);
+
+        const applyBtn = document.createElement('button');
+        applyBtn.textContent = 'Apply';
+        applyBtn.onclick = () => applyBulkAssign(toolbar._bulkState, toolbar._bulkExpr);
+        toolbar.appendChild(applyBtn);
+
+        const deselectBtn = document.createElement('button');
+        deselectBtn.textContent = 'Deselect all';
+        deselectBtn.onclick = () => { selectedIds.clear(); renderAllFileRows(); };
+        toolbar.appendChild(deselectBtn);
+
+        c.appendChild(toolbar);
+      }
+
       files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
       renderChecklist();
+    }
+
+    function applyBulkAssign(bulkState, bulkExpr) {
+      files.forEach((f, i) => {
+        if (!selectedIds.has(f.id)) return;
+        if (bulkState === 'Extras (Prop)') {
+          files[i].isProp = true;
+        } else if (bulkState) {
+          files[i].isProp = false;
+          files[i].state = bulkState;
+        }
+        if (bulkExpr && !files[i].isProp) {
+          files[i].expression = bulkExpr;
+        }
+      });
+      selectedIds.clear();
+      renderAllFileRows();
     }
 
     function renderChecklist() {
@@ -910,7 +990,17 @@
 
     function buildFileRow(f, i) {
       const div = document.createElement('div');
-      div.className = 'file-item';
+      div.className = 'file-item' + (selectedIds.has(f.id) ? ' selected' : '');
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = selectedIds.has(f.id);
+      cb.onchange = () => {
+        if (cb.checked) selectedIds.add(f.id);
+        else selectedIds.delete(f.id);
+        renderAllFileRows();
+      };
+      div.appendChild(cb);
 
       const img = document.createElement('img');
       img.src = f.url;
