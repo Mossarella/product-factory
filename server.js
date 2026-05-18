@@ -208,6 +208,41 @@ async function handle(req, res) {
     return;
   }
 
+  // ── POST /products/:name/duplicate ──────────────────────────────────────────
+  const duplicateM = pathname.match(/^\/products\/([^/]+)\/duplicate$/);
+  if (method === 'POST' && duplicateM) {
+    const srcName = dec(duplicateM[1]);
+    const { newName } = JSON.parse(await readBody(req));
+    const clean = (newName || '').trim().replace(/[^\w\- ]/g, '');
+    if (!clean) { res.writeHead(400); res.end('Bad name'); return; }
+    const srcDir = path.join(PRODUCTS_DIR, srcName);
+    const dstDir = path.join(PRODUCTS_DIR, clean);
+    if (fs.existsSync(dstDir)) { res.writeHead(409); res.end('Name taken'); return; }
+    if (!fs.existsSync(srcDir)) { res.writeHead(404); res.end('Source not found'); return; }
+
+    function copyDir(src, dst) {
+      fs.mkdirSync(dst, { recursive: true });
+      for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+        const s = path.join(src, entry.name);
+        const d = path.join(dst, entry.name);
+        if (entry.isDirectory()) copyDir(s, d);
+        else fs.copyFileSync(s, d);
+      }
+    }
+    copyDir(srcDir, dstDir);
+
+    const cfgPath = path.join(dstDir, 'product.json');
+    if (fs.existsSync(cfgPath)) {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      cfg.name = clean;
+      cfg.complete = false;
+      fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+    }
+    console.log(`Duplicated: ${srcName} → ${clean}`);
+    res.writeHead(200); res.end();
+    return;
+  }
+
   // ── GET /products/:name/slot/:slot ───────────────────────────────────────────
   const productSlotM = pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
   if (method === 'GET' && productSlotM) {

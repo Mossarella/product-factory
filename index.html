@@ -207,6 +207,16 @@
       background: #111a22;
     }
 
+    .file-item.unassigned {
+      border-color: #6a4a1a;
+      background: #181008;
+    }
+
+    .file-item.selected.unassigned {
+      border-color: #3a5a8a;
+      background: #111a22;
+    }
+
     .file-item input[type="checkbox"] {
       width: 15px;
       height: 15px;
@@ -467,8 +477,8 @@
     .dot-done { color: #6a9a6a; margin-right: 4px; }
     .dot-wip  { color: #444;    margin-right: 4px; }
 
-    /* rename */
-    #renameRow { display:none; margin-top:6px; }
+    /* rename / duplicate */
+    #renameRow, #duplicateRow { display:none; margin-top:6px; }
 
     /* etsy desc preview */
     #etsyDescPreview {
@@ -512,11 +522,19 @@
         <button onclick="document.getElementById('renameRow').style.display='none'">Cancel</button>
       </div>
     </div>
+    <div id="duplicateRow">
+      <div class="inline">
+        <input type="text" id="duplicateInput" placeholder="New product name" />
+        <button class="primary" onclick="confirmDuplicate()">Duplicate</button>
+        <button onclick="document.getElementById('duplicateRow').style.display='none'">Cancel</button>
+      </div>
+    </div>
     <div class="product-actions" style="display:flex;margin-top:10px">
       <button class="save" onclick="saveProduct()" id="btnSave" disabled title="Select a product first">Save product</button>
       <button class="primary" onclick="buildZip()">⬇ Download ZIP</button>
       <button onclick="toggleZipPreview()" id="btnZipPreview">Preview ZIP</button>
       <button onclick="showRenameRow()" id="btnRename" disabled style="margin-left:auto">Rename</button>
+      <button onclick="showDuplicateRow()" id="btnDuplicate" disabled>Duplicate</button>
       <span class="flash" id="saveMsg">Saved!</span>
     </div>
     <div class="active-label" id="activeLabel"></div>
@@ -776,6 +794,7 @@
       document.getElementById('activeLabel').textContent = name ? `Active: products/${name}/` : '';
       document.getElementById('btnSave').disabled = !name;
       document.getElementById('btnRename').disabled = !name;
+      document.getElementById('btnDuplicate').disabled = !name;
     }
 
     function validateFiles() {
@@ -862,6 +881,31 @@
       document.getElementById('renameRow').style.display = 'none';
       const old = activeProduct;
       activeProduct = null;
+      await refreshProductList(newName);
+      document.getElementById('productSelect').value = newName;
+      await loadProduct(newName);
+    }
+
+    function showDuplicateRow() {
+      document.getElementById('renameRow').style.display = 'none';
+      const row = document.getElementById('duplicateRow');
+      document.getElementById('duplicateInput').value = activeProduct + ' copy';
+      row.style.display = 'block';
+      const inp = document.getElementById('duplicateInput');
+      inp.focus();
+      inp.select();
+    }
+
+    async function confirmDuplicate() {
+      const newName = document.getElementById('duplicateInput').value.trim().replace(/[^\w\- ]/g, '');
+      if (!newName || newName === activeProduct) { document.getElementById('duplicateRow').style.display = 'none'; return; }
+      const res = await fetch(`/products/${ep(activeProduct)}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newName }),
+      });
+      if (!res.ok) { alert('Duplicate failed: ' + await res.text()); return; }
+      document.getElementById('duplicateRow').style.display = 'none';
       await refreshProductList(newName);
       document.getElementById('productSelect').value = newName;
       await loadProduct(newName);
@@ -1083,8 +1127,9 @@
     }
 
     function buildFileRow(f, i) {
+      const unassigned = !f.isProp && !f.expression;
       const div = document.createElement('div');
-      div.className = 'file-item' + (selectedIds.has(f.id) ? ' selected' : '');
+      div.className = 'file-item' + (selectedIds.has(f.id) ? ' selected' : '') + (unassigned ? ' unassigned' : '');
 
       const cb = document.createElement('input');
       cb.type = 'checkbox';
