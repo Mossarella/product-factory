@@ -585,17 +585,17 @@
     <div class="row">
       <div>
         <label>Product Name</label>
-        <input type="text" id="productName" placeholder="e.g. BunnyMascot" />
+        <input type="text" id="productName" placeholder="e.g. BunnyMascot" oninput="markDirty()" />
       </div>
       <div>
         <label>Contact / Shop</label>
-        <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" />
+        <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" oninput="markDirty()" />
       </div>
     </div>
     <label>Description</label>
-    <textarea id="description" placeholder="A handcrafted PNGTuber mascot made with love for your stream."></textarea>
+    <textarea id="description" placeholder="A handcrafted PNGTuber mascot made with love for your stream." oninput="markDirty()"></textarea>
     <label>Extra README notes</label>
-    <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit."></textarea>
+    <textarea id="extraNotes" placeholder="e.g. Do not redistribute. Commercial use allowed with credit." oninput="markDirty()"></textarea>
   </section>
 
   <!-- 2. STATES -->
@@ -674,6 +674,20 @@
     let selectedIds = new Set();
     let groupByState = false;
     let fileStateFilter = null; // null = show all
+    let dirty = false;
+
+    function markDirty() {
+      if (dirty) return;
+      dirty = true;
+      const btn = document.getElementById('btnSave');
+      if (btn) btn.textContent = 'Save product •';
+    }
+
+    function markClean() {
+      dirty = false;
+      const btn = document.getElementById('btnSave');
+      if (btn) btn.textContent = 'Save product';
+    }
     let readmeTemplate = null;
     let etsyTemplate = null;
 
@@ -805,6 +819,7 @@
       files = [];
       selectedIds.clear();
       groupByState = false;
+      markClean();
       fileStateFilter = null;
       document.getElementById('zipPreviewPanel').style.display = 'none';
       document.getElementById('btnZipPreview').textContent = 'Preview ZIP';
@@ -888,6 +903,7 @@
         if (entry) entry.complete = complete;
         renderProductOptions(document.getElementById('productSearch').value);
         flash('saveMsg');
+        markClean();
       } catch (e) {
         alert(`Save failed: ${e.message}`);
       }
@@ -969,6 +985,7 @@
       const cap = val.charAt(0).toUpperCase() + val.slice(1);
       if (!states.includes(cap)) {
         states.push(cap);
+        markDirty();
         renderStateTags();
         renderAllFileRows();
       }
@@ -979,6 +996,7 @@
       if (s === 'Neutral') return;
       states = states.filter(x => x !== s);
       files.forEach(f => { if (f.state === s) f.state = 'Neutral'; });
+      markDirty();
       renderStateTags();
       renderAllFileRows();
     }
@@ -988,6 +1006,7 @@
       const newIdx = idx + dir;
       if (newIdx < 1 || newIdx >= states.length) return; // 0 = Neutral, immovable
       [states[idx], states[newIdx]] = [states[newIdx], states[idx]];
+      markDirty();
       renderStateTags();
       renderAllFileRows();
     }
@@ -1042,12 +1061,14 @@
       Array.from(fileList).forEach(f => {
         files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
       });
+      markDirty();
       renderAllFileRows();
     }
 
     function removeFile(idx) {
       URL.revokeObjectURL(files[idx].url);
       files.splice(idx, 1);
+      markDirty();
       renderAllFileRows();
     }
 
@@ -1115,6 +1136,7 @@
             return true;
           });
           selectedIds.clear();
+          markDirty();
           renderAllFileRows();
         };
         toolbar.appendChild(deleteSelBtn);
@@ -1185,6 +1207,7 @@
         }
       });
       selectedIds.clear();
+      markDirty();
       renderAllFileRows();
     }
 
@@ -1261,6 +1284,7 @@
         val => {
           files[i].isProp = val === 'Extras (Prop)';
           if (!files[i].isProp) files[i].state = val;
+          markDirty();
           renderAllFileRows();
         }
       ));
@@ -1268,6 +1292,7 @@
       if (!f.isProp) {
         div.appendChild(buildSelect(EXPRESSIONS, f.expression, val => {
           files[i].expression = val;
+          markDirty();
           renderChecklist();
         }, '— expression —'));
       } else {
@@ -1281,6 +1306,7 @@
           const c = v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
           e.target.value = c;
           files[i].propName = c;
+          markDirty();
         };
         div.appendChild(propInp);
 
@@ -1290,7 +1316,7 @@
         frameInp.placeholder = 'Frame';
         frameInp.title = 'Frame label for multi-frame props (e.g. 1, 2, Open)';
         frameInp.value = f.propFrame || '';
-        frameInp.oninput = e => { files[i].propFrame = e.target.value.trim(); };
+        frameInp.oninput = e => { files[i].propFrame = e.target.value.trim(); markDirty(); };
         div.appendChild(frameInp);
       }
 
