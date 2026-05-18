@@ -770,8 +770,18 @@
       document.getElementById('btnRename').disabled = !name;
     }
 
+    function validateFiles() {
+      const unnamedProps = files.filter(f => f.isProp && !f.propName.trim());
+      if (unnamedProps.length) {
+        alert(`⚠ ${unnamedProps.length} prop file${unnamedProps.length > 1 ? 's are' : ' is'} missing a Prop Name.\n\nPlease fill in a name before continuing.`);
+        return false;
+      }
+      return true;
+    }
+
     async function saveProduct() {
       if (!activeProduct) return;
+      if (!validateFiles()) return;
       try {
         // upload each mascot file and build a manifest
         const mascotFiles = [];
@@ -911,6 +921,28 @@
       const c = document.getElementById('fileList');
       c.innerHTML = '';
 
+      // ── Select-all header row ──────────────────────────────────────────────────
+      if (files.length > 0) {
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 7px;font-size:0.78rem;color:#555;border-bottom:1px solid #1e1e1e;margin-bottom:2px';
+
+        const allChecked = files.length > 0 && files.every(f => selectedIds.has(f.id));
+        const headerCb = document.createElement('input');
+        headerCb.type = 'checkbox';
+        headerCb.checked = allChecked;
+        headerCb.title = allChecked ? 'Deselect all' : 'Select all';
+        headerCb.style.cssText = 'width:15px;height:15px;cursor:pointer;accent-color:#5a9ade;flex-shrink:0';
+        headerCb.onchange = () => {
+          if (headerCb.checked) files.forEach(f => selectedIds.add(f.id));
+          else selectedIds.clear();
+          renderAllFileRows();
+        };
+        header.appendChild(headerCb);
+        header.appendChild(Object.assign(document.createElement('span'), { textContent: 'Select all' }));
+        c.appendChild(header);
+      }
+
+      // ── Bulk toolbar (when anything selected) ─────────────────────────────────
       if (selectedIds.size > 0) {
         const toolbar = document.createElement('div');
         toolbar.id = 'bulkToolbar';
@@ -932,6 +964,19 @@
         applyBtn.textContent = 'Apply';
         applyBtn.onclick = () => applyBulkAssign(toolbar._bulkState, toolbar._bulkExpr);
         toolbar.appendChild(applyBtn);
+
+        const deleteSelBtn = document.createElement('button');
+        deleteSelBtn.className = 'danger';
+        deleteSelBtn.textContent = 'Delete selected';
+        deleteSelBtn.onclick = () => {
+          files = files.filter(f => {
+            if (selectedIds.has(f.id)) { URL.revokeObjectURL(f.url); return false; }
+            return true;
+          });
+          selectedIds.clear();
+          renderAllFileRows();
+        };
+        toolbar.appendChild(deleteSelBtn);
 
         const deselectBtn = document.createElement('button');
         deselectBtn.textContent = 'Deselect all';
@@ -966,12 +1011,21 @@
       const el = document.getElementById('exprChecklist');
       if (!el) return;
 
+      if (!files.length) { el.innerHTML = ''; return; }
+
       // build a set of "state|expression" that are covered
       const covered = new Set(
         files.filter(f => !f.isProp).map(f => `${f.state}|${f.expression}`)
       );
 
-      el.innerHTML = states.map(s => {
+      // count per state (non-prop)
+      const stateCounts = {};
+      const propCount = files.filter(f => f.isProp).length;
+      files.filter(f => !f.isProp).forEach(f => {
+        stateCounts[f.state] = (stateCounts[f.state] || 0) + 1;
+      });
+
+      const stateRows = states.map(s => {
         const chips = EXPRESSIONS.map(e => {
           const done = covered.has(`${s}|${e}`);
           return `<span style="
@@ -982,10 +1036,18 @@
         ${done ? '✓' : '○'} ${e}
       </span>`;
         }).join('');
+        const count = stateCounts[s] || 0;
+        const countBadge = `<span style="color:#444;font-size:0.72rem;margin-left:4px">(${count})</span>`;
         return `<div style="margin-bottom:4px;font-size:0.78rem">
-      <span style="color:#555;display:inline-block;width:72px">${s}</span>${chips}
+      <span style="color:#555;display:inline-block;width:72px">${s}</span>${countBadge}${chips}
     </div>`;
       }).join('');
+
+      const propBadge = propCount > 0
+        ? `<div style="font-size:0.78rem;color:#555;margin-top:2px">Props / Extras: <span style="color:#777">${propCount} file${propCount !== 1 ? 's' : ''}</span></div>`
+        : '';
+
+      el.innerHTML = stateRows + propBadge;
     }
 
     function buildFileRow(f, i) {
@@ -1384,6 +1446,7 @@
 
     // ── ZIP ───────────────────────────────────────────────────────────────────────
     async function buildZip() {
+      if (!validateFiles()) return;
       const name = document.getElementById('productName').value.trim() || 'YourProduct';
       const zip = new JSZip();
 
@@ -1409,6 +1472,14 @@
       a.href = url; a.download = `${name}Pack.zip`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (activeProduct) saveProduct();
+      }
+    });
 
     // ── Etsy description ──────────────────────────────────────────────────────────
     function copyEtsyDescription() {
