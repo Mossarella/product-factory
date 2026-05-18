@@ -243,12 +243,48 @@
     }
 
     .state-tag {
-      display: inline-block;
-      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
       font-size: 0.75rem;
       background: #1e1e1e;
       border: 1px solid #333;
       margin: 2px;
+    }
+
+    .state-tag .reorder-btn {
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      padding: 0 1px;
+      font-size: 0.7rem;
+      line-height: 1;
+    }
+
+    .state-tag .reorder-btn:hover { color: #aaa; }
+
+    #fileFilter {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .filter-chip {
+      padding: 2px 10px;
+      font-size: 0.73rem;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .filter-chip.active {
+      background: #1a2a1a;
+      border-color: #3a6a3a;
+      color: #7aba7a;
     }
 
     .output-preview {
@@ -586,6 +622,7 @@
         onchange="handleFiles(this.files)" />
     </div>
     <div id="exprChecklist" style="margin-bottom:10px"></div>
+    <div id="fileFilter"></div>
     <div class="file-list" id="fileList"></div>
   </section>
 
@@ -636,6 +673,7 @@
     let files = [];
     let selectedIds = new Set();
     let groupByState = false;
+    let fileStateFilter = null; // null = show all
     let readmeTemplate = null;
     let etsyTemplate = null;
 
@@ -767,6 +805,7 @@
       files = [];
       selectedIds.clear();
       groupByState = false;
+      fileStateFilter = null;
       document.getElementById('zipPreviewPanel').style.display = 'none';
       document.getElementById('btnZipPreview').textContent = 'Preview ZIP';
       let loadFailed = 0;
@@ -944,11 +983,54 @@
       renderAllFileRows();
     }
 
+    function moveState(s, dir) {
+      const idx = states.indexOf(s);
+      const newIdx = idx + dir;
+      if (newIdx < 1 || newIdx >= states.length) return; // 0 = Neutral, immovable
+      [states[idx], states[newIdx]] = [states[newIdx], states[idx]];
+      renderStateTags();
+      renderAllFileRows();
+    }
+
     function renderStateTags() {
       const el = document.getElementById('stateList');
-      el.innerHTML = `<div class="state-tag">Neutral <span style="color:#444">(built-in)</span></div>`;
-      states.slice(1).forEach(s => {
-        el.innerHTML += `<div class="state-tag">${s} <span style="cursor:pointer;color:#8a3a3a" onclick="removeState('${s}')">✕</span></div>`;
+      el.innerHTML = '';
+
+      const neutralTag = document.createElement('div');
+      neutralTag.className = 'state-tag';
+      neutralTag.innerHTML = `Neutral <span style="color:#444">(built-in)</span>`;
+      el.appendChild(neutralTag);
+
+      states.slice(1).forEach((s, idx) => {
+        const realIdx = idx + 1; // index in states array
+        const tag = document.createElement('div');
+        tag.className = 'state-tag';
+
+        const upBtn = document.createElement('button');
+        upBtn.className = 'reorder-btn';
+        upBtn.textContent = '▲';
+        upBtn.title = 'Move up';
+        upBtn.disabled = realIdx === 1;
+        upBtn.onclick = () => moveState(s, -1);
+        tag.appendChild(upBtn);
+
+        const downBtn = document.createElement('button');
+        downBtn.className = 'reorder-btn';
+        downBtn.textContent = '▼';
+        downBtn.title = 'Move down';
+        downBtn.disabled = realIdx === states.length - 1;
+        downBtn.onclick = () => moveState(s, 1);
+        tag.appendChild(downBtn);
+
+        tag.appendChild(document.createTextNode(s));
+
+        const rm = document.createElement('span');
+        rm.style.cssText = 'cursor:pointer;color:#8a3a3a;margin-left:4px';
+        rm.textContent = '✕';
+        rm.onclick = () => removeState(s);
+        tag.appendChild(rm);
+
+        el.appendChild(tag);
       });
       renderChecklist();
     }
@@ -1045,8 +1127,31 @@
         c.appendChild(toolbar);
       }
 
-      if (groupByState && files.length > 0) {
-        // group under state headers
+      // ── Filter chips ──────────────────────────────────────────────────────────
+      const filterEl = document.getElementById('fileFilter');
+      filterEl.innerHTML = '';
+      if (files.length > 0) {
+        const filterKeys = ['All', ...states, 'Props'];
+        filterKeys.forEach(key => {
+          const chip = document.createElement('span');
+          chip.className = 'filter-chip' + (fileStateFilter === key ? ' active' : (key === 'All' && fileStateFilter === null ? ' active' : ''));
+          chip.textContent = key;
+          chip.onclick = () => {
+            fileStateFilter = key === 'All' ? null : key;
+            renderAllFileRows();
+          };
+          filterEl.appendChild(chip);
+        });
+      }
+
+      // ── Filtered file list ────────────────────────────────────────────────────
+      const visibleFiles = files.map((f, i) => ({ f, i })).filter(({ f }) => {
+        if (fileStateFilter === null) return true;
+        if (fileStateFilter === 'Props') return f.isProp;
+        return !f.isProp && f.state === fileStateFilter;
+      });
+
+      if (groupByState && !fileStateFilter && files.length > 0) {
         const groups = {};
         files.forEach((f, i) => {
           const key = f.isProp ? '— Props / Extras —' : f.state;
@@ -1061,7 +1166,7 @@
           groups[key].forEach(({ f, i }) => c.appendChild(buildFileRow(f, i)));
         });
       } else {
-        files.forEach((f, i) => c.appendChild(buildFileRow(f, i)));
+        visibleFiles.forEach(({ f, i }) => c.appendChild(buildFileRow(f, i)));
       }
       renderChecklist();
     }
@@ -1573,6 +1678,17 @@
 
     async function buildZip() {
       if (!validateFiles()) return;
+
+      // warn if Neutral isn't fully covered
+      const neutralExprs = new Set(
+        files.filter(f => !f.isProp && f.state === 'Neutral').map(f => f.expression)
+      );
+      const missing = EXPRESSIONS.filter(e => !neutralExprs.has(e));
+      if (missing.length) {
+        const ok = confirm(`Missing Neutral expressions: ${missing.join(', ')}\n\nDownload anyway?`);
+        if (!ok) return;
+      }
+
       const name = document.getElementById('productName').value.trim() || 'YourProduct';
       const zip = new JSZip();
 
