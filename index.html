@@ -799,7 +799,7 @@
             const blob = await res.blob();
             const displayName = mf.origName || mf.filename;
             const file = new File([blob], displayName, { type: blob.type });
-            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, isProp: mf.isProp, propName: mf.propName, propFrame: mf.propFrame || '', url: URL.createObjectURL(file) });
+            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, frame: mf.frame || '', isProp: mf.isProp, propName: mf.propName, propFrame: mf.propFrame || '', url: URL.createObjectURL(file) });
           } catch (_) { loadFailed++; }
         }));
       }
@@ -842,7 +842,7 @@
             body: f.file,
           });
           if (!up.ok) throw new Error(`File upload failed: ${f.file.name}`);
-          mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, isProp: f.isProp, propName: f.propName, propFrame: f.propFrame || '' });
+          mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, frame: f.frame || '', isProp: f.isProp, propName: f.propName, propFrame: f.propFrame || '' });
         }
 
         // product is complete when all 4 expressions are covered for Neutral
@@ -1020,7 +1020,7 @@
     // ── File handling ─────────────────────────────────────────────────────────────
     function handleFiles(fileList) {
       Array.from(fileList).forEach(f => {
-        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
+        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', frame: '', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
       });
       markDirty();
       renderAllFileRows();
@@ -1257,6 +1257,17 @@
           markDirty();
           renderChecklist();
         }, '— expression —'));
+
+        const frameInp = document.createElement('input');
+        frameInp.type = 'number';
+        frameInp.min = '1';
+        frameInp.step = '1';
+        frameInp.style.cssText = 'flex:0 0 60px';
+        frameInp.placeholder = 'Frame';
+        frameInp.title = 'Optional frame number (e.g. 1, 2) for multi-frame expressions';
+        frameInp.value = f.frame || '';
+        frameInp.oninput = e => { files[i].frame = e.target.value.trim(); markDirty(); };
+        div.appendChild(frameInp);
       } else {
         const propInp = document.createElement('input');
         propInp.type = 'text';
@@ -1589,7 +1600,9 @@
         const base = cap(f.propName || 'Prop');
         return f.propFrame ? `${productName}_${base}_${f.propFrame}.${ext}` : `${productName}_${base}.${ext}`;
       }
-      return `${productName}_${f.state}_${f.expression}.${ext}`;
+      return f.frame
+        ? `${productName}_${f.state}_${f.expression}_${f.frame}.${ext}`
+        : `${productName}_${f.state}_${f.expression}.${ext}`;
     }
 
     function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
