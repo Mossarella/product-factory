@@ -1,6 +1,8 @@
 {
   "name": "product-factory",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "push-products": "git add -f products/ && git commit -m 'sync: products catalog' && git push",
+    "pull-products": "git pull"
   }
 }
