@@ -76,8 +76,16 @@ async function handle(req, res) {
     fs.mkdirSync(PRODUCTS_DIR, { recursive: true });
     const dirs = fs.readdirSync(PRODUCTS_DIR)
       .filter(f => fs.statSync(path.join(PRODUCTS_DIR, f)).isDirectory());
+    const list = dirs.map(name => {
+      let complete = false;
+      try {
+        const cfg = JSON.parse(fs.readFileSync(path.join(PRODUCTS_DIR, name, 'product.json'), 'utf8'));
+        complete = cfg.complete === true;
+      } catch (_) {}
+      return { name, complete };
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(dirs));
+    res.end(JSON.stringify(list));
     return;
   }
 
@@ -177,6 +185,29 @@ async function handle(req, res) {
     return;
   }
 
+  // ── POST /products/:name/rename ──────────────────────────────────────────────
+  const renameM = pathname.match(/^\/products\/([^/]+)\/rename$/);
+  if (method === 'POST' && renameM) {
+    const oldName = dec(renameM[1]);
+    const { newName } = JSON.parse(await readBody(req));
+    const clean = (newName || '').trim().replace(/[^\w\- ]/g, '');
+    if (!clean) { res.writeHead(400); res.end('Bad name'); return; }
+    const oldDir = path.join(PRODUCTS_DIR, oldName);
+    const newDir = path.join(PRODUCTS_DIR, clean);
+    if (fs.existsSync(newDir)) { res.writeHead(409); res.end('Name taken'); return; }
+    fs.renameSync(oldDir, newDir);
+    // update name field inside product.json
+    const cfgPath = path.join(newDir, 'product.json');
+    if (fs.existsSync(cfgPath)) {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      cfg.name = clean;
+      fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+    }
+    console.log(`Renamed: ${oldName} → ${clean}`);
+    res.writeHead(200); res.end();
+    return;
+  }
+
   // ── GET /products/:name/slot/:slot ───────────────────────────────────────────
   const productSlotM = pathname.match(/^\/products\/([^/]+)\/slot\/([^/]+)$/);
   if (method === 'GET' && productSlotM) {
@@ -194,6 +225,14 @@ async function handle(req, res) {
     const filename = `${dec(productSlotM[2])}${origExt}`;
     fs.writeFileSync(path.join(dir, filename), buffer);
     console.log(`Slot upload: ${dec(productSlotM[1])}/${dec(productSlotM[2])} → ${filename}`);
+    res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── DELETE /products/:name/slot/:slot — clear slot folder ────────────────────
+  if (method === 'DELETE' && productSlotM) {
+    const dir = path.join(PRODUCTS_DIR, dec(productSlotM[1]), 'assets', dec(productSlotM[2]));
+    try { fs.readdirSync(dir).forEach(f => fs.unlinkSync(path.join(dir, f))); } catch (_) {}
     res.writeHead(200); res.end();
     return;
   }
