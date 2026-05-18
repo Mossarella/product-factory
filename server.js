@@ -77,12 +77,18 @@ async function handle(req, res) {
     const dirs = fs.readdirSync(PRODUCTS_DIR)
       .filter(f => fs.statSync(path.join(PRODUCTS_DIR, f)).isDirectory());
     const list = dirs.map(name => {
-      let complete = false;
+      let complete = false, createdAt = '';
       try {
         const cfg = JSON.parse(fs.readFileSync(path.join(PRODUCTS_DIR, name, 'product.json'), 'utf8'));
         complete = cfg.complete === true;
+        createdAt = cfg.createdAt || '';
       } catch (_) {}
-      return { name, complete };
+      return { name, complete, createdAt };
+    });
+    // sort old → new (products without a date go last)
+    list.sort((a, b) => {
+      const parse = s => { const [d,m,y] = (s||'').split('/'); return s ? new Date(y,m-1,d) : Infinity; };
+      return parse(a.createdAt) - parse(b.createdAt);
     });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(list));
@@ -98,9 +104,11 @@ async function handle(req, res) {
 
     const productDir  = createProductFolders(name);
     const configPath  = path.join(productDir, 'product.json');
+    const now = new Date();
+    const createdAt = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
     const config      = fs.existsSync(configPath)
       ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
-      : { name, description: '', states: ['Neutral'], notes: '', contact: '' };
+      : { name, description: '', states: ['Neutral'], notes: '', contact: '', createdAt };
 
     if (!fs.existsSync(configPath)) {
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));

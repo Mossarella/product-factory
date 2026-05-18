@@ -207,15 +207,6 @@
       background: #111a22;
     }
 
-    .file-item.unassigned {
-      border-color: #6a4a1a;
-      background: #181008;
-    }
-
-    .file-item.selected.unassigned {
-      border-color: #3a5a8a;
-      background: #111a22;
-    }
 
     .file-item input[type="checkbox"] {
       width: 15px;
@@ -517,11 +508,6 @@
     #renameRow, #duplicateRow { display:none; margin-top:6px; }
 
     /* etsy desc preview */
-    #etsyDescPreview {
-      background: #111; padding: 12px; font-size: 0.78rem; color: #888;
-      white-space: pre-wrap; max-height: 220px; overflow-y: auto;
-      border: 1px solid #222; margin-top: 10px; display: none;
-    }
   </style>
 </head>
 
@@ -546,7 +532,8 @@
     <div id="newProductRow" style="display:none;margin-top:8px">
       <div class="inline">
         <input type="text" id="newProductName" placeholder="Product name, e.g. BunnyMascot"
-          onkeydown="if(event.key==='Enter') createProduct()" />
+          onkeydown="if(event.key==='Enter') createProduct()"
+          oninput="const v=this.value;if(v)this.value=v.charAt(0).toUpperCase()+v.slice(1)" />
         <button class="primary" onclick="createProduct()">Create</button>
         <button onclick="hideNewProductRow()">Cancel</button>
       </div>
@@ -640,7 +627,7 @@
   <section id="s-preview">
     <h2>5. README Preview</h2>
     <button onclick="buildPreview()" style="margin-bottom:10px">Refresh</button>
-    <div class="output-preview" id="previewBox">Click Refresh to see ZIP structure and README.</div>
+    <div class="output-preview" id="previewBox">Click Refresh to preview README.txt.</div>
   </section>
 
   <!-- 6. ETSY LISTING -->
@@ -650,10 +637,10 @@
     <div id="etsySlots"></div>
     <div class="gap12" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button onclick="copyEtsyDescription()">Copy Description</button>
-      <button onclick="toggleEtsyPreview()">Preview Description</button>
+      <button onclick="refreshEtsyPreview()">Refresh Description</button>
       <span class="flash" id="copyMsg" style="display:none">Copied!</span>
     </div>
-    <div id="etsyDescPreview"></div>
+    <div class="output-preview" id="etsyDescPreview" style="margin-top:8px">Click Refresh Description to preview.</div>
   </section>
 
   <script>
@@ -740,6 +727,7 @@
 
     function renderProductOptions(filter = '') {
       const sel = document.getElementById('productSelect');
+      const current = sel.value || activeProduct;
       const q = filter.toLowerCase();
       sel.innerHTML = '<option value="">— select a product —</option>';
       allProducts
@@ -747,7 +735,8 @@
         .forEach(p => {
           const opt = document.createElement('option');
           opt.value = p.name;
-          opt.textContent = (p.complete ? '✓ ' : '○ ') + p.name;
+          opt.textContent = (p.complete ? '✓ ' : '○ ') + p.name + (p.createdAt ? `  · ${p.createdAt}` : '');
+          if (p.name === current) opt.selected = true;
           sel.appendChild(opt);
         });
     }
@@ -967,14 +956,8 @@
     }
 
     // ── Etsy description preview ───────────────────────────────────────────────────
-    function toggleEtsyPreview() {
-      const box = document.getElementById('etsyDescPreview');
-      if (box.style.display === 'none' || !box.style.display) {
-        box.textContent = fillTemplate(etsyTemplate, gatherData(), 'etsy');
-        box.style.display = 'block';
-      } else {
-        box.style.display = 'none';
-      }
+    function refreshEtsyPreview() {
+      document.getElementById('etsyDescPreview').textContent = fillTemplate(etsyTemplate, gatherData(), 'etsy');
     }
 
     // ── States ────────────────────────────────────────────────────────────────────
@@ -1198,6 +1181,7 @@
         if (!selectedIds.has(f.id)) return;
         if (bulkState === 'Extras (Prop)') {
           files[i].isProp = true;
+          if (!files[i].propFrame) files[i].propFrame = '1';
         } else if (bulkState) {
           files[i].isProp = false;
           files[i].state = bulkState;
@@ -1255,9 +1239,8 @@
     }
 
     function buildFileRow(f, i) {
-      const unassigned = !f.isProp && !f.expression;
       const div = document.createElement('div');
-      div.className = 'file-item' + (selectedIds.has(f.id) ? ' selected' : '') + (unassigned ? ' unassigned' : '');
+      div.className = 'file-item' + (selectedIds.has(f.id) ? ' selected' : '');
 
       const cb = document.createElement('input');
       cb.type = 'checkbox';
@@ -1283,6 +1266,7 @@
         f.isProp ? 'Extras (Prop)' : f.state,
         val => {
           files[i].isProp = val === 'Extras (Prop)';
+          if (files[i].isProp && !files[i].propFrame) files[i].propFrame = '1';
           if (!files[i].isProp) files[i].state = val;
           markDirty();
           renderAllFileRows();
@@ -1311,10 +1295,12 @@
         div.appendChild(propInp);
 
         const frameInp = document.createElement('input');
-        frameInp.type = 'text';
-        frameInp.style.cssText = 'flex:0 0 56px';
+        frameInp.type = 'number';
+        frameInp.min = '1';
+        frameInp.step = '1';
+        frameInp.style.cssText = 'flex:0 0 60px';
         frameInp.placeholder = 'Frame';
-        frameInp.title = 'Frame label for multi-frame props (e.g. 1, 2, Open)';
+        frameInp.title = 'Frame number for multi-frame props (1, 2, 3…)';
         frameInp.value = f.propFrame || '';
         frameInp.oninput = e => { files[i].propFrame = e.target.value.trim(); markDirty(); };
         div.appendChild(frameInp);
@@ -1614,29 +1600,7 @@
 
     // ── Preview ───────────────────────────────────────────────────────────────────
     function buildPreview() {
-      const name = document.getElementById('productName').value.trim() || 'YourProduct';
-      const grouped = {};
-      files.forEach(f => {
-        const folder = f.isProp
-          ? (f.propFrame ? `Extras/${resolvePropFolder(f)}` : 'Extras')
-          : f.state;
-        (grouped[folder] = grouped[folder] || []).push(f);
-      });
-
-      let tree = `${name}Pack.zip\n`;
-      tree += `├── Artwork/\n`;
-      Object.entries(grouped).forEach(([folder, items]) => {
-        tree += `│   ├── ${folder}/\n`;
-        items.forEach(f => { tree += `│   │   ├── ${resolveFilename(name, f)}\n`; });
-      });
-      tree += `├── README.txt\n`;
-      const loaded = fixedAssets.filter(a => a.blob && a.zipName);
-      loaded.forEach((a, idx) => {
-        tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
-      });
-      tree += `\n${'─'.repeat(38)}\nREADME.txt:\n${'─'.repeat(38)}\n`;
-      tree += buildReadme();
-      document.getElementById('previewBox').textContent = tree;
+      document.getElementById('previewBox').textContent = buildReadme();
     }
 
     function resolvePropFolder(f) { return cap(f.propName) || 'Prop'; }
