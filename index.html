@@ -799,7 +799,7 @@
             const blob = await res.blob();
             const displayName = mf.origName || mf.filename;
             const file = new File([blob], displayName, { type: blob.type });
-            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, frame: mf.frame || '', isProp: mf.isProp, propName: mf.propName, propFrame: mf.propFrame || '', url: URL.createObjectURL(file) });
+            files.push({ id: mf.id || uid(), file, state: mf.state, expression: mf.expression, frame: mf.frame || '1', isProp: mf.isProp, propName: mf.propName, propFrame: mf.propFrame || '', url: URL.createObjectURL(file) });
           } catch (_) { loadFailed++; }
         }));
       }
@@ -1020,7 +1020,7 @@
     // ── File handling ─────────────────────────────────────────────────────────────
     function handleFiles(fileList) {
       Array.from(fileList).forEach(f => {
-        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', frame: '', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
+        files.push({ id: uid(), file: f, state: 'Neutral', expression: '', frame: '1', isProp: false, propName: '', propFrame: '', url: URL.createObjectURL(f) });
       });
       markDirty();
       renderAllFileRows();
@@ -1033,7 +1033,24 @@
       renderAllFileRows();
     }
 
+    function sortFiles() {
+      files.sort((a, b) => {
+        // props always go last
+        if (a.isProp !== b.isProp) return a.isProp ? 1 : -1;
+        if (a.isProp && b.isProp) return (parseInt(a.propFrame) || 0) - (parseInt(b.propFrame) || 0);
+        // state order follows the states array
+        const si = states.indexOf(a.state) - states.indexOf(b.state);
+        if (si !== 0) return si;
+        // expression order follows EXPRESSIONS array
+        const ei = EXPRESSIONS.indexOf(a.expression) - EXPRESSIONS.indexOf(b.expression);
+        if (ei !== 0) return ei;
+        // frame numeric ascending
+        return (parseInt(a.frame) || 0) - (parseInt(b.frame) || 0);
+      });
+    }
+
     function renderAllFileRows() {
+      sortFiles();
       const c = document.getElementById('fileList');
       c.innerHTML = '';
 
@@ -1672,6 +1689,7 @@
 
       const name = document.getElementById('productName').value.trim() || 'YourProduct';
       const zip = new JSZip();
+      sortFiles();
 
       for (const f of files) {
         let folder;
