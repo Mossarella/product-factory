@@ -1,4 +1,4 @@
-🎭 {{name}} — PNGTuber Mascot | Veadotube & PNGTuber+ Ready
+🎭 {{etsyName}}
 
 Cute, expressive, and stream-ready — {{name}} is a handcrafted PNGTuber
 mascot designed to bring your stream personality to life. ✨

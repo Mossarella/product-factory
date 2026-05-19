@@ -559,12 +559,22 @@
     <h2>1. Product Info</h2>
     <div class="row">
       <div>
-        <label>Product Name</label>
-        <input type="text" id="productName" placeholder="e.g. BunnyMascot" oninput="markDirty()" />
+        <label>SKU <span style="color:#555;font-size:0.75rem">e.g. STRM-001</span></label>
+        <input type="text" id="productSku" placeholder="STRM-001" oninput="markDirty()" />
       </div>
       <div>
         <label>Contact / Shop</label>
         <input type="text" id="contact" placeholder="e.g. etsy.com/shop/MossarellaStudio" oninput="markDirty()" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Product Name <span style="color:#555;font-size:0.75rem">used in filenames &amp; README</span></label>
+        <input type="text" id="productName" placeholder="e.g. Duck" oninput="markDirty()" />
+      </div>
+      <div>
+        <label>Etsy Title <span style="color:#555;font-size:0.75rem">used in Etsy description</span></label>
+        <input type="text" id="etsyTitle" placeholder="e.g. Cute Duck PNGTuber Mascot for your cozy stream" oninput="markDirty()" />
       </div>
     </div>
     <label>Description</label>
@@ -692,10 +702,6 @@
 
     function applyConfig() {
       if (typeof CONFIG === 'undefined') return;
-      if (CONFIG.contact) document.getElementById('contact').value = CONFIG.contact;
-      if (CONFIG.description) document.getElementById('description').value = CONFIG.description;
-      if (CONFIG.readmeFooter) document.getElementById('extraNotes').value = CONFIG.readmeFooter;
-
       const extras = (CONFIG.extraFixedAssets || []).map(a => ({
         id: a.id, label: a.label, slot: `/slot/${a.slot}`, zipName: a.zipName, blob: null,
       }));
@@ -775,7 +781,9 @@
 
       setActiveProduct(name);
 
-      document.getElementById('productName').value = config.name || name;
+      document.getElementById('productSku').value = config.sku || '';
+      document.getElementById('productName').value = config.productName || config.name || name;
+      document.getElementById('etsyTitle').value = config.etsyTitle || '';
       document.getElementById('description').value = config.description || (CONFIG?.description || '');
       document.getElementById('extraNotes').value = config.notes || (CONFIG?.readmeFooter || '');
       document.getElementById('contact').value = config.contact || (CONFIG?.contact || '');
@@ -820,6 +828,11 @@
       document.getElementById('btnSave').disabled = !name;
       document.getElementById('btnRename').disabled = !name;
       document.getElementById('btnDuplicate').disabled = !name;
+      if (!name) {
+        ['productSku','productName','etsyTitle','description','extraNotes','contact'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+      }
     }
 
     function validateFiles() {
@@ -859,6 +872,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            sku: document.getElementById('productSku').value.trim(),
+            productName: document.getElementById('productName').value.trim(),
+            etsyTitle: document.getElementById('etsyTitle').value.trim(),
             name: document.getElementById('productName').value.trim(),
             description: document.getElementById('description').value.trim(),
             notes: document.getElementById('extraNotes').value.trim(),
@@ -1580,6 +1596,7 @@
       });
       return {
         name: document.getElementById('productName').value.trim() || 'YourProduct',
+        etsyName: document.getElementById('etsyTitle').value.trim() || document.getElementById('productName').value.trim() || 'YourProduct',
         shopName: CONFIG?.shopName || 'MossarellaStudio',
         contact: document.getElementById('contact').value.trim() || 'your contact here',
         description: document.getElementById('description').value.trim(),
@@ -1609,6 +1626,7 @@
 
       return template
         .replace(/{{name}}/g, d.name)
+        .replace(/{{etsyName}}/g, d.etsyName)
         .replace(/{{shopName}}/g, d.shopName)
         .replace(/{{contact}}/g, d.contact)
         .replace(/{{description}}/g, d.description)
