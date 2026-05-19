@@ -679,6 +679,7 @@
     let groupByState = false;
     let fileStateFilter = null; // null = show all
     let dirty = false;
+    let productCreatedAt = '';
 
     function markDirty() {
       if (dirty) return;
@@ -800,6 +801,7 @@
 
       setActiveProduct(name);
 
+      productCreatedAt = config.createdAt || '';
       document.getElementById('productSku').value = config.sku || '';
       document.getElementById('productName').value = config.productName || config.name || name;
       document.getElementById('etsyTitle').value = config.etsyTitle || '';
@@ -820,6 +822,15 @@
       document.getElementById('btnZipPreview').textContent = 'Preview ZIP';
       // clear per-product optional fixed assets
       fixedAssets.forEach(a => { if (a.optional) { a.blob = null; a.zipName = ''; } });
+      // restore veadotube file if saved
+      const veadoRes = await fetch(`/products/${ep(name)}/veado`).catch(() => null);
+      if (veadoRes && veadoRes.ok) {
+        const blob = await veadoRes.blob();
+        const filename = veadoRes.headers.get('X-Filename') || 'file.veado';
+        const file = new File([blob], filename, { type: blob.type });
+        const va = fixedAssets.find(a => a.id === 'veadotube');
+        if (va) { va.blob = file; va.zipName = filename; }
+      }
       renderFixedAssets();
       let loadFailed = 0;
       if (config.mascotFiles && config.mascotFiles.length) {
@@ -848,6 +859,7 @@
       document.getElementById('btnRename').disabled = !name;
       document.getElementById('btnDuplicate').disabled = !name;
       if (!name) {
+        productCreatedAt = '';
         ['productSku','productName','etsyTitle','description','extraNotes','contact'].forEach(id => {
           document.getElementById(id).value = '';
         });
@@ -881,6 +893,16 @@
           mascotFiles.push({ id: f.id, filename, origName: f.file.name, state: f.state, expression: f.expression, frame: f.frame || '', isProp: f.isProp, propName: f.propName, propFrame: f.propFrame || '' });
         }
 
+        // upload veadotube file if present
+        const veadoAsset = fixedAssets.find(a => a.id === 'veadotube');
+        if (veadoAsset && veadoAsset.blob) {
+          await fetch(`/products/${ep(activeProduct)}/veado`, {
+            method: 'POST',
+            headers: { 'X-Filename': veadoAsset.blob.name || 'file.veado', 'Content-Type': veadoAsset.blob.type || 'application/octet-stream' },
+            body: veadoAsset.blob,
+          });
+        }
+
         // product is complete when all 4 expressions are covered for Neutral
         const neutralExprs = new Set(
           mascotFiles.filter(f => !f.isProp && f.state === 'Neutral').map(f => f.expression)
@@ -895,6 +917,7 @@
             productName: document.getElementById('productName').value.trim(),
             etsyTitle: document.getElementById('etsyTitle').value.trim(),
             name: document.getElementById('productName').value.trim(),
+            createdAt: productCreatedAt,
             description: document.getElementById('description').value.trim(),
             notes: document.getElementById('extraNotes').value.trim(),
             contact: document.getElementById('contact').value.trim(),

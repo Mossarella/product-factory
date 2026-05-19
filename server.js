@@ -142,6 +142,36 @@ async function handle(req, res) {
     return;
   }
 
+  // ── POST /products/:name/veado — upload veadotube file ───────────────────────
+  const veadoUploadM = pathname.match(/^\/products\/([^/]+)\/veado$/);
+  if (method === 'POST' && veadoUploadM) {
+    const filename = path.basename(req.headers['x-filename'] || 'file.veado').replace(/[^\w\-. ]/g, '_');
+    const dir = path.join(PRODUCTS_DIR, dec(veadoUploadM[1]), 'veado-file');
+    fs.mkdirSync(dir, { recursive: true });
+    // clear old file first
+    try { fs.readdirSync(dir).forEach(f => fs.unlinkSync(path.join(dir, f))); } catch (_) {}
+    const buffer = await readBodyBuffer(req);
+    fs.writeFileSync(path.join(dir, filename), buffer);
+    console.log(`Saved veado file: ${dec(veadoUploadM[1])}/${filename}`);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ filename }));
+    return;
+  }
+
+  // ── GET /products/:name/veado — serve veadotube file ─────────────────────────
+  const veadoServeM = pathname.match(/^\/products\/([^/]+)\/veado$/);
+  if (method === 'GET' && veadoServeM) {
+    const dir = path.join(PRODUCTS_DIR, dec(veadoServeM[1]), 'veado-file');
+    let files = [];
+    try { files = fs.readdirSync(dir).filter(f => !f.startsWith('.')); } catch (_) {}
+    if (!files.length) { res.writeHead(404); res.end(); return; }
+    const filePath = path.join(dir, files[0]);
+    const ext = path.extname(files[0]).toLowerCase();
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'X-Filename': files[0] });
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
   // ── POST /products/:name/file — upload a mascot file (raw binary) ───────────
   const fileUploadM = pathname.match(/^\/products\/([^/]+)\/file$/);
   if (method === 'POST' && fileUploadM) {
