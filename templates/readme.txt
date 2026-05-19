@@ -4,28 +4,50 @@ by {{shopName}}
 
 {{description}}
 
-COMPATIBLE WITH:
-{{compatibility}}
+────────────────────────────────────────
+WHAT'S INCLUDED
+────────────────────────────────────────
 
-EXPRESSION STATES:
-  EOMO = Eyes Open Mouth Open
-  EOMC = Eyes Open Mouth Closed
-  ECMO = Eyes Closed Mouth Open
-  ECMC = Eyes Closed Mouth Closed
-
-INCLUDED STATES:
 {{states}}
 
 {{props}}
-
-HOW TO USE:
-  1. Import PNG files into Veadotube or PNGTuber+
-  2. Assign states to the matching expression triggers
-  3. Add as browser source in OBS
+{{veadoLine}}
+EXPRESSION KEY:
+  EOMO — Eyes Open,   Mouth Open   (talking)
+  EOMC — Eyes Open,   Mouth Closed (idle)
+  ECMO — Eyes Closed, Mouth Open   (blinking + talking)
+  ECMC — Eyes Closed, Mouth Closed (blinking)
 
 ────────────────────────────────────────
-Thank you for your purchase!
-Contact: {{contact}}
+COMPATIBLE WITH
+────────────────────────────────────────
 
-NOTES:
+{{compatibility}}
+
+────────────────────────────────────────
+HOW TO SET UP (VEADOTUBE)
+────────────────────────────────────────
+
+  1. Open Veadotube Mini
+  2. Import the PNGs from the Artwork/ folder
+  3. Match each file to its expression state
+  4. Add as a Browser Source in OBS or Streamlabs
+  5. You're live — go be cute 🐾
+
+────────────────────────────────────────
+USAGE & RIGHTS
+────────────────────────────────────────
+
 {{notes}}
+
+────────────────────────────────────────
+QUESTIONS?
+────────────────────────────────────────
+
+{{contact}}
+Don't hesitate — we actually read these!
+
+────────────────────────────────────────
+You just picked up {{name}} — go make your stream
+a little more you. Have a great one! 👾
+{{shopName}}

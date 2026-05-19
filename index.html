@@ -1616,7 +1616,11 @@
         .replace(/{{compatibility}}/g, compatText)
         .replace(/{{states}}/g, statesText)
         .replace(/{{props}}/g, propsText)
-        .replace(/{{veadoLine}}/g, d.hasVeado ? '✦ Ready-to-use Veadotube preset (.veado file included — just open and go!)\n' : '')
+        .replace(/{{veadoLine}}/g, d.hasVeado
+          ? (style === 'etsy'
+            ? '✦ Ready-to-use Veadotube preset (.veado file included — just open and go!)\n'
+            : 'VEADOTUBE PRESET:\n  A ready-to-use .veado preset is included — open it in\n  Veadotube Mini to skip setup entirely.\n')
+          : '')
         .replace(/{{etsyTags}}/g, d.etsyTags);
     }
 
