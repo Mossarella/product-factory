@@ -1588,6 +1588,7 @@
         etsyTags: CONFIG?.etsyTags || 'pngtuber, vtuber, mascot, stream asset, veadotube',
         states: Object.entries(stateCounts).map(([label, count]) => ({ label, count })),
         props: files.filter(f => f.isProp).map(f => f.propName || f.file.name),
+        hasVeado: fixedAssets.some(a => a.id === 'veadotube' && a.blob),
       };
     }
 
@@ -1615,6 +1616,7 @@
         .replace(/{{compatibility}}/g, compatText)
         .replace(/{{states}}/g, statesText)
         .replace(/{{props}}/g, propsText)
+        .replace(/{{veadoLine}}/g, d.hasVeado ? '✦ Ready-to-use Veadotube preset (.veado file included — just open and go!)\n' : '')
         .replace(/{{etsyTags}}/g, d.etsyTags);
     }
 

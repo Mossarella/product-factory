@@ -1,20 +1,40 @@
-✨ {{name}} — PNGTuber Mascot Pack
+🎭 {{name}} — PNGTuber Mascot | Veadotube & PNGTuber+ Ready
 
-Bring your stream to life with this handcrafted PNGTuber mascot!
+Cute, expressive, and stream-ready — {{name}} is a handcrafted PNGTuber
+mascot designed to bring your stream personality to life. ✨
 
-WHAT'S INCLUDED:
+{{description}}
+
+━━━ WHAT'S IN THE PACK ━━━
+
+Expression states:
 {{states}}
-{{props}}
 
-COMPATIBLE WITH:
+Each state comes with 4 lip-sync frames:
+• Eyes Open, Mouth Open  (talking)
+• Eyes Open, Mouth Closed  (idle)
+• Eyes Closed, Mouth Open  (blinking + talking)
+• Eyes Closed, Mouth Closed  (blinking)
+
+{{props}}
+{{veadoLine}}
+━━━ WORKS WITH ━━━
 {{compatibility}}
 
-Each state includes all 4 expression variants:
-EOMO | EOMC | ECMO | ECMC
+Transparent PNG files — drop straight into your software, no extra
+editing needed.
 
-FILES: High-quality PNG, transparent background, ready to import.
+━━━ PERFECT FOR ━━━
+✦ New creators looking for their very first mascot
+✦ Creators who want a unique look without commissioning from scratch
+✦ Anyone who wants a cute funky avatar companion bouncing on their stream 🐾
 
-QUESTIONS? {{contact}}
+━━━ INSTANT DIGITAL DOWNLOAD ━━━
+You'll get a ZIP file with everything organised and ready to go.
+No physical item is shipped.
 
-─────────────────────────────────
-Tags: {{etsyTags}}
+━━━ USAGE RIGHTS ━━━
+{{notes}}
+
+━━━ QUESTIONS? ━━━
+{{contact}}
