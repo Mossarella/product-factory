@@ -190,6 +190,25 @@
       height: 36px;
       object-fit: contain;
       background: #1e1e1e;
+      cursor: zoom-in;
+    }
+
+    #imgZoom {
+      position: fixed;
+      display: none;
+      z-index: 999;
+      pointer-events: none;
+      border: 1px solid #333;
+      background: #111;
+      padding: 4px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+    }
+
+    #imgZoom img {
+      display: block;
+      max-width: 260px;
+      max-height: 260px;
+      object-fit: contain;
     }
 
     .file-item select {
@@ -1269,6 +1288,16 @@
 
       const img = document.createElement('img');
       img.src = f.url;
+      img.addEventListener('mouseenter', e => {
+        const z = document.getElementById('imgZoom');
+        z.querySelector('img').src = f.url;
+        z.style.display = 'block';
+        positionZoom(e);
+      });
+      img.addEventListener('mousemove', positionZoom);
+      img.addEventListener('mouseleave', () => {
+        document.getElementById('imgZoom').style.display = 'none';
+      });
       div.appendChild(img);
 
       const nm = document.createElement('span');
@@ -1357,6 +1386,18 @@
       });
       el.onchange = e => onChange(e.target.value);
       return el;
+    }
+
+    // ── Image zoom preview ────────────────────────────────────────────────────────
+    function positionZoom(e) {
+      const z = document.getElementById('imgZoom');
+      const pad = 14;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      if (x + 268 > window.innerWidth)  x = e.clientX - 268 - pad;
+      if (y + 268 > window.innerHeight) y = e.clientY - 268 - pad;
+      z.style.left = x + 'px';
+      z.style.top  = y + 'px';
     }
 
     // ── Drag & drop ───────────────────────────────────────────────────────────────
@@ -1770,6 +1811,7 @@
       navigator.clipboard.writeText(text).then(() => flash('copyMsg'));
     }
   </script>
+  <div id="imgZoom"><img /></div>
 </body>
 
 </html>
