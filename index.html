@@ -669,7 +669,7 @@
     const BUILTIN_FIXED = [
       { id: 'thankyou',   label: 'Thank You card',  slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', builtin: true },
       { id: 'howto',      label: 'How To Use',       slot: '/slot/how-to-use',      zipName: 'HOWTO.png',   builtin: true },
-      { id: 'veadotube',  label: 'Veadotube file',   slot: null,                    zipName: '',            builtin: true, optional: true, accept: '.zip,.veadotube,application/zip' },
+      { id: 'veadotube',  label: 'Veadotube file',   slot: null,                    zipName: '',            builtin: true, optional: true, accept: '.zip,.veadotube,.veado,application/zip' },
     ];
     let fixedAssets = [];
 
@@ -1652,7 +1652,8 @@
       });
 
       const folderKeys = Object.keys(grouped);
-      const loaded = fixedAssets.filter(a => a.blob && a.zipName);
+      const resolveFixedZipName = a => a.id === 'veadotube' ? `${name}.veado` : a.zipName;
+      const loaded = fixedAssets.filter(a => a.blob && (a.id === 'veadotube' || a.zipName));
       const totalTopItems = 1 + (folderKeys.length ? 1 : 0) + 1 + loaded.length; // README + Artwork + fixed
 
       let tree = `${name}Pack.zip\n`;
@@ -1672,7 +1673,7 @@
       }
       tree += `├── README.txt\n`;
       loaded.forEach((a, idx) => {
-        tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${a.zipName}\n`;
+        tree += `${idx === loaded.length - 1 ? '└' : '├'}── ${resolveFixedZipName(a)}\n`;
       });
       return tree;
     }
@@ -1720,7 +1721,8 @@
       }
       zip.file('README.txt', buildReadme());
       for (const a of fixedAssets) {
-        if (a.blob && a.zipName) zip.file(a.zipName, await a.blob.arrayBuffer());
+        const zn = a.id === 'veadotube' ? `${name}.veado` : a.zipName;
+        if (a.blob && zn) zip.file(zn, await a.blob.arrayBuffer());
       }
 
       const blob = await zip.generateAsync({ type: 'blob' });
