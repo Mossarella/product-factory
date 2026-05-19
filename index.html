@@ -667,8 +667,9 @@
     let etsyTemplate = null;
 
     const BUILTIN_FIXED = [
-      { id: 'thankyou', label: 'Thank You card', slot: '/slot/thank-you-image', zipName: 'THANKYOU.png' },
-      { id: 'howto',    label: 'How To Use',     slot: '/slot/how-to-use',      zipName: 'HOWTO.png'   },
+      { id: 'thankyou',   label: 'Thank You card',  slot: '/slot/thank-you-image', zipName: 'THANKYOU.png', builtin: true },
+      { id: 'howto',      label: 'How To Use',       slot: '/slot/how-to-use',      zipName: 'HOWTO.png',   builtin: true },
+      { id: 'veadotube',  label: 'Veadotube file',   slot: null,                    zipName: '',            builtin: true, optional: true, accept: '.zip,.veadotube,application/zip' },
     ];
     let fixedAssets = [];
 
@@ -790,6 +791,9 @@
       fileStateFilter = null;
       document.getElementById('zipPreviewPanel').style.display = 'none';
       document.getElementById('btnZipPreview').textContent = 'Preview ZIP';
+      // clear per-product optional fixed assets
+      fixedAssets.forEach(a => { if (a.optional) { a.blob = null; a.zipName = ''; } });
+      renderFixedAssets();
       let loadFailed = 0;
       if (config.mascotFiles && config.mascotFiles.length) {
         await Promise.all(config.mascotFiles.map(async mf => {
@@ -1369,11 +1373,15 @@
         const info = document.createElement('div');
         info.className = 'asset-slot-info';
 
-        if (a.slot) {
+        if (a.builtin) {
           // built-in: fixed label
+          const statusText = a.blob
+            ? `✓ ${a.blob.name}`
+            : (a.optional ? '— optional, not picked' : '— not loaded');
+          const statusClass = a.blob ? 'ok' : (a.optional ? '' : 'miss');
           info.innerHTML = `<div class="asset-slot-label">${a.label}</div>
-        <div class="${a.blob ? 'ok' : 'miss'}" id="fa-status-${i}">${a.blob ? '✓ loaded' : '— not loaded'}</div>
-        <div style="font-size:0.72rem;color:#444">${a.slot}</div>`;
+        <div class="${statusClass}" style="${!a.blob && a.optional ? 'color:#555' : ''}" id="fa-status-${i}">${statusText}</div>
+        ${a.slot ? `<div style="font-size:0.72rem;color:#444">${a.slot}</div>` : ''}`;
         } else {
           // custom: editable label + zip name
           const inp = document.createElement('input');
@@ -1399,7 +1407,8 @@
         btn.style.marginTop = '4px';
         btn.onclick = () => {
           const inp = document.createElement('input');
-          inp.type = 'file'; inp.accept = 'image/*,application/pdf,video/*';
+          inp.type = 'file';
+          inp.accept = a.accept || 'image/*,application/pdf,video/*';
           inp.onchange = e => {
             const f = e.target.files[0]; if (!f) return;
             fixedAssets[i].blob = f;
@@ -1410,7 +1419,14 @@
         };
         info.appendChild(btn);
 
-        if (!a.slot) {
+        if (a.blob && a.optional) {
+          const clr = document.createElement('button');
+          clr.textContent = 'Clear'; clr.style.marginTop = '2px';
+          clr.onclick = () => { fixedAssets[i].blob = null; fixedAssets[i].zipName = ''; renderFixedAssets(); };
+          info.appendChild(clr);
+        }
+
+        if (!a.builtin) {
           const rm = document.createElement('button');
           rm.textContent = '✕'; rm.className = 'danger'; rm.style.marginTop = '2px';
           rm.onclick = () => { fixedAssets.splice(i, 1); renderFixedAssets(); };
