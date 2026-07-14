@@ -11,6 +11,7 @@ export default function LoginPage({
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [devLoginUrl, setDevLoginUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,14 +20,21 @@ export default function LoginPage({
     if (!trimmed) return
     setLoading(true)
     setError('')
+    setDevLoginUrl(null)
     try {
       const params = await searchParams
       const callbackUrl = params['callbackUrl'] ?? '/app'
       const result = await signIn('resend', { email: trimmed, redirect: false, callbackUrl })
       if (result?.error) {
         setError('Could not send magic link. Check your email address and try again.')
-      } else {
-        setSent(true)
+        return
+      }
+      setSent(true)
+      // Fetch dev login URL — returns null in production, full URL in dev
+      const res = await fetch(`/api/auth/dev-url?email=${encodeURIComponent(trimmed)}`)
+      if (res.ok) {
+        const data = await res.json() as { devLoginUrl: string | null }
+        if (data.devLoginUrl) setDevLoginUrl(data.devLoginUrl)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -45,20 +53,39 @@ export default function LoginPage({
         </div>
 
         {sent ? (
-          <div className="border border-emerald-800 bg-emerald-950/40 p-6">
-            <p className="text-emerald-400 font-bold mb-2">Check your email</p>
-            <p className="text-zinc-400 text-sm">
-              We sent a magic link to{' '}
-              <span className="text-zinc-200">{email}</span>.
-              Click the link to sign in — no password needed.
-            </p>
-            <button
-              type="button"
-              onClick={() => { setSent(false); setEmail('') }}
-              className="mt-4 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              Use a different email
-            </button>
+          <div className="space-y-3">
+            <div className="border border-emerald-800 bg-emerald-950/40 p-5">
+              <p className="text-emerald-400 font-bold mb-1">Check your email</p>
+              <p className="text-zinc-400 text-sm">
+                We sent a magic link to{' '}
+                <span className="text-zinc-200">{email}</span>.
+                Click the link to sign in — no password needed.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setSent(false); setEmail(''); setDevLoginUrl(null) }}
+                className="mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                Use a different email
+              </button>
+            </div>
+
+            {devLoginUrl && (
+              <div className="border border-amber-700 bg-amber-950/40 p-4">
+                <p className="text-xs uppercase tracking-widest text-amber-500 mb-2">
+                  Dev mode — skip email
+                </p>
+                <a
+                  href={devLoginUrl}
+                  className="block w-full text-center border border-amber-600 bg-amber-600 px-4 py-2 text-sm text-zinc-950 font-bold hover:bg-amber-500 transition-colors"
+                >
+                  Login as {email} →
+                </a>
+                <p className="mt-2 text-xs text-amber-800">
+                  Only shown when NODE_ENV ≠ production.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
