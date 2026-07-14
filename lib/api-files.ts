@@ -38,6 +38,10 @@ export function productPath(name: string, ...segments: string[]): string {
   return resolveWithin(PRODUCTS_DIR, name, ...segments)
 }
 
+export function userProductPath(userId: string, name: string, ...segments: string[]): string {
+  return resolveWithin(PRODUCTS_DIR, userId, name, ...segments)
+}
+
 export function assetPath(name: string, ...segments: string[]): string {
   return resolveWithin(ASSETS_DIR, name, ...segments)
 }
