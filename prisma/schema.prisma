@@ -20,6 +20,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   products      Product[]
+  loadouts      Loadout[]
 }
 
 model Account {
@@ -79,8 +80,22 @@ model Product {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   files           MascotFile[]
+  loadoutId       String?
+  loadout         Loadout?     @relation(fields: [loadoutId], references: [id], onDelete: SetNull)
 
   @@unique([userId, name])
+  @@index([userId])
+}
+
+model Loadout {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  assets    String[]
+  createdAt DateTime  @default(now())
+  products  Product[]
+
   @@index([userId])
 }
 

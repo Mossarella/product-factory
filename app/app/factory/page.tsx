@@ -63,6 +63,8 @@ export default function Home() {
   const [config, setConfig] = useState<ProductConfig | null>(null)
   const [files, setFiles] = useState<FileEntry[]>([])
   const [fixedAssets, setFixedAssets] = useState<FixedAssetDef[]>(INITIAL_FIXED_ASSETS)
+  const [loadouts, setLoadouts] = useState<{ id: string; name: string; assets: string[] }[]>([])
+  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string | null>(null)
   const [etsyTags, setEtsyTags] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
@@ -88,6 +90,10 @@ export default function Home() {
   }, [refreshProducts])
 
   useEffect(() => {
+    fetch('/api/loadouts').then(r => r.json()).then(setLoadouts)
+  }, [])
+
+  useEffect(() => {
     void Promise.all(INITIAL_FIXED_ASSETS.map(async (asset) => {
       if (!asset.slot) return
       const response = await fetch(asset.slot)
@@ -108,6 +114,7 @@ export default function Home() {
     const normalized = normalizeProductConfig(loaded, name)
     setActiveProduct(name)
     setConfig(normalized)
+    setSelectedLoadoutId((loaded as { loadoutId?: string | null }).loadoutId ?? null)
     setFiles([])
     setHeroImageLoaded(false)
     setEtsyTags(normalized.etsyTags)
@@ -196,14 +203,14 @@ export default function Home() {
       etsyTags,
       complete: Boolean(config.productName && config.etsyTitle && config.price > 0 && files.length > 0),
     }
-    const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify(nextConfig) })
+    const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify({ ...nextConfig, loadoutId: selectedLoadoutId }) })
     if (!response.ok) throw new Error('Could not save product')
     setConfig(nextConfig)
     await refreshProducts()
     setDirty(false)
     setSaveFlash(true)
     setTimeout(() => setSaveFlash(false), 2000)
-  }, [activeProduct, config, etsyTags, files, refreshProducts])
+  }, [activeProduct, config, etsyTags, files, refreshProducts, selectedLoadoutId])
 
   const gatherData = useCallback(() => {
     if (!config) throw new Error('Select a product first')
@@ -287,6 +294,10 @@ export default function Home() {
   }, [activeProduct, config, files, saveProduct])
 
   const canCreate = license.plan === 'pro' || products.length < 3
+  const activeAssets = selectedLoadoutId
+    ? (loadouts.find(l => l.id === selectedLoadoutId)?.assets ?? ['thankyou', 'howto'])
+    : ['thankyou', 'howto']
+  const visibleFixedAssets = fixedAssets.filter(a => activeAssets.includes(a.id))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
@@ -316,6 +327,25 @@ export default function Home() {
           onToggleZipPreview={toggleZipPreview}
           zipPreviewText={zipPreviewText}
         />
+        {/* Loadout selector */}
+        {config && (
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
+            <label className="text-xs uppercase tracking-widest text-zinc-600 font-mono w-28 shrink-0">Loadout</label>
+            <select
+              value={selectedLoadoutId ?? ''}
+              onChange={e => setSelectedLoadoutId(e.target.value || null)}
+              className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 font-mono focus:border-violet-500 focus:outline-none"
+            >
+              <option value="">— None —</option>
+              {loadouts.map(l => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+            <a href="/app/fixed-assets" className="text-xs text-zinc-600 hover:text-zinc-400 font-mono transition-colors">
+              Manage →
+            </a>
+          </div>
+        )}
       </section>
 
       {!config && (
@@ -348,7 +378,7 @@ export default function Home() {
       <section className="border border-zinc-800 p-4">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">4. Fixed Assets</h2>
         <p className="text-zinc-600 text-xs mb-3">Shared across all products. Auto-loaded from assets/ folder.</p>
-        <FixedAssets assets={fixedAssets} onChange={setFixedAssets} onAddCustom={addCustomAsset} />
+        <FixedAssets assets={visibleFixedAssets} onChange={setFixedAssets} onAddCustom={addCustomAsset} />
       </section>
       {config && (
         <section className="border border-zinc-800 p-4">
@@ -376,4 +406,3 @@ export default function Home() {
     </div>
   )
 }
-

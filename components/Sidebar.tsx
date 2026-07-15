@@ -31,6 +31,17 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    href: '/app/fixed-assets',
+    label: 'Fixed Assets',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 1L14 4L8 7L2 4L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M2 8L8 11L14 8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M2 12L8 15L14 12" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
 ]
 
 export function Sidebar({ user }: SidebarProps) {
