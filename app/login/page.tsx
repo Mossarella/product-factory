@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>
-}) {
+export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') ?? '/app'
+
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -22,8 +22,6 @@ export default function LoginPage({
     setError('')
     setDevLoginUrl(null)
     try {
-      const params = await searchParams
-      const callbackUrl = params['callbackUrl'] ?? '/app'
       const result = await signIn('resend', { email: trimmed, redirect: false, callbackUrl })
       if (result?.error) {
         setError('Could not send magic link. Check your email address and try again.')

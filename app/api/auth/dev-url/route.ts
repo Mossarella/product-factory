@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { getDevLoginUrl } from '@/lib/dev-auth'
 
 // Returns a clickable magic link for the given email — dev mode ONLY.
-// Reads the VerificationToken that Auth.js just created in the DB.
-// In production (NODE_ENV=production) this always returns { devLoginUrl: null }.
+// Auth.js stores hashed tokens in the DB, so we read the plain URL captured
+// when sendVerificationRequest ran. In production this always returns null.
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ devLoginUrl: null })
@@ -12,19 +12,6 @@ export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get('email') ?? ''
   if (!email) return NextResponse.json({ devLoginUrl: null })
 
-  const record = await prisma.verificationToken.findFirst({
-    where: {
-      identifier: email,
-      expires: { gt: new Date() },
-    },
-    orderBy: { expires: 'desc' },
-  })
-
-  if (!record) return NextResponse.json({ devLoginUrl: null })
-
-  const base = process.env.AUTH_URL ?? 'http://localhost:3000'
-  const params = new URLSearchParams({ callbackUrl: '/app', token: record.token, email })
-  const devLoginUrl = `${base}/api/auth/callback/resend?${params.toString()}`
-
+  const devLoginUrl = getDevLoginUrl(email)
   return NextResponse.json({ devLoginUrl })
 }
