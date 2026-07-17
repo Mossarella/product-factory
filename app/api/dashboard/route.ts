@@ -1,18 +1,7 @@
-import fs from 'fs'
-import path from 'path'
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { PRODUCTS_DIR } from '@/lib/api-files'
-
-function heroSlotEmpty(userId: string, productName: string): boolean {
-  try {
-    const heroDir = path.join(PRODUCTS_DIR, userId, productName, 'assets', 'etsy-hero')
-    return fs.readdirSync(heroDir).filter((f: string) => !f.startsWith('.')).length === 0
-  } catch {
-    return true
-  }
-}
+import { heroSlotEmpty, computeStats } from '@/lib/dashboard-stats'
 
 export async function GET() {
   const session = await auth()
@@ -26,26 +15,16 @@ export async function GET() {
       complete: true,
       description: true,
       etsyTitle: true,
-      files: { select: { id: true } },
+      etsyTags: true,
+      createdAt: true,
+      files: { select: { id: true, origName: true } },
     },
   })
 
-  const total = products.length
-  const readyToPublish = products.filter(p => p.complete).length
-  const needsReview = products.filter(
-    p => !p.complete && (p.files.length > 0 || p.etsyTitle !== '')
-  ).length
-  const missingHero = products.filter(p => heroSlotEmpty(userId, p.name)).length
-  const needReadme = products.filter(
-    p => !p.description || p.description.trim() === ''
-  ).length
+  const stats = computeStats(products, userId)
 
   return NextResponse.json({
-    total,
-    readyToPublish,
-    needsReview,
-    missingHero,
-    needReadme,
+    ...stats,
     lastExport: null,
   })
 }

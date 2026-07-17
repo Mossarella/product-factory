@@ -60,11 +60,12 @@ export default function FixedAssetsPage() {
 
   useEffect(() => {
     fetch('/api/loadouts')
-      .then(r => r.json())
-      .then((data: Loadout[]) => {
+      .then(async (r) => (r.ok ? r.json() as Promise<Loadout[]> : []))
+      .then((data) => {
         setLoadouts(data)
         if (data.length > 0) select(data[0])
       })
+      .catch(() => setLoadouts([]))
   }, [])
 
   function select(l: Loadout) {
@@ -79,6 +80,7 @@ export default function FixedAssetsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Untitled', assets: [] }),
     })
+    if (!res.ok) return
     const newL: Loadout = await res.json()
     setLoadouts(prev => [...prev, newL])
     select(newL)
@@ -92,6 +94,10 @@ export default function FixedAssetsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: editName, assets: editAssets }),
     })
+    if (!res.ok) {
+      setSaving(false)
+      return
+    }
     const updated: Loadout = await res.json()
     setLoadouts(prev => prev.map(l => l.id === selectedId ? updated : l))
     setSaving(false)

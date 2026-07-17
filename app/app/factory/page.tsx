@@ -90,7 +90,10 @@ export default function Home() {
   }, [refreshProducts])
 
   useEffect(() => {
-    fetch('/api/loadouts').then(r => r.json()).then(setLoadouts)
+    fetch('/api/loadouts')
+      .then(async (r) => (r.ok ? r.json() : []))
+      .then(setLoadouts)
+      .catch(() => setLoadouts([]))
   }, [])
 
   useEffect(() => {

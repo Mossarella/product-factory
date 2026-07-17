@@ -1,31 +1,16 @@
-<span className="border border-zinc-700 px-2 py-0.5 text-xs font-mono text-zinc-400">
-  {tag}
-</span>
-```
-```tsx
-<input
-  placeholder="Search…"
-  value={search}
-  onChange={e => setSearch(e.target.value)}
-  className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none w-40"
-/>
-```
-```tsx
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ProductConfig, ProductSummary } from '@/lib/types'
+import { avatarColor } from '@/lib/utils'
+import type { ProductConfig, ProductSummary } from '@/lib/types'
 
-// avatar color helper
-const AVATAR_COLORS = ['bg-violet-700','bg-emerald-700','bg-amber-700','bg-sky-700','bg-rose-700','bg-teal-700']
-function avatarColor(name: string) {
-  return AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
-}
-// status
+type LoadoutSummary = { id: string; name: string }
+
 function productStatus(p: ProductSummary): 'ready' | 'in-progress' | 'empty' {
   if (p.complete) return 'ready'
-  return 'empty'  // refine to 'in-progress' after detail is loaded
+  return 'empty'
 }
+
 function detailStatus(c: ProductConfig): 'ready' | 'in-progress' | 'empty' {
   if (c.complete) return 'ready'
   if (c.mascotFiles.length > 0 || c.etsyTitle.trim() !== '') return 'in-progress'
@@ -43,7 +28,7 @@ export default function CollectionPage() {
   const [detailCache, setDetailCache] = useState<Record<string, ProductConfig>>({})
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [loadouts, setLoadouts] = useState<{ id: string; name: string }[]>([])
+  const [loadouts, setLoadouts] = useState<LoadoutSummary[]>([])
   const [search, setSearch] = useState('')
   const [showFullDesc, setShowFullDesc] = useState(false)
 
@@ -68,7 +53,6 @@ export default function CollectionPage() {
   )
   const detail = selectedName ? detailCache[selectedName] : null
 
-  // files grouped by folder
   const filesByFolder: Record<string, number> = {}
   if (detail) {
     for (const f of detail.mascotFiles) {
@@ -118,20 +102,18 @@ export default function CollectionPage() {
                 <button
                   key={p.name}
                   onClick={() => selectProduct(p.name)}
-                  className={`text-left border p-3 transition-colors ${ isSelected
-                    ? 'border-violet-500 bg-zinc-800/80'
-                    : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-600'
+                  className={`text-left border p-3 transition-colors ${
+                    isSelected
+                      ? 'border-violet-500 bg-zinc-800/80'
+                      : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-600'
                   }`}
                 >
-                  {/* Avatar */}
                   <div className={`w-10 h-10 ${avatarColor(p.name)} flex items-center justify-center mb-3`}>
                     <span className="text-white font-bold font-mono text-lg uppercase">
                       {p.name[0]}
                     </span>
                   </div>
-                  {/* Name */}
                   <p className="text-xs font-mono text-zinc-200 truncate leading-tight mb-1">{p.name}</p>
-                  {/* Status */}
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                     <span className={`text-xs font-mono ${s.text}`}>{s.label}</span>
@@ -162,7 +144,6 @@ export default function CollectionPage() {
             const s = STATUS_STYLES[status]
             return (
               <div className="pb-12">
-                {/* Header */}
                 <div className="flex items-start justify-between mb-1">
                   <div>
                     <h2 className="text-xl font-bold text-zinc-100 font-mono">{detail.productName || detail.name}</h2>
@@ -172,7 +153,7 @@ export default function CollectionPage() {
                     </p>
                   </div>
                   <a
-                    href={`/app/factory`}
+                    href="/app/factory"
                     className="border border-violet-700 bg-violet-700/20 px-4 py-1.5 text-xs text-violet-300 hover:bg-violet-700/40 font-mono transition-colors shrink-0 ml-4"
                   >
                     Open in Factory →
@@ -185,7 +166,6 @@ export default function CollectionPage() {
 
                 <hr className="border-zinc-800 mb-5" />
 
-                {/* Pricing & License */}
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Pricing & License</p>
                   <div className="flex gap-8">
@@ -207,7 +187,6 @@ export default function CollectionPage() {
 
                 <hr className="border-zinc-800 mb-5" />
 
-                {/* Etsy Listing */}
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Etsy Listing</p>
                   {detail.etsyTitle ? (
@@ -234,7 +213,6 @@ export default function CollectionPage() {
                   )}
                 </div>
 
-                {/* Tags */}
                 {detail.etsyTags.length > 0 && (
                   <>
                     <hr className="border-zinc-800 mb-5" />
@@ -253,7 +231,6 @@ export default function CollectionPage() {
 
                 <hr className="border-zinc-800 mb-5" />
 
-                {/* Files */}
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">
                     Files <span className="text-zinc-700">({detail.mascotFiles.length})</span>
@@ -274,7 +251,6 @@ export default function CollectionPage() {
 
                 <hr className="border-zinc-800 mb-5" />
 
-                {/* Loadout */}
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Loadout</p>
                   <p className="text-sm font-mono text-zinc-300">{loadoutName ?? '— None'}</p>
@@ -282,7 +258,6 @@ export default function CollectionPage() {
 
                 <hr className="border-zinc-800 mb-5" />
 
-                {/* Readiness */}
                 <div>
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Readiness</p>
                   {[
