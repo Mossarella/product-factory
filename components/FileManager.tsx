@@ -53,6 +53,7 @@ export default function FileManager({ files, folders, onChange, productName }: P
   const [groupByFolder, setGroupByFolder] = useState(false)
   const [bulkFolder, setBulkFolder] = useState(folders[0] ?? '')
   const [zoom, setZoom] = useState<ZoomState | null>(null)
+  const folderSelectItems = folders.map((folder) => ({ value: folder, label: folder }))
 
   useEffect(() => {
     latestFilesRef.current = files
@@ -205,6 +206,7 @@ export default function FileManager({ files, folders, onChange, productName }: P
               <span className="text-zinc-400">{selectedCount} selected →</span>
               <Select
                 value={effectiveBulkFolder}
+                items={folderSelectItems}
                 onValueChange={(value) => { if (value) setBulkFolder(value) }}
               >
                 <SelectTrigger className="h-auto rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 focus-visible:border-violet-500 focus-visible:ring-0" aria-label="Folder for selected files">
@@ -252,6 +254,7 @@ export default function FileManager({ files, folders, onChange, productName }: P
                     <span className="min-w-0 flex-1 break-all text-xs text-zinc-500" title={entry.file.name}>{entry.file.name}</span>
                     <Select
                       value={entry.folder}
+                      items={folderSelectItems}
                       onValueChange={(value) => { if (value) updateFile(entry.id, { folder: value }) }}
                     >
                       <SelectTrigger className="h-auto rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 focus-visible:border-violet-500 focus-visible:ring-0" aria-label={`Folder for ${entry.file.name}`}>

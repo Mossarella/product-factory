@@ -63,7 +63,7 @@ export function ProductInfo({ config, onChange }: Props) {
         </label>
         <label className="sm:w-28">
           <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Currency</span>
-          <Select value={config.currency ?? undefined} onValueChange={(value) => onChange({ currency: value as ProductConfig['currency'] })}>
+          <Select value={config.currency ?? undefined} items={[{ value: 'USD', label: 'USD' }]} onValueChange={(value) => onChange({ currency: value as ProductConfig['currency'] })}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -76,6 +76,11 @@ export function ProductInfo({ config, onChange }: Props) {
           <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">License</span>
           <Select
             value={config.licenseType}
+            items={[
+              { value: 'personal', label: 'Personal' },
+              { value: 'commercial', label: 'Commercial' },
+              { value: 'both', label: 'Both' },
+            ]}
             onValueChange={(value) => onChange({ licenseType: value as ProductConfig['licenseType'] })}
           >
             <SelectTrigger className="w-full">
