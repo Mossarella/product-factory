@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CONFIG } from '@/config'
 import { EtsyListing } from '@/components/EtsyListing'
 import { EtsySlots } from '@/components/EtsySlots'
+import { TemplateValidation } from '@/components/TemplateValidation'
 import { FileEntry } from '@/components/FileManager'
 import FileManager from '@/components/FileManager'
 import { FixedAssets } from '@/components/FixedAssets'
@@ -15,6 +16,7 @@ import { ReadmePreview } from '@/components/ReadmePreview'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
+import { type TemplateRule, validateProduct } from '@/lib/template-rules'
 import { mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
 import { buildZip, buildZipTree } from '@/lib/zip'
 
@@ -67,8 +69,8 @@ export default function Home() {
   const [config, setConfig] = useState<ProductConfig | null>(null)
   const [files, setFiles] = useState<FileEntry[]>([])
   const [fixedAssets, setFixedAssets] = useState<FixedAssetDef[]>(INITIAL_FIXED_ASSETS)
-  const [loadouts, setLoadouts] = useState<{ id: string; name: string; assets: string[] }[]>([])
-  const [selectedLoadoutId, setSelectedLoadoutId] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<{ id: string; name: string; assets: string[]; rules: TemplateRule[] }[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [etsyTags, setEtsyTags] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
@@ -94,17 +96,17 @@ export default function Home() {
   }, [refreshProducts])
 
   useEffect(() => {
-    fetch('/api/loadouts')
+    fetch('/api/product-templates')
       .then(async (r) => (r.ok ? r.json() : []))
-      .then(setLoadouts)
-      .catch(() => setLoadouts([]))
+      .then(setTemplates)
+      .catch(() => setTemplates([]))
   }, [])
 
   const activeAssets = useMemo(() => (
-    selectedLoadoutId
-      ? (loadouts.find(l => l.id === selectedLoadoutId)?.assets ?? ['thankyou', 'howto'])
+    selectedTemplateId
+      ? (templates.find(t => t.id === selectedTemplateId)?.assets ?? ['thankyou', 'howto'])
       : ['thankyou', 'howto']
-  ), [selectedLoadoutId, loadouts])
+  ), [selectedTemplateId, templates])
 
   useEffect(() => {
     setFixedAssets((current) => {
@@ -149,7 +151,7 @@ export default function Home() {
     const normalized = normalizeProductConfig(loaded, name)
     setActiveProduct(name)
     setConfig(normalized)
-    setSelectedLoadoutId((loaded as { loadoutId?: string | null }).loadoutId ?? null)
+    setSelectedTemplateId((loaded as { templateId?: string | null }).templateId ?? null)
     setFiles([])
     setHeroImageLoaded(false)
     setEtsyTags(normalized.etsyTags)
@@ -238,14 +240,14 @@ export default function Home() {
       etsyTags,
       complete: Boolean(config.productName && config.etsyTitle && config.price > 0 && files.length > 0),
     }
-    const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify({ ...nextConfig, loadoutId: selectedLoadoutId }) })
+    const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify({ ...nextConfig, templateId: selectedTemplateId }) })
     if (!response.ok) throw new Error('Could not save product')
     setConfig(nextConfig)
     await refreshProducts()
     setDirty(false)
     setSaveFlash(true)
     setTimeout(() => setSaveFlash(false), 2000)
-  }, [activeProduct, config, etsyTags, files, refreshProducts, selectedLoadoutId])
+  }, [activeProduct, config, etsyTags, files, refreshProducts, selectedTemplateId])
 
   const gatherData = useCallback(() => {
     if (!config) throw new Error('Select a product first')
@@ -330,9 +332,9 @@ export default function Home() {
 
   const canCreate = license.plan === 'pro' || products.length < 3
   const visibleFixedAssets = fixedAssets.filter(a => activeAssets.includes(a.id))
-  const loadoutSelectItems = [
+  const templateSelectItems = [
     { value: '__none__', label: '— None —' },
-    ...loadouts.map((loadout) => ({ value: loadout.id, label: loadout.name })),
+    ...templates.map((template) => ({ value: template.id, label: template.name })),
   ]
 
   return (
@@ -363,29 +365,35 @@ export default function Home() {
           onToggleZipPreview={toggleZipPreview}
           zipPreviewText={zipPreviewText}
         />
-        {/* Loadout selector */}
+        {/* Product Template selector */}
         {config && (
           <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
-            <label className="text-xs uppercase tracking-widest text-zinc-600 font-mono w-28 shrink-0">Loadout</label>
+            <label className="text-xs uppercase tracking-widest text-zinc-600 font-mono w-28 shrink-0">Template</label>
             <Select
-              value={selectedLoadoutId ?? '__none__'}
-              items={loadoutSelectItems}
-              onValueChange={(value) => setSelectedLoadoutId(value === '__none__' ? null : value)}
+              value={selectedTemplateId ?? '__none__'}
+              items={templateSelectItems}
+              onValueChange={(value) => setSelectedTemplateId(value === '__none__' ? null : value)}
             >
               <SelectTrigger className="w-auto border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 font-mono focus:border-violet-500">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">— None —</SelectItem>
-              {loadouts.map(l => (
-                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+              {templates.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
               </SelectContent>
             </Select>
-            <a href="/app/fixed-assets" className="text-xs text-zinc-600 hover:text-zinc-400 font-mono transition-colors">
+            <a href="/app/product-templates" className="text-xs text-zinc-600 hover:text-zinc-400 font-mono transition-colors">
               Manage →
             </a>
           </div>
+        )}
+        {config && (
+          <TemplateValidation
+            config={config}
+            rules={templates.find((t) => t.id === selectedTemplateId)?.rules ?? []}
+          />
         )}
       </Card>
 

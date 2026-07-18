@@ -6,11 +6,13 @@ import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { TemplateValidation } from '@/components/TemplateValidation'
 import { cn } from '@/lib/cn'
+import type { TemplateRule } from '@/lib/template-rules'
 import { avatarColor } from '@/lib/utils'
 import type { ProductConfig, ProductSummary } from '@/lib/types'
 
-type LoadoutSummary = { id: string; name: string }
+type ProductTemplateSummary = { id: string; name: string; rules: TemplateRule[] }
 
 function productStatus(p: ProductSummary): 'ready' | 'in-progress' | 'empty' {
   if (p.complete) return 'ready'
@@ -28,13 +30,13 @@ export default function CollectionPage() {
   const [detailCache, setDetailCache] = useState<Record<string, ProductConfig>>({})
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [loadouts, setLoadouts] = useState<LoadoutSummary[]>([])
+  const [templates, setTemplates] = useState<ProductTemplateSummary[]>([])
   const [search, setSearch] = useState('')
   const [showFullDesc, setShowFullDesc] = useState(false)
 
   useEffect(() => {
     fetch('/api/products').then(r => r.json()).then(setProducts)
-    fetch('/api/loadouts').then(r => r.json()).then(setLoadouts)
+    fetch('/api/product-templates').then(r => r.json()).then(setTemplates)
   }, [])
 
   async function selectProduct(name: string) {
@@ -60,9 +62,10 @@ export default function CollectionPage() {
     }
   }
 
-  const loadoutName = detail?.loadoutId
-    ? (loadouts.find(l => l.id === detail.loadoutId)?.name ?? 'Unknown')
+  const templateName = detail?.templateId
+    ? (templates.find(t => t.id === detail.templateId)?.name ?? 'Unknown')
     : null
+  const assignedTemplate = detail?.templateId ? templates.find(t => t.id === detail.templateId) : null
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -251,8 +254,8 @@ export default function CollectionPage() {
                 <Separator className="mb-5" />
 
                 <div className="mb-5">
-                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Loadout</p>
-                  <p className="text-sm font-mono text-zinc-300">{loadoutName ?? '— None'}</p>
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Product Template</p>
+                  <p className="text-sm font-mono text-zinc-300">{templateName ?? '— None'}</p>
                 </div>
 
                 <Separator className="mb-5" />
@@ -274,6 +277,16 @@ export default function CollectionPage() {
                     </div>
                   ))}
                 </div>
+
+                {assignedTemplate && assignedTemplate.rules.length > 0 && (
+                  <>
+                    <Separator className="mb-5 mt-5" />
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Template Validation</p>
+                      <TemplateValidation config={detail} rules={assignedTemplate.rules} />
+                    </div>
+                  </>
+                )}
               </div>
             )
           })()}

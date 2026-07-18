@@ -27,7 +27,7 @@ export interface ProductConfig {
   folders: string[]
   mascotFiles: MascotFile[]
   etsyTags: string[]
-  loadoutId?: string | null
+  templateId?: string | null
   complete: boolean
   createdAt: string
 }

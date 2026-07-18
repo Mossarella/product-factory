@@ -10,17 +10,17 @@ datasource db {
 // ─── Auth.js required tables ──────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  products      Product[]
-  loadouts      Loadout[]
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  emailVerified    DateTime?
+  image            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  sessions         Session[]
+  products         Product[]
+  productTemplates ProductTemplate[]
 }
 
 model Account {
@@ -60,39 +60,40 @@ model VerificationToken {
 // ─── Product data ─────────────────────────────────────────────────────────────
 
 model Product {
-  id              String       @id @default(cuid())
+  id              String           @id @default(cuid())
   userId          String
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String
-  sku             String       @default("")
-  productName     String       @default("")
-  etsyTitle       String       @default("")
-  description     String       @default("") @db.Text
-  notes           String       @default("") @db.Text
-  contact         String       @default("")
-  price           Float        @default(0)
-  currency        String       @default("USD")
-  licenseType     String       @default("personal")
+  sku             String           @default("")
+  productName     String           @default("")
+  etsyTitle       String           @default("")
+  description     String           @default("") @db.Text
+  notes           String           @default("") @db.Text
+  contact         String           @default("")
+  price           Float            @default(0)
+  currency        String           @default("USD")
+  licenseType     String           @default("personal")
   commercialPrice Float?
   folders         String[]
   etsyTags        String[]
-  complete        Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  complete        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   files           MascotFile[]
-  loadoutId       String?
-  loadout         Loadout?     @relation(fields: [loadoutId], references: [id], onDelete: SetNull)
+  templateId      String?
+  template        ProductTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@unique([userId, name])
   @@index([userId])
 }
 
-model Loadout {
+model ProductTemplate {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   assets    String[]
+  rules     Json      @default("[]")
   createdAt DateTime  @default(now())
   products  Product[]
 
