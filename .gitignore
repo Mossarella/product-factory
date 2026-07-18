@@ -13,6 +13,12 @@ keys.json
 .next/
 out/
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Node
 node_modules/
 npm-debug.log*

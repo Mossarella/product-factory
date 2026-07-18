@@ -3,6 +3,10 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
@@ -52,24 +56,26 @@ export default function LoginPage() {
 
         {sent ? (
           <div className="space-y-3">
-            <div className="border border-emerald-800 bg-emerald-950/40 p-5">
+            <Card className="border border-emerald-800 bg-emerald-950/40 p-5">
               <p className="text-emerald-400 font-bold mb-1">Check your email</p>
               <p className="text-zinc-400 text-sm">
                 We sent a magic link to{' '}
                 <span className="text-zinc-200">{email}</span>.
                 Click the link to sign in — no password needed.
               </p>
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="xs"
                 onClick={() => { setSent(false); setEmail(''); setDevLoginUrl(null) }}
-                className="mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+                className="mt-3 text-zinc-600 hover:text-zinc-400 transition-colors"
               >
                 Use a different email
-              </button>
-            </div>
+              </Button>
+            </Card>
 
             {devLoginUrl && (
-              <div className="border border-amber-700 bg-amber-950/40 p-4">
+              <Card className="border border-amber-700 bg-amber-950/40 p-4">
                 <p className="text-xs uppercase tracking-widest text-amber-500 mb-2">
                   Dev mode — skip email
                 </p>
@@ -82,16 +88,16 @@ export default function LoginPage() {
                 <p className="mt-2 text-xs text-amber-800">
                   Only shown when NODE_ENV ≠ production.
                 </p>
-              </div>
+              </Card>
             )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs uppercase tracking-widest text-zinc-600 mb-2">
+              <Label htmlFor="email" className="block text-xs uppercase tracking-widest text-zinc-600 mb-2">
                 Email address
-              </label>
-              <input
+              </Label>
+              <Input
                 id="email"
                 type="email"
                 required
@@ -102,13 +108,14 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-xs text-red-400">{error}</p>}
-            <button
+            <Button
               type="submit"
+              variant="default"
               disabled={loading || !email.trim()}
-              className="w-full border border-violet-600 bg-violet-600 px-4 py-2.5 text-sm text-zinc-100 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full"
             >
               {loading ? 'Sending…' : 'Send magic link →'}
-            </button>
+            </Button>
             <p className="text-xs text-zinc-600 text-center">
               No password. No account setup. Just enter your email.
             </p>
