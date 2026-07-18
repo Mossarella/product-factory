@@ -1,5 +1,9 @@
 import Link from 'next/link'
 
+import { buttonVariants } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/cn'
+
 const FEATURES = [
   {
     title: 'Folder-based file org',
@@ -51,10 +55,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="text-sm font-bold tracking-tight">MossarellaStudio — Product Factory</span>
           <div className="flex items-center gap-3">
-            <Link href="/app" className="border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:border-violet-500 hover:text-zinc-100 transition-colors">
+            <Link href="/app" className={cn(buttonVariants({ variant: 'outline' }), 'h-auto rounded-none border-zinc-700 bg-zinc-800 px-4 py-2 font-normal text-zinc-300 hover:border-violet-500 hover:text-zinc-100 transition-colors')}>
               Open App
             </Link>
-            <Link href="/api/buy" className="border border-violet-600 bg-violet-600 px-4 py-2 text-sm text-zinc-100 hover:bg-violet-500 transition-colors">
+            <Link href="/api/buy" className={cn(buttonVariants({ variant: 'default' }), 'h-auto rounded-none border-violet-600 bg-violet-600 px-4 py-2 font-normal text-zinc-100 hover:bg-violet-500 transition-colors')}>
               Buy Pro — $29
             </Link>
           </div>
@@ -74,10 +78,10 @@ export default function LandingPage() {
             Product Factory automates the tedious parts of listing digital products — README generation, Etsy description copy, ZIP structure, and tag research. All in one local tool.
           </p>
           <div className="flex flex-wrap gap-4">
-            <Link href="/app" className="border border-violet-600 bg-violet-600 px-6 py-3 text-sm text-zinc-100 hover:bg-violet-500 transition-colors">
+            <Link href="/app" className={cn(buttonVariants({ variant: 'default' }), 'h-auto rounded-none border-violet-600 bg-violet-600 px-6 py-3 font-normal text-zinc-100 hover:bg-violet-500 transition-colors')}>
               Open App — it&apos;s free →
             </Link>
-            <Link href="#how-it-works" className="border border-zinc-700 px-6 py-3 text-sm text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors">
+            <Link href="#how-it-works" className={cn(buttonVariants({ variant: 'outline' }), 'h-auto rounded-none border-zinc-700 bg-transparent px-6 py-3 font-normal text-zinc-400 hover:border-zinc-500 hover:bg-transparent hover:text-zinc-200 transition-colors')}>
               See how it works
             </Link>
           </div>
@@ -130,10 +134,10 @@ export default function LandingPage() {
           <h2 className="text-2xl font-bold mb-12 text-zinc-100">Everything in the box.</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((feature) => (
-              <div key={feature.title} className="border border-zinc-800 bg-zinc-900 p-5">
+              <Card key={feature.title} className="gap-0 rounded-none bg-zinc-900 px-5 !py-5 ring-zinc-800">
                 <h3 className="font-bold text-zinc-100 mb-2 text-sm">{feature.title}</h3>
                 <p className="text-zinc-500 text-xs leading-relaxed">{feature.description}</p>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -145,7 +149,7 @@ export default function LandingPage() {
           <p className="text-xs uppercase tracking-widest text-zinc-600 mb-3">Pricing</p>
           <h2 className="text-2xl font-bold mb-12 text-zinc-100">Simple, one-time pricing.</h2>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="border border-zinc-800 bg-zinc-900 p-6">
+            <Card className="gap-0 rounded-none bg-zinc-900 px-6 !py-6 ring-zinc-800">
               <p className="text-xs uppercase tracking-widest text-zinc-600 mb-2">Free</p>
               <p className="text-3xl font-bold text-zinc-100 mb-1">$0</p>
               <p className="text-zinc-500 text-sm mb-6">No credit card needed</p>
@@ -156,11 +160,11 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/app" className="block text-center border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:border-violet-500 transition-colors">
+              <Link href="/app" className={cn(buttonVariants({ variant: 'default' }), 'h-auto w-full rounded-none border-zinc-700 bg-zinc-800 px-4 py-2 font-normal text-zinc-300 hover:border-violet-500 hover:bg-zinc-800 transition-colors')}>
                 Get started free
               </Link>
-            </div>
-            <div className="border border-violet-700 bg-zinc-900 p-6 relative">
+            </Card>
+            <Card className="relative gap-0 rounded-none bg-zinc-900 px-6 !py-6 ring-violet-700">
               <div className="absolute top-0 right-0 border-l border-b border-violet-700 bg-violet-900 px-3 py-1 text-xs text-violet-300">
                 Recommended
               </div>
@@ -174,10 +178,10 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/api/buy" className="block text-center border border-violet-600 bg-violet-600 px-4 py-2 text-sm text-zinc-100 hover:bg-violet-500 transition-colors">
+              <Link href="/api/buy" className={cn(buttonVariants({ variant: 'default' }), 'h-auto w-full rounded-none border-violet-600 bg-violet-600 px-4 py-2 font-normal text-zinc-100 hover:bg-violet-500 transition-colors')}>
                 Buy Pro — $29 one-time
               </Link>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -187,7 +191,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-2xl font-bold mb-4 text-zinc-100">Ready to ship your next product?</h2>
           <p className="text-zinc-400 mb-8">Start for free. No account, no cloud. Your products stay on your machine.</p>
-          <Link href="/app" className="inline-block border border-violet-600 bg-violet-600 px-8 py-3 text-sm text-zinc-100 hover:bg-violet-500 transition-colors">
+          <Link href="/app" className={cn(buttonVariants({ variant: 'default' }), 'h-auto rounded-none border-violet-600 bg-violet-600 px-8 py-3 font-normal text-zinc-100 hover:bg-violet-500 transition-colors')}>
             Open Product Factory →
           </Link>
         </div>
