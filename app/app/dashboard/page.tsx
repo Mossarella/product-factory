@@ -4,6 +4,9 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { greeting, formatDate } from '@/lib/utils'
 import { heroSlotEmpty, computeStats } from '@/lib/dashboard-stats'
+import { Card } from '@/components/ui/card'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/cn'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -47,12 +50,12 @@ export default async function DashboardPage() {
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-4">
         {stats.map(s => (
-          <div key={s.label} className="border border-zinc-800 bg-zinc-900/60 p-5">
+          <Card key={s.label} className="gap-0 rounded-none bg-zinc-900/60 px-5 !py-5 ring-zinc-800">
             <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">
               {s.label}
             </p>
             <p className={`text-4xl font-bold font-mono ${s.color}`}>{s.value}</p>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -60,27 +63,27 @@ export default async function DashboardPage() {
       <div className="mt-10">
         <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-4">Insights — This Month</p>
         <div className="grid grid-cols-3 gap-4">
-          <div className="border border-zinc-800 bg-zinc-900/60 p-5">
+          <Card className="gap-0 rounded-none bg-zinc-900/60 px-5 !py-5 ring-zinc-800">
             <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">This Month</p>
             <p className="text-4xl font-bold font-mono text-zinc-100">{thisMonth}</p>
             <p className="text-xs text-zinc-600 font-mono mt-2">products created</p>
-          </div>
+          </Card>
 
-          <div className="border border-zinc-800 bg-zinc-900/60 p-5">
+          <Card className="gap-0 rounded-none bg-zinc-900/60 px-5 !py-5 ring-zinc-800">
             <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">No GIF Preview</p>
             <p className={`text-4xl font-bold font-mono ${noGifPreview > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>
               {noGifPreview}
             </p>
             <p className="text-xs text-zinc-600 font-mono mt-2">products don&apos;t contain a GIF preview</p>
-          </div>
+          </Card>
 
-          <div className="border border-zinc-800 bg-zinc-900/60 p-5">
+          <Card className="gap-0 rounded-none bg-zinc-900/60 px-5 !py-5 ring-zinc-800">
             <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Identical Tags</p>
             <p className={`text-4xl font-bold font-mono ${sharedTags > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>
               {sharedTags}
             </p>
             <p className="text-xs text-zinc-600 font-mono mt-2">products share identical tag sets</p>
-          </div>
+          </Card>
 
           {/*
             TODO: Average Export Time — needs explicit export event tracking
@@ -94,7 +97,7 @@ export default async function DashboardPage() {
       <div className="mt-8">
         <Link
           href="/app/factory"
-          className="inline-block border border-violet-700 bg-violet-700/20 px-5 py-2.5 text-sm text-violet-300 hover:bg-violet-700/40 font-mono transition-colors"
+          className={cn(buttonVariants({ variant: 'secondary' }), '!inline-block h-auto rounded-none px-5 py-2.5 font-mono font-normal transition-colors')}
         >
           Open Factory →
         </Link>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { CONFIG } from '@/config'
 import { ProductConfig } from '@/lib/types'
 import { FileEntry } from './FileManager'
@@ -38,8 +40,10 @@ export function ReadmePreview({ config, files }: Props) {
 
   return (
     <div>
-      <button type="button" onClick={() => void refresh()} className="mb-3 border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700">Refresh</button>
-      <pre className="bg-zinc-900 border border-zinc-800 p-3 text-xs text-zinc-400 whitespace-pre-wrap max-h-64 overflow-y-auto">{preview}</pre>
+      <Button variant="outline" onClick={() => void refresh()} className="mb-3">Refresh</Button>
+      <Card className="p-3">
+        <pre className="whitespace-pre-wrap max-h-64 overflow-y-auto text-xs text-zinc-400">{preview}</pre>
+      </Card>
     </div>
   )
 }

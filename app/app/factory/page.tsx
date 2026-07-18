@@ -12,6 +12,8 @@ import { LicenseBanner } from '@/components/LicenseBanner'
 import { ProductInfo } from '@/components/ProductInfo'
 import { ProductSelector } from '@/components/ProductSelector'
 import { ReadmePreview } from '@/components/ReadmePreview'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
 import { buildZip, buildZipTree } from '@/lib/zip'
 
@@ -301,18 +303,22 @@ export default function Home() {
     ? (loadouts.find(l => l.id === selectedLoadoutId)?.assets ?? ['thankyou', 'howto'])
     : ['thankyou', 'howto']
   const visibleFixedAssets = fixedAssets.filter(a => activeAssets.includes(a.id))
+  const loadoutSelectItems = [
+    { value: '__none__', label: '— None —' },
+    ...loadouts.map((loadout) => ({ value: loadout.id, label: loadout.name })),
+  ]
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
       <div className="flex items-center gap-3 mb-1">
         <img src="/api/slot/logo" alt="logo" className="w-10 h-10 object-contain rounded" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-        <h1 className="text-xl font-mono font-bold">MossarellaStudio \u2014 Product Factory</h1>
+        <h1 className="text-xl font-mono font-bold">MossarellaStudio — Product Factory</h1>
       </div>
-      <p className="text-zinc-500 text-sm">Pack your digital product \u2192 generate README \u2192 download ZIP \u2192 list on Etsy</p>
+      <p className="text-zinc-500 text-sm">Pack your digital product → generate README → download ZIP → list on Etsy</p>
 
       <LicenseBanner plan={license.plan} activatedAt={license.activatedAt} onActivate={activateLicense} onBuyClick={buyLicense} />
 
-      <section className="border border-zinc-800 bg-zinc-950 p-4">
+      <Card className="gap-0 bg-zinc-950 px-4">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">Product</h2>
         <ProductSelector
           products={products}
@@ -334,63 +340,68 @@ export default function Home() {
         {config && (
           <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
             <label className="text-xs uppercase tracking-widest text-zinc-600 font-mono w-28 shrink-0">Loadout</label>
-            <select
-              value={selectedLoadoutId ?? ''}
-              onChange={e => setSelectedLoadoutId(e.target.value || null)}
-              className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 font-mono focus:border-violet-500 focus:outline-none"
+            <Select
+              value={selectedLoadoutId ?? '__none__'}
+              items={loadoutSelectItems}
+              onValueChange={(value) => setSelectedLoadoutId(value === '__none__' ? null : value)}
             >
-              <option value="">— None —</option>
+              <SelectTrigger className="w-auto border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 font-mono focus:border-violet-500">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
               {loadouts.map(l => (
-                <option key={l.id} value={l.id}>{l.name}</option>
+                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
               ))}
-            </select>
+              </SelectContent>
+            </Select>
             <a href="/app/fixed-assets" className="text-xs text-zinc-600 hover:text-zinc-400 font-mono transition-colors">
               Manage →
             </a>
           </div>
         )}
-      </section>
+      </Card>
 
       {!config && (
-        <div className="border border-zinc-800 border-dashed p-8 text-center text-zinc-600 text-sm">
+        <Card className="gap-0 border border-dashed border-zinc-800 p-8 text-center text-zinc-600 text-sm ring-0">
           <p className="mb-1">Select a product above to get started</p>
           <p className="text-xs text-zinc-700">or create a new one with &quot;+ New&quot;</p>
-        </div>
+        </Card>
       )}
 
       {config && (
-        <section className="border border-zinc-800 p-4">
+        <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">1. Product Info</h2>
           <ProductInfo config={config} onChange={handleConfigChange} />
-        </section>
+        </Card>
       )}
       {config && (
-        <section className="border border-zinc-800 p-4">
+        <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">2. File Folders</h2>
           <p className="text-zinc-600 text-xs mb-3">Define folders to organize your files in the ZIP.</p>
           <FolderManager folders={config.folders} onChange={(folders) => handleConfigChange({ folders })} />
-        </section>
+        </Card>
       )}
       {config && (
-        <section className="border border-zinc-800 p-4">
+        <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">3. Product Files</h2>
           <FileManager files={files} folders={config.folders} onChange={handleFilesChange} productName={config.productName} />
-        </section>
+        </Card>
       )}
 
-      <section className="border border-zinc-800 p-4">
+      <Card className="gap-0 px-4">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">4. Fixed Assets</h2>
         <p className="text-zinc-600 text-xs mb-3">Shared across all products. Auto-loaded from assets/ folder.</p>
         <FixedAssets assets={visibleFixedAssets} onChange={setFixedAssets} onAddCustom={addCustomAsset} />
-      </section>
+      </Card>
       {config && (
-        <section className="border border-zinc-800 p-4">
+        <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">5. README Preview</h2>
           <ReadmePreview config={config} files={files} />
-        </section>
+        </Card>
       )}
       {config && (
-        <section className="border border-zinc-800 p-4">
+        <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">6. Etsy Listing</h2>
           <EtsySlots activeProduct={activeProduct!} onHeroLoaded={setHeroImageLoaded} />
           <div className="mt-4">
@@ -404,7 +415,7 @@ export default function Home() {
               heroImageLoaded={heroImageLoaded}
             />
           </div>
-        </section>
+        </Card>
       )}
     </div>
   )
