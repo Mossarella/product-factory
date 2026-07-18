@@ -2,6 +2,9 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { FixedAssetDef } from '@/lib/types'
 
 interface Props {
@@ -38,7 +41,7 @@ function AssetSlot({ asset, onUpdate, onRemove }: AssetSlotProps) {
   const status = asset.blob ? '✓ loaded' : asset.optional ? '— not loaded (optional)' : '— not loaded'
 
   return (
-    <div className="flex items-start gap-3 border border-zinc-800 bg-zinc-900/50 p-3 font-mono">
+    <Card className="flex-row items-start gap-3 rounded-none border border-zinc-800 bg-zinc-900/50 p-3 font-mono ring-0">
       <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden border border-zinc-700 bg-zinc-950 text-xl text-zinc-600">
         {previewUrl ? <Image src={previewUrl} alt="" width={72} height={72} unoptimized className="h-full w-full object-cover" /> : '?'}
       </div>
@@ -46,9 +49,9 @@ function AssetSlot({ asset, onUpdate, onRemove }: AssetSlotProps) {
         {asset.builtin ? (
           <p className="text-sm text-zinc-200">{asset.label}</p>
         ) : (
-          <input
+          <Input
             aria-label="Asset label"
-            className="w-full border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 focus:border-violet-500 focus:outline-none"
+            className="h-auto rounded-none border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-100 focus:border-violet-500 focus:outline-none focus-visible:ring-0"
             value={asset.label}
             onChange={(event) => onUpdate({ label: event.target.value })}
           />
@@ -56,13 +59,13 @@ function AssetSlot({ asset, onUpdate, onRemove }: AssetSlotProps) {
         <p className={`mt-1 text-xs ${asset.blob ? 'text-emerald-400' : 'text-zinc-500'}`}>{status}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <input ref={fileInput} type="file" accept={asset.accept} className="hidden" onChange={handleFileChange} />
-          <button type="button" className="border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700" onClick={() => fileInput.current?.click()}>
+          <Button type="button" variant="outline" className="h-auto rounded-none border-zinc-700 bg-zinc-800 px-3 py-1.5 font-normal text-sm text-zinc-300 hover:bg-zinc-700" onClick={() => fileInput.current?.click()}>
             Pick file
-          </button>
-          {!asset.builtin && <button type="button" aria-label={`Remove ${asset.label || 'asset'}`} className="border border-red-800 bg-red-950 px-3 py-1.5 text-sm text-red-400 hover:bg-red-900" onClick={onRemove}>✕ Remove</button>}
+          </Button>
+          {!asset.builtin && <Button type="button" variant="destructive" aria-label={`Remove ${asset.label || 'asset'}`} className="h-auto rounded-none border-red-800 bg-red-950 px-3 py-1.5 font-normal text-sm text-red-400 hover:bg-red-900" onClick={onRemove}>✕ Remove</Button>}
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -83,9 +86,9 @@ export function FixedAssets({ assets, onChange, onAddCustom }: Props) {
           />
         ))}
       </div>
-      <button type="button" className="mt-3 border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700" onClick={onAddCustom}>
+      <Button type="button" variant="outline" className="mt-3 h-auto rounded-none border-zinc-700 bg-zinc-800 px-3 py-1.5 font-normal text-sm text-zinc-300 hover:bg-zinc-700" onClick={onAddCustom}>
         + Add custom asset
-      </button>
+      </Button>
     </div>
   )
 }

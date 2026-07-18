@@ -1,6 +1,10 @@
 'use client'
 
 import { KeyboardEvent, useEffect, useMemo, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import type { FileEntry } from './FileManager'
 import { fillTemplate, type TemplateData } from '@/lib/templates'
 import type { FixedAssetDef, ProductConfig } from '@/lib/types'
@@ -112,29 +116,31 @@ export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTag
       <div id="etsy-tags" className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-zinc-300">Etsy tags</p>
-          <span className={`border border-zinc-700 px-2 py-0.5 text-xs ${tagColor}`}>{etsyTags.length} / 13</span>
-          <button type="button" onClick={() => onTagsChange([...etsyTags, ...SUGGESTED_TAGS.filter((tag) => !etsyTags.includes(tag)).slice(0, 13 - etsyTags.length)])} className="ml-auto border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:border-violet-500">Suggest</button>
+          <Badge variant="outline" className={`h-auto rounded-none border-zinc-700 px-2 py-0.5 font-normal ${tagColor}`}>{etsyTags.length} / 13</Badge>
+          <Button type="button" variant="outline" size="xs" onClick={() => onTagsChange([...etsyTags, ...SUGGESTED_TAGS.filter((tag) => !etsyTags.includes(tag)).slice(0, 13 - etsyTags.length)])} className="ml-auto">Suggest</Button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {etsyTags.map((tag, index) => <span key={`${tag}-${index}`} className="inline-flex items-center gap-1 border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-xs font-mono text-zinc-300">{tag}<button type="button" onClick={() => onTagsChange(etsyTags.filter((_, tagIndex) => tagIndex !== index))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove ${tag}`}>✕</button></span>)}
+          {etsyTags.map((tag, index) => <Badge key={`${tag}-${index}`} variant="outline" className="h-auto rounded-none border-zinc-700 bg-zinc-900 px-2 py-0.5 font-normal font-mono text-zinc-300">{tag}<button type="button" onClick={() => onTagsChange(etsyTags.filter((_, tagIndex) => tagIndex !== index))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove ${tag}`}>✕</button></Badge>)}
         </div>
         <div className="flex gap-2">
-          <input value={newTag} disabled={etsyTags.length >= 13} onChange={(event) => setNewTag(event.target.value)} onKeyDown={keyDown} placeholder="Add tag" className="min-w-0 flex-1 border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50" />
-          <button type="button" disabled={etsyTags.length >= 13} onClick={addTag} className="border border-zinc-700 bg-zinc-800 px-3 py-1 text-zinc-300 hover:border-violet-500 disabled:opacity-50">Add</button>
+          <Input value={newTag} disabled={etsyTags.length >= 13} onChange={(event) => setNewTag(event.target.value)} onKeyDown={keyDown} placeholder="Add tag" className="min-w-0 flex-1 rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50" />
+          <Button type="button" variant="outline" size="xs" disabled={etsyTags.length >= 13} onClick={addTag}>Add</Button>
         </div>
       </div>
 
       <div id="etsy-description" className="space-y-2">
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void refreshDescription()} className="border border-zinc-700 bg-zinc-800 px-3 py-1 text-zinc-300 hover:border-violet-500">Refresh Description</button>
-          <button type="button" disabled={!description} onClick={() => void copy(description)} className="border border-zinc-700 bg-zinc-800 px-3 py-1 text-zinc-300 hover:border-violet-500 disabled:opacity-50">Copy Description</button>
+          <Button type="button" variant="outline" onClick={() => void refreshDescription()}>Refresh Description</Button>
+          <Button type="button" variant="outline" disabled={!description} onClick={() => void copy(description)}>Copy Description</Button>
         </div>
-        <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap border border-zinc-800 bg-zinc-900 p-3 text-xs text-zinc-400">{description || 'Refresh to preview the Etsy description.'}</pre>
+        <Card className="max-h-64 rounded-none border border-zinc-800 bg-zinc-900 py-0 ring-0">
+          <pre className="overflow-y-auto whitespace-pre-wrap p-3 text-xs text-zinc-400">{description || 'Refresh to preview the Etsy description.'}</pre>
+        </Card>
       </div>
 
-      <button type="button" onClick={() => void copy(`TITLE:\n${config.etsyTitle}\n\nDESCRIPTION:\n${description}\n\nTAGS:\n${etsyTags.join(', ')}\n\nPRICE: $${config.price.toFixed(2)} (${config.licenseType})`)} className="w-full border border-violet-600 bg-violet-600 px-4 py-3 text-zinc-100 hover:bg-violet-500">
+      <Button type="button" variant="default" onClick={() => void copy(`TITLE:\n${config.etsyTitle}\n\nDESCRIPTION:\n${description}\n\nTAGS:\n${etsyTags.join(', ')}\n\nPRICE: $${config.price.toFixed(2)} (${config.licenseType})`)} className="w-full">
         Copy full listing
-      </button>
+      </Button>
       {copied && <p className="text-emerald-400">Copied!</p>}
     </div>
   )
