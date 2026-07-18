@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CONFIG } from '@/config'
 import { EtsyListing } from '@/components/EtsyListing'
 import { EtsySlots } from '@/components/EtsySlots'
@@ -15,12 +15,14 @@ import { ReadmePreview } from '@/components/ReadmePreview'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
+import { mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
 import { buildZip, buildZipTree } from '@/lib/zip'
 
 const INITIAL_FIXED_ASSETS: FixedAssetDef[] = [
   { id: 'thankyou', label: 'Thank You card', slot: '/api/slot/thank-you-image', zipName: 'THANKYOU.png', builtin: true, blob: null },
   { id: 'howto', label: 'How To Use', slot: '/api/slot/how-to-use', zipName: 'HOWTO.png', builtin: true, blob: null },
 ]
+const DECORATIVE_ASSET_KEYS = ['readme', 'license']
 
 type License = { plan: 'free' | 'pro'; activatedAt?: string }
 
@@ -97,6 +99,34 @@ export default function Home() {
       .then(setLoadouts)
       .catch(() => setLoadouts([]))
   }, [])
+
+  const activeAssets = useMemo(() => (
+    selectedLoadoutId
+      ? (loadouts.find(l => l.id === selectedLoadoutId)?.assets ?? ['thankyou', 'howto'])
+      : ['thankyou', 'howto']
+  ), [selectedLoadoutId, loadouts])
+
+  useEffect(() => {
+    setFixedAssets((current) => {
+      const knownIds = new Set(current.map((a) => a.id))
+      const missingKeys = activeAssets.filter(
+        (key) => !DECORATIVE_ASSET_KEYS.includes(key) && !knownIds.has(key)
+      )
+      if (missingKeys.length === 0) return current
+      return [
+        ...current,
+        ...missingKeys.map((key) => ({
+          id: key,
+          label: key,
+          slot: null,
+          zipName: `${sanitizeAssetFilename(key)}.png`,
+          builtin: false,
+          accept: '*/*',
+          blob: null,
+        })),
+      ]
+    })
+  }, [activeAssets])
 
   useEffect(() => {
     void Promise.all(INITIAL_FIXED_ASSETS.map(async (asset) => {
@@ -299,9 +329,6 @@ export default function Home() {
   }, [activeProduct, config, files, saveProduct])
 
   const canCreate = license.plan === 'pro' || products.length < 3
-  const activeAssets = selectedLoadoutId
-    ? (loadouts.find(l => l.id === selectedLoadoutId)?.assets ?? ['thankyou', 'howto'])
-    : ['thankyou', 'howto']
   const visibleFixedAssets = fixedAssets.filter(a => activeAssets.includes(a.id))
   const loadoutSelectItems = [
     { value: '__none__', label: '— None —' },
@@ -392,7 +419,15 @@ export default function Home() {
       <Card className="gap-0 px-4">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">4. Fixed Assets</h2>
         <p className="text-zinc-600 text-xs mb-3">Shared across all products. Auto-loaded from assets/ folder.</p>
-        <FixedAssets assets={visibleFixedAssets} onChange={setFixedAssets} onAddCustom={addCustomAsset} />
+        <FixedAssets
+          assets={visibleFixedAssets}
+          onChange={(updatedVisible) =>
+            setFixedAssets((current) =>
+              mergeVisibleAssets(current, updatedVisible, new Set(visibleFixedAssets.map((a) => a.id)))
+            )
+          }
+          onAddCustom={addCustomAsset}
+        />
       </Card>
       {config && (
         <Card className="gap-0 px-4">

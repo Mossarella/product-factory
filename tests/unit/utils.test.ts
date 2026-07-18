@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { avatarColor, formatDate, greeting, tagKey } from '@/lib/utils'
+import { avatarColor, formatDate, greeting, mergeVisibleAssets, sanitizeAssetFilename, tagKey } from '@/lib/utils'
 
 describe('greeting()', () => {
   it('returns morning for hour < 12', () => {
@@ -56,5 +56,56 @@ describe('formatDate()', () => {
   })
   it('includes the year', () => {
     expect(formatDate(new Date('2025-07-15'))).toContain('2025')
+  })
+})
+
+describe('sanitizeAssetFilename()', () => {
+  it('uppercases asset names', () => {
+    expect(sanitizeAssetFilename('alt cover')).toBe('ALT_COVER')
+  })
+  it('replaces symbols and spaces with collapsed underscores', () => {
+    expect(sanitizeAssetFilename('a!!b   c')).toBe('A_B_C')
+  })
+  it('trims leading and trailing underscores', () => {
+    expect(sanitizeAssetFilename('  -hello-  ')).toBe('HELLO')
+  })
+  it('falls back to CUSTOM for empty or all-symbol names', () => {
+    expect(sanitizeAssetFilename('')).toBe('CUSTOM')
+    expect(sanitizeAssetFilename('!!!')).toBe('CUSTOM')
+  })
+})
+
+describe('mergeVisibleAssets()', () => {
+  it('preserves hidden items and replaces visible items with updated versions', () => {
+    const current = [
+      { id: 'hidden', label: 'Keep me' },
+      { id: 'visible', label: 'Old label' },
+    ]
+    const updatedVisible = [{ id: 'visible', label: 'New label' }]
+
+    expect(mergeVisibleAssets(current, updatedVisible, new Set(['visible']))).toEqual([
+      { id: 'hidden', label: 'Keep me' },
+      { id: 'visible', label: 'New label' },
+    ])
+  })
+  it('does not restore a removed item when updated visible assets are shorter', () => {
+    const current = [
+      { id: 'hidden', label: 'Keep me' },
+      { id: 'visible-one', label: 'First' },
+      { id: 'visible-two', label: 'Second' },
+    ]
+    const updatedVisible = [{ id: 'visible-one', label: 'Updated first' }]
+
+    const result = mergeVisibleAssets(
+      current,
+      updatedVisible,
+      new Set(['visible-one', 'visible-two']),
+    )
+
+    expect(result).toEqual([
+      { id: 'hidden', label: 'Keep me' },
+      { id: 'visible-one', label: 'Updated first' },
+    ])
+    expect(result.find((item) => item.id === 'visible-two')).toBeUndefined()
   })
 })

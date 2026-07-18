@@ -25,3 +25,20 @@ export function formatDate(date = new Date()): string {
 export function tagKey(tags: string[]): string {
   return [...tags].sort().join('|')
 }
+
+// Collision-resistant, filename-safe key for a custom fixed-asset's zip entry
+export function sanitizeAssetFilename(name: string): string {
+  const cleaned = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  return cleaned || 'CUSTOM'
+}
+
+// Merge a loadout-filtered "visible" subset's edits back into the full
+// fixed-assets array without dropping items hidden by the filter.
+export function mergeVisibleAssets<T extends { id: string }>(
+  current: T[],
+  updatedVisible: T[],
+  visibleIds: Set<string>,
+): T[] {
+  const hidden = current.filter((item) => !visibleIds.has(item.id))
+  return [...hidden, ...updatedVisible]
+}
