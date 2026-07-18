@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
 
 interface SidebarProps {
   user: { email: string | null | undefined; name: string | null | undefined }
@@ -93,12 +94,14 @@ export function Sidebar({ user }: SidebarProps) {
       {/* User */}
       <div className="border-t border-zinc-800 px-5 py-4">
         <p className="text-xs text-zinc-500 font-mono truncate mb-2">{user.email ?? 'unknown'}</p>
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => signOut({ callbackUrl: '/' })}
-          className="text-xs text-zinc-600 hover:text-zinc-400 font-mono transition-colors"
+          className="h-auto rounded-none p-0 font-mono font-normal text-zinc-600 transition-colors hover:text-zinc-400"
         >
           Sign out
-        </button>
+        </Button>
       </div>
     </aside>
   )

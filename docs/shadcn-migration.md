@@ -82,13 +82,27 @@ Font unchanged (Geist Sans/Mono via `next/font`).
 | 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | done — PR #1 |
 | 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | done — PR #2 |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | done — PR #3 |
-| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | in progress |
-| 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | not started |
-| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | not started |
-| 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | not started |
-| 5 | Factory + Sidebar + landing/layouts | `app/app/factory/page.tsx`, `components/Sidebar.tsx`, `app/page.tsx`, `app/app/layout.tsx`, `app/layout.tsx` | not started |
+| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | done — PR #4 |
+| 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | done — PR #5 |
+| 5 | Factory orchestrator + Sidebar + landing | `app/app/factory/page.tsx`, `components/Sidebar.tsx`, `app/page.tsx` | done — PR #6 |
 
-Each batch = its own branch + PR into `claude/v2-nextjs`. Update the Status column as batches land.
+Each batch = its own branch + PR into `claude/v2-nextjs`. Migration complete —
+all 6 PRs stacked (#1 → #2 → #3 → #4 → #5 → #6), merge in order.
+
+### Cross-batch bug found and fixed during batch 5 verification
+While verifying batch 5's new loadout `Select` in `app/app/factory/page.tsx`,
+found that Base UI's `SelectValue` doesn't derive its label from `SelectItem`
+children — it only resolves labels from an explicit `items` prop on the root
+`Select`. This was silently broken since batch 1 (`ProductSelector.tsx`
+showed the raw product name instead of "✓/○ name — date") and batch 2
+(`ProductInfo.tsx`'s License select showed lowercase "personal" instead of
+"Personal"), invisible in testing because most other Select usages happen to
+have identical value/label strings. Fixed with new commits directly on the
+`batch1` and `batch2` branches (not bundled into batch 5's diff, since the
+bug lived there), then cascaded forward through `batch3`/`batch4`/`batch5`
+via `git rebase --onto` — each PR (#2, #3) now has its own correct commit
+history, and #4/#5/#6 carry the fix through cleanly. See PR #2 and #3 for
+the actual fix commits.
 
 ## Architecture check
 - Layer: presentation only (`components/ui/*`, page components). No changes to `lib/`
@@ -343,3 +357,163 @@ The asset-type toggle grid stays untouched.
    works, toggle asset types, save, and delete — screenshot to confirm the
    visual look matches (left-border active indicator, flat corners) — clean
    up any test loadout created afterward.
+
+## Batch 4 — Implementation
+
+Scope: `app/app/dashboard/page.tsx` (server component), `app/app/collection/page.tsx`
+(client component). Presentational-only — no data-fetching/logic changes.
+
+### app/app/dashboard/page.tsx
+- All 6 stat/insight cards (`border-zinc-800 bg-zinc-900/60 p-5`, both the
+  main `stats` array grid and the 3 "Insights" cards) → `Card` from
+  `@/components/ui/card`.
+- The "Open Factory →" link is a Next.js `<Link>`, not a `<button>` — do NOT
+  try to wrap it in the `Button` component. Instead apply
+  `buttonVariants({ variant: "secondary" })` (exported from
+  `@/components/ui/button`) directly as its className via `cn()`, e.g.
+  `<Link href="/app/factory" className={cn(buttonVariants({ variant:
+  "secondary" }), "inline-block")}>Open Factory →</Link>` — this gets the
+  translucent-violet-pill look without needing polymorphic rendering.
+
+### app/app/collection/page.tsx
+- Search `<input>` → `Input` from `@/components/ui/input`.
+- **Use the existing `StatusBadge` component** from
+  `@/components/ui/status-badge.tsx` (built in batch 0 specifically for this
+  file's pattern, unused until now) — read that file first. It already
+  exports a `STATUS_STYLES` map with the exact same `ready`/`in-progress`/
+  `empty` keys, colors, and dot+label markup as this file's local
+  `STATUS_STYLES` const. Delete the local `STATUS_STYLES` const in this file
+  and replace both places that render a dot+label pair (the product-grid
+  card status indicator, and the detail-panel header status indicator) with
+  `<StatusBadge status={status} />`. Check whether `status-badge.tsx`'s
+  `StatusBadge` renders at a fixed size/spacing that fits both call sites
+  (the grid card uses a smaller `w-1.5 h-1.5` dot + `text-xs`, the detail
+  header uses a slightly larger `w-2 h-2` dot + `text-sm`) — if `StatusBadge`
+  only supports one size, use it as-is for both (minor, acceptable) or pass a
+  `className` prop if it supports one for size overrides — check the
+  component's actual props first.
+- The product-grid item is a `<button>` (must stay a real interactive
+  button for click handling and keyboard access) — do NOT wrap it in `Card`
+  (which renders a `<div>`, losing button semantics). Leave its own
+  className/border/bg styling untouched; only swap its internal status
+  dot+label for `StatusBadge`.
+- The "Open in Factory →" `<a>` in the detail panel (same translucent-violet
+  pill look as the dashboard's "Open Factory" link) → same
+  `buttonVariants({ variant: "secondary" })` approach via `cn()`.
+- Read-only tag chips in the detail panel (`border-zinc-700 px-2 py-0.5
+  text-xs text-zinc-400`, no remove button — these are display-only, unlike
+  `EtsyListing.tsx`'s editable tags from batch 2) → `Badge variant="outline"`.
+- The 6 `<hr className="border-zinc-800 mb-5" />` dividers → `Separator`
+  from `@/components/ui/separator` (its first real usage in the app) —
+  `<Separator className="mb-5" />`.
+- The readiness checklist (static ✓/✗ rows, dynamic per-item color, no
+  onClick) stays untouched — same precedent as `EtsyListing.tsx`'s readiness
+  checklist in batch 2.
+
+### Files to modify
+`app/app/dashboard/page.tsx`, `app/app/collection/page.tsx`.
+
+### Out of scope (Batch 4)
+No data-fetching or state-logic changes. The product-grid button and the
+readiness checklist stay as plain elements (see above).
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. Sign in via the dev magic-link bypass, visit `/app/dashboard` and
+   `/app/collection`, screenshot both, select a product in the collection
+   detail panel to confirm `StatusBadge`/`Badge`/`Separator` render
+   correctly and the search input and "Open in Factory" link still work.
+
+## Batch 5 — Implementation (final batch)
+
+Scope: `app/app/factory/page.tsx`, `components/Sidebar.tsx`, `app/page.tsx`
+(marketing landing). `app/app/layout.tsx` and `app/layout.tsx` were reviewed
+— no raw-Tailwind button/card/input patterns worth migrating there (just
+structural wrappers and the theme setup from batch 0), so they're untouched.
+
+### Bug fix (in scope for this batch, since it's in the file being touched)
+`app/app/factory/page.tsx` lines ~309 and ~311 have literal backslash-escape
+text typed directly into JSX children — `MossarellaStudio — Product
+Factory` and `Pack your digital product → generate README →
+download ZIP → list on Etsy` — these are NOT inside string/template
+literals, so JS never interprets the `—`/`→` escapes; they render
+as the literal 6-character sequence `—` instead of an em-dash, and
+`→` instead of an arrow. Replace with the actual characters (— and →)
+directly in the JSX text. (Contrast with line ~243's `fillReadmeTemplate`,
+which uses the same escapes correctly — those ARE inside a real template
+literal, so they already render fine; do not touch that line.)
+
+### app/app/factory/page.tsx
+This file is mostly an orchestrator that renders the already-migrated child
+components (`LicenseBanner`, `ProductSelector`, `ProductInfo`,
+`FolderManager`, `FileManager`, `FixedAssets`, `ReadmePreview`, `EtsySlots`,
+`EtsyListing`) inside `<section>` wrappers — most of the heavy lifting
+already happened in batches 0-4. Remaining raw patterns:
+- Every `<section className="border border-zinc-800 p-4">` (and the one
+  `bg-zinc-950 p-4` variant for the Product section) → `Card` from
+  `@/components/ui/card` (check card.tsx's defaults first to avoid double
+  padding/border — same care as every prior batch).
+- The loadout `<select>` inside the Product section → shadcn `Select` (same
+  compound-component pattern used in every prior batch — read
+  `components/ProductInfo.tsx` or `app/app/fixed-assets/page.tsx` for the
+  established convention in this codebase).
+- The "Manage →" text link next to the loadout select → `Button
+  variant="link" size="xs"` or leave as a plain `<a>` — it's a tiny
+  inline text link, use judgement, low stakes either way.
+- The dashed empty-state placeholder ("Select a product above to get
+  started") → `Card` with a `border-dashed` className override (same
+  pattern as batch 3's fixed-assets empty state), or leave as a plain
+  `<div>` if `Card` fights the centered-text layout.
+
+### components/Sidebar.tsx
+- The vertical nav `<Link>` list (left-border active indicator) stays
+  COMPLETELY untouched. This is real page navigation (route changes), not
+  in-page content switching — using the `Tabs` component here (like batch
+  3's loadout list) would be semantically wrong (screen readers would
+  announce real navigation links as "tabs", misleading users about what
+  activating them does). Do not migrate this section.
+- The "Sign out" `<button>` (text-only, no border) → `Button variant="ghost"
+  size="xs"`.
+- The brand `<Link>` at the top stays untouched (plain navigational link,
+  not a button pattern).
+
+### app/page.tsx (public marketing landing page — not behind auth)
+- Every `<Link>` styled as a button (nav "Open App"/"Buy Pro", hero CTAs,
+  pricing CTAs, final CTA — roughly 7 total) → apply `buttonVariants({
+  variant: ... })` from `@/components/ui/button` directly via `cn()` from
+  `@/lib/cn` (same approach established in batch 4 for `<Link>`/`<a>`
+  elements — do NOT wrap them in the `Button` component itself). Map solid
+  violet CTAs → `variant: "default"`, zinc-outline CTAs → `variant:
+  "outline"` (note: the original "See how it works" and "Open App" nav
+  links have NO background fill, just a border — `outline`'s default has a
+  `bg-zinc-800`-ish fill via `bg-secondary`; either accept that minor
+  difference or override with `bg-transparent hover:bg-transparent` via
+  className, use judgement).
+- Feature cards and pricing cards (`border-zinc-800 bg-zinc-900 p-5`/`p-6`)
+  → `Card`.
+- The "Recommended" corner ribbon on the Pro pricing card (absolute
+  positioned, `border-l border-b border-violet-700 bg-violet-900 px-3 py-1
+  text-xs text-violet-300`) → `Badge` with the position/border classes
+  passed via `className`, or leave as a plain `<div>` if `Badge`'s own
+  default classes (padding, rounded corners, `overflow-hidden`) fight the
+  ribbon's specific corner-flag shape — use judgement.
+- The "How it works" numbered step boxes (`w-12 h-12 border-zinc-700
+  bg-zinc-900`, centered number) stay untouched — a fixed-size decorative
+  number badge, not a Card/Button pattern.
+- Footer and nav brand text stay untouched (plain text, not components).
+
+### Files to modify
+`app/app/factory/page.tsx`, `components/Sidebar.tsx`, `app/page.tsx`.
+
+### Out of scope (Batch 5)
+Sidebar's nav links (see reasoning above). `app/app/layout.tsx` and
+`app/layout.tsx` (reviewed, nothing to migrate). The "How it works" step
+number boxes on the landing page.
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. Sign in via the dev magic-link bypass, visit `/app/factory` (confirm the
+   header bug fix — real em-dash and arrows, not literal `—`/`→`
+   text — and that all sections still render/function with a real
+   product), and visit `/` (landing page, no auth needed) to confirm all
+   CTAs and cards render correctly.
