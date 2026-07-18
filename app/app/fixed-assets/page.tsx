@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -62,6 +63,8 @@ export default function FixedAssetsPage() {
   const [editName, setEditName] = useState('')
   const [editAssets, setEditAssets] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [newAssetName, setNewAssetName] = useState('')
+  const [addError, setAddError] = useState('')
 
   useEffect(() => {
     fetch('/api/loadouts')
@@ -123,7 +126,21 @@ export default function FixedAssetsPage() {
     )
   }
 
+  function addOtherAsset() {
+    const trimmed = newAssetName.trim()
+    if (!trimmed) return
+    const isDuplicate = editAssets.some((key) => key.toLowerCase() === trimmed.toLowerCase())
+    if (isDuplicate) {
+      setAddError('Already added.')
+      return
+    }
+    toggleAsset(trimmed)
+    setNewAssetName('')
+    setAddError('')
+  }
+
   const selected = loadouts.find(l => l.id === selectedId)
+  const customAssetNames = editAssets.filter((key) => !ASSET_TYPES.some((a) => a.key === key))
 
   return (
     <div className="p-8">
@@ -202,6 +219,27 @@ export default function FixedAssetsPage() {
                     </button>
                   )
                 })}
+              </div>
+              {customAssetNames.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {customAssetNames.map((name) => (
+                    <Badge key={name} variant="outline" className="h-auto rounded-none border-zinc-700 bg-zinc-900 px-2 py-1 font-mono font-normal text-zinc-300">
+                      <span>{name}</span>
+                      <button type="button" aria-label={`Remove ${name}`} className="text-zinc-500 hover:text-red-400" onClick={() => toggleAsset(name)}>✕</button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="mt-3 flex flex-wrap items-start gap-2">
+                <Input
+                  placeholder="Custom asset name"
+                  value={newAssetName}
+                  onChange={(e) => { setNewAssetName(e.target.value); setAddError('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOtherAsset() } }}
+                  className="w-56"
+                />
+                <Button variant="outline" onClick={addOtherAsset}>+ Add other</Button>
+                {addError && <p className="mt-1 basis-full text-xs text-red-400">{addError}</p>}
               </div>
             </div>
 
