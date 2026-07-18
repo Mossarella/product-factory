@@ -9,6 +9,11 @@ import {
   useRef,
   useState,
 } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export interface FileEntry {
   id: string
@@ -188,50 +193,53 @@ export default function FileManager({ files, folders, onChange, productName }: P
             {folders.map((folder) => {
               const count = files.filter((entry) => entry.folder === folder).length
               return (
-                <span key={folder} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1">
+                <Badge key={folder} variant="outline" className="rounded border-zinc-800 bg-zinc-900 px-2 py-1">
                   {folder} ({count} files)
-                </span>
+                </Badge>
               )
             })}
           </div>
 
           {selectedCount > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border border-zinc-800 bg-zinc-900 p-2 text-xs">
+            <Card className="flex flex-wrap items-center gap-2 border border-zinc-800 bg-zinc-900 p-2 text-xs">
               <span className="text-zinc-400">{selectedCount} selected →</span>
-              <select
+              <Select
                 value={effectiveBulkFolder}
-                onChange={(event) => setBulkFolder(event.target.value)}
-                className="border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-300 outline-none focus:border-violet-500"
-                aria-label="Folder for selected files"
+                onValueChange={(value) => { if (value) setBulkFolder(value) }}
               >
-                {folders.map((folder) => <option key={folder} value={folder}>{folder}</option>)}
-              </select>
-              <button type="button" onClick={applyFolder} className="border border-violet-600 bg-violet-600 px-2 py-1 text-zinc-100 hover:bg-violet-500">
+                <SelectTrigger className="h-auto rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 focus-visible:border-violet-500 focus-visible:ring-0" aria-label="Folder for selected files">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {folders.map((folder) => <SelectItem key={folder} value={folder}>{folder}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="default" size="xs" onClick={applyFolder}>
                 Apply
-              </button>
-              <button type="button" onClick={deleteSelected} className="border border-red-900 bg-red-900 px-2 py-1 text-red-100 hover:bg-red-800">
+              </Button>
+              <Button type="button" variant="destructive" size="xs" onClick={deleteSelected}>
                 Delete selected
-              </button>
-              <button type="button" onClick={() => setSelectedIds(new Set())} className="border border-zinc-700 px-2 py-1 text-zinc-400 hover:text-zinc-100">
+              </Button>
+              <Button type="button" variant="outline" size="xs" onClick={() => setSelectedIds(new Set())}>
                 Deselect all
-              </button>
-            </div>
+              </Button>
+            </Card>
           )}
 
-          <div className="flex items-center gap-2 border border-zinc-800 bg-zinc-900 p-2 text-xs text-zinc-400">
+          <Card className="flex items-center gap-2 border border-zinc-800 bg-zinc-900 p-2 text-xs text-zinc-400">
             <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all files" />
             <span>Select all</span>
-            <button type="button" onClick={() => setGroupByFolder((value) => !value)} className="ml-auto border border-zinc-700 px-2 py-1 hover:border-violet-500 hover:text-zinc-100">
+            <Button type="button" variant="outline" size="xs" onClick={() => setGroupByFolder((value) => !value)} className="ml-auto">
               {groupByFolder ? 'Ungroup files' : 'Group by folder'}
-            </button>
-          </div>
+            </Button>
+          </Card>
 
           <div className="space-y-2">
             {fileGroups.map(([folder, entries]) => (
               <div key={folder || 'all'} className="space-y-1">
                 {groupByFolder && <div className="border-b border-zinc-800 pb-1 text-xs text-zinc-500">{folder || 'No folder'}</div>}
                 {entries.map((entry) => (
-                  <div key={entry.id} className="flex flex-wrap items-center gap-2 border border-zinc-800 bg-zinc-900 p-2">
+                  <Card key={entry.id} className="flex flex-wrap items-center gap-2 border border-zinc-800 bg-zinc-900 p-2">
                     <input type="checkbox" checked={selectedIds.has(entry.id)} onChange={() => toggleSelected(entry.id)} aria-label={`Select ${entry.file.name}`} />
                     <img
                       src={entry.url}
@@ -242,25 +250,28 @@ export default function FileManager({ files, folders, onChange, productName }: P
                       onMouseLeave={() => setZoom(null)}
                     />
                     <span className="min-w-0 flex-1 break-all text-xs text-zinc-500" title={entry.file.name}>{entry.file.name}</span>
-                    <select
+                    <Select
                       value={entry.folder}
-                      onChange={(event) => updateFile(entry.id, { folder: event.target.value })}
-                      className="border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 outline-none focus:border-violet-500"
-                      aria-label={`Folder for ${entry.file.name}`}
+                      onValueChange={(value) => { if (value) updateFile(entry.id, { folder: value }) }}
                     >
-                      {folders.map((folder) => <option key={folder} value={folder}>{folder}</option>)}
-                    </select>
-                    <input
+                      <SelectTrigger className="h-auto rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 focus-visible:border-violet-500 focus-visible:ring-0" aria-label={`Folder for ${entry.file.name}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {folders.map((folder) => <SelectItem key={folder} value={folder}>{folder}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Input
                       value={entry.variant}
                       onChange={(event) => updateFile(entry.id, { variant: event.target.value })}
                       placeholder="Variant (optional)"
-                      className="w-30 border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-violet-500"
+                      className="h-auto w-30 rounded-none border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none focus-visible:ring-0"
                       aria-label={`Variant for ${entry.file.name}`}
                     />
                     <button type="button" onClick={() => removeFile(entry.id)} className="px-1 text-sm text-red-400 hover:text-red-300" aria-label={`Remove ${entry.file.name}`}>
                       ✕
                     </button>
-                  </div>
+                  </Card>
                 ))}
               </div>
             ))}

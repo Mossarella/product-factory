@@ -2,6 +2,8 @@
 
 import { ChangeEvent, DragEvent, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 const ETSY_SLOTS = [
   { slot: 'etsy-hero', label: 'Hero image', hint: 'mascot + title + compatibility' },
@@ -88,7 +90,7 @@ export function EtsySlots({ activeProduct, onHeroLoaded }: Props) {
         const state = slots[slot] ?? { loaded: false, mime: '', version: 0 }
         const url = `${baseUrl(slot)}?t=${state.version}`
         return (
-          <div
+          <Card
             key={slot}
             className={`flex flex-wrap items-center gap-3 border bg-zinc-900 p-2 ${dragging === slot ? 'border-violet-500' : 'border-zinc-800'}`}
             onDragOver={(event) => { event.preventDefault(); setDragging(slot) }}
@@ -110,12 +112,12 @@ export function EtsySlots({ activeProduct, onHeroLoaded }: Props) {
             </div>
             <input ref={(element) => { inputs.current[slot] = element }} type="file" accept="image/*,video/*" className="hidden" onChange={(event) => chooseFile(slot, event)} />
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => inputs.current[slot]?.click()} className="border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:border-violet-500">
+              <Button variant="outline" size="xs" type="button" onClick={() => inputs.current[slot]?.click()}>
                 {state.loaded ? 'Replace' : 'Pick file'}
-              </button>
-              {state.loaded && <button type="button" onClick={() => void clear(slot)} className="border border-red-900 bg-red-950 px-2 py-1 text-xs text-red-400 hover:bg-red-900">✕ Clear</button>}
+              </Button>
+              {state.loaded && <Button variant="destructive" size="xs" type="button" onClick={() => void clear(slot)}>✕ Clear</Button>}
             </div>
-          </div>
+          </Card>
         )
       })}
     </div>

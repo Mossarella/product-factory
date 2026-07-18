@@ -80,7 +80,8 @@ Font unchanged (Geist Sans/Mono via `next/font`).
 | Batch | Scope | Files | Status |
 |---|---|---|---|
 | 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | done — PR #1 |
-| 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | in progress |
+| 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | done — PR #2 |
+| 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | in progress |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | not started |
 | 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | not started |
 | 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | not started |
@@ -182,3 +183,85 @@ renders these components) — that's batch 5.
    these components — visually spot-check against current look if a session
    is available; otherwise rely on type-check + structural review since these
    components aren't yet covered by an E2E spec that would need auth.
+
+## Batch 2 — Implementation
+
+Scope: `components/EtsySlots.tsx`, `components/EtsyListing.tsx`,
+`components/ProductInfo.tsx`, `components/FileManager.tsx`. Presentational-only
+— no state/logic/prop changes anywhere in this batch.
+
+### Variant mapping per file
+- **EtsySlots.tsx**: each slot row (`border bg-zinc-900 p-2`, border color
+  flips to violet-500 while dragging) → `Card`, keeping the conditional
+  className (dragging ? violet border : zinc-800 border) passed through as
+  before. Thumbnail placeholder box stays a plain `<div>` (media placeholder,
+  not a button/card/input pattern). "Pick file"/"Replace" → `Button
+  variant="outline" size="xs"`. "✕ Clear" → `Button variant="destructive"
+  size="xs"`.
+- **EtsyListing.tsx**: the readiness-checklist items are text-only buttons
+  whose color depends on state (emerald/yellow/zinc) — keep as plain
+  `<button>` (not worth forcing into `Button` since the per-item dynamic
+  color logic doesn't map to a fixed variant) OR use `Button variant="ghost"`
+  with the dynamic color passed via `className` if it composes cleanly via
+  `cn()` — use judgement, test that the color actually renders (tailwind-merge
+  must let the passed text-color win over ghost's default). Tag-count pill
+  (`border-zinc-700 px-2 py-0.5 text-xs ${tagColor}`) → `Badge
+  variant="outline"` with `tagColor` passed via `className`. "Suggest" →
+  `Button variant="outline" size="xs"`. Tag chips (label + ✕ remove) →
+  `Badge variant="outline"` wrapping the label and the existing plain ✕
+  `<button>` (same pattern as batch 1's FolderManager chip). Tag `<input>` →
+  `Input`; "Add" → `Button variant="outline" size="xs"`. "Refresh
+  Description"/"Copy Description" → `Button variant="outline"`. Description
+  `<pre>` → wrap in `Card`. "Copy full listing" (solid violet, full width) →
+  `Button variant="default" className="w-full"`.
+- **ProductInfo.tsx**: `inputClass`/`labelClass` constants are removed.
+  `<input>`/`<textarea>` → `Input`/`Textarea`. IMPORTANT: the field caption
+  (currently `<span className={labelClass}>`) is nested INSIDE an outer
+  `<label className="flex-1">` that wraps both the caption and the control —
+  there's no `htmlFor`/`id` pairing. Do NOT replace that inner `<span>` with
+  the `Label` component — `Label` renders an actual `<label>` tag, and
+  nesting `<label>` inside `<label>` is invalid HTML. Keep the caption as a
+  plain `<span className="mb-1 block text-xs uppercase tracking-wide
+  text-zinc-500">` (same classes as the old `labelClass`, just inlined) and
+  leave the outer `<label>` wrapper structure exactly as it is today. The
+  Currency/License native `<select>` elements → shadcn `Select` (same
+  compound-component pattern used in batch 1's `ProductSelector.tsx` — read
+  that file's diff for the established pattern: `Select`/`SelectTrigger`/
+  `SelectValue`/`SelectContent`/`SelectItem`, `onValueChange` receives the
+  value directly). Price/Commercial-price `<input type="number">` → `Input
+  type="number"`.
+- **FileManager.tsx** (largest, most complex — the floating cursor-following
+  image-zoom preview at the bottom of the file, `id="imgZoom"`, is explicitly
+  OUT OF SCOPE, do not touch it, it stays a bespoke fixed-position div per the
+  spec's Dialog/Tabs section above): the drag-and-drop dropzone stays a plain
+  `<div>` (bespoke interactive drop target, not a reusable pattern). Folder
+  coverage chips (`rounded border-zinc-800 bg-zinc-900 px-2 py-1`) → `Badge
+  variant="outline"`. The bulk-selection action bar and the select-all bar
+  (both `border-zinc-800 bg-zinc-900 p-2`) → `Card`. Per-file row (`border
+  zinc-800 bg-zinc-900 p-2`) → `Card`. The bulk-folder `<select>` and each
+  per-file folder `<select>` → shadcn `Select` (same pattern as above). Native
+  checkboxes (`type="checkbox"`) stay untouched — no Checkbox primitive was
+  installed and the app never styled them beyond browser default. "Apply"
+  (solid violet) → `Button variant="default" size="xs"`. "Delete selected"
+  (red) → `Button variant="destructive" size="xs"`. "Deselect all" and
+  "Group by folder"/"Ungroup files" (both currently bordered but NOT
+  filled/bg'd) → `Button variant="outline" size="xs"`, it's fine if they pick
+  up `outline`'s default `bg-zinc-800` even though the original had no
+  background — use judgement, minor. Per-row Variant `<input>` → `Input`.
+  Per-row ✕ remove button stays a plain `<button>` (single-glyph micro-control,
+  same precedent as batch 1's folder-chip arrows).
+
+### Files to modify
+`components/EtsySlots.tsx`, `components/EtsyListing.tsx`,
+`components/ProductInfo.tsx`, `components/FileManager.tsx`.
+
+### Out of scope (Batch 2)
+No prop/behavior changes. The `FileManager.tsx` floating zoom preview stays
+custom. No changes to `app/app/factory/page.tsx` — that's batch 5.
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. Sign in via the dev magic-link bypass, create/select a product, and
+   screenshot `/app/factory` to visually confirm all four components (same
+   approach used to verify batch 1) — clean up any test product created
+   afterward (DB row + `products/<userId>/<name>/` directory).
