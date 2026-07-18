@@ -37,6 +37,10 @@ function storedFilename(file: FileEntry) {
   return `${file.id}${fileExtension(file.file.name)}`
 }
 
+function storedAssetFilename(asset: FixedAssetDef) {
+  return `${asset.id}${fileExtension(asset.blob!.name)}`
+}
+
 function normalizeProductConfig(loaded: Partial<ProductConfig>, fallbackName: string): ProductConfig {
   return {
     name: loaded.name ?? fallbackName,
@@ -56,6 +60,7 @@ function normalizeProductConfig(loaded: Partial<ProductConfig>, fallbackName: st
       folder: file.folder || 'Main',
       variant: file.variant || '',
     })),
+    fixedAssetFiles: loaded.fixedAssetFiles ?? [],
     etsyTags: loaded.etsyTags ?? [],
     complete: loaded.complete === true,
     createdAt: loaded.createdAt ?? '',
@@ -164,6 +169,28 @@ export default function Home() {
       return { id: entry.id, file, folder: entry.folder, variant: entry.variant, url: URL.createObjectURL(file) }
     }))
     setFiles(restored.filter((entry): entry is FileEntry => entry !== null))
+    const restoredAssets = (await Promise.all(normalized.fixedAssetFiles.map(async (entry) => {
+      const assetResponse = await fetch(`/api/products/${encodedName}/asset/${encodeURIComponent(entry.filename)}`)
+      if (!assetResponse.ok) return null
+      const blob = await assetResponse.blob()
+      const file = new File([blob], entry.origName || entry.filename, { type: blob.type })
+      return { assetKey: entry.assetKey, file }
+    }))).filter((entry): entry is { assetKey: string; file: File } => entry !== null)
+
+    setFixedAssets((current) => {
+      const known = new Set(current.map((a) => a.id))
+      const additions = restoredAssets
+        .filter((r) => !known.has(r.assetKey))
+        .map((r) => ({
+          id: r.assetKey, label: r.assetKey, slot: null,
+          zipName: `${sanitizeAssetFilename(r.assetKey)}.png`,
+          builtin: false, accept: '*/*', blob: null,
+        }))
+      return [...current, ...additions].map((asset) => {
+        const match = restoredAssets.find((r) => r.assetKey === asset.id)
+        return match ? { ...asset, blob: match.file, manuallyPicked: true } : asset
+      })
+    })
     void fetch(`/api/products/${encodedName}/veado`)
     setDirty(false)
   }, [])
@@ -226,6 +253,24 @@ export default function Home() {
       if (!response.ok) throw new Error(`Could not upload ${file.file.name}`)
     }))
 
+    const persistableAssets = fixedAssets.filter((asset) => asset.blob && (!asset.builtin || asset.manuallyPicked))
+
+    await Promise.all(persistableAssets.map(async (asset) => {
+      const response = await fetch(`/api/products/${encodedName}/asset`, {
+        method: 'POST',
+        headers: { 'X-Filename': storedAssetFilename(asset) },
+        body: asset.blob,
+      })
+      if (!response.ok) throw new Error(`Could not upload ${asset.label}`)
+    }))
+
+    const fixedAssetFiles = persistableAssets.map((asset) => ({
+      id: config.fixedAssetFiles.find((file) => file.assetKey === asset.id)?.id ?? crypto.randomUUID(),
+      assetKey: asset.id,
+      filename: storedAssetFilename(asset),
+      origName: asset.blob!.name,
+    }))
+
     const mascotFiles = files.map((file) => ({
       id: file.id,
       filename: storedFilename(file),
@@ -237,6 +282,7 @@ export default function Home() {
       ...config,
       name: activeProduct,
       mascotFiles,
+      fixedAssetFiles,
       etsyTags,
       complete: Boolean(config.productName && config.etsyTitle && config.price > 0 && files.length > 0),
     }
@@ -247,7 +293,7 @@ export default function Home() {
     setDirty(false)
     setSaveFlash(true)
     setTimeout(() => setSaveFlash(false), 2000)
-  }, [activeProduct, config, etsyTags, files, refreshProducts, selectedTemplateId])
+  }, [activeProduct, config, etsyTags, files, fixedAssets, refreshProducts, selectedTemplateId])
 
   const gatherData = useCallback(() => {
     if (!config) throw new Error('Select a product first')

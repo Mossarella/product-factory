@@ -80,6 +80,7 @@ model Product {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   files           MascotFile[]
+  fixedAssetFiles FixedAssetFile[]
   templateId      String?
   template        ProductTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
@@ -108,4 +109,15 @@ model MascotFile {
   origName  String
   folder    String  @default("Main")
   variant   String  @default("")
+}
+
+model FixedAssetFile {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assetKey  String
+  filename  String
+  origName  String
+
+  @@unique([productId, assetKey])
 }

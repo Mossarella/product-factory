@@ -34,7 +34,7 @@ function AssetSlot({ asset, onUpdate, onRemove }: AssetSlotProps) {
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) onUpdate({ blob: file })
+    if (file) onUpdate({ blob: file, manuallyPicked: true })
     event.target.value = ''
   }
 
