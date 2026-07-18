@@ -1,6 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type Loadout = { id: string; name: string; assets: string[] }
 
@@ -130,37 +135,45 @@ export default function FixedAssetsPage() {
       <div className="flex gap-6 h-[calc(100vh-200px)]">
         {/* Left — loadout list */}
         <div className="w-52 shrink-0 flex flex-col gap-1">
-          <button
+          <Button
+            variant="outline"
             onClick={createLoadout}
-            className="w-full border border-dashed border-zinc-700 px-3 py-2 text-xs text-zinc-500 hover:border-violet-600 hover:text-violet-400 font-mono transition-colors mb-2"
+            className="w-full border-dashed border-zinc-700 hover:border-violet-600 hover:text-violet-400 px-3 py-2 text-xs text-zinc-500 font-mono transition-colors mb-2"
           >
             + New Loadout
-          </button>
+          </Button>
           {loadouts.length === 0 && (
             <p className="text-xs text-zinc-600 font-mono px-1">No loadouts yet.</p>
           )}
-          {loadouts.map(l => (
-            <button
-              key={l.id}
-              onClick={() => select(l)}
-              className={`w-full text-left px-3 py-2 text-sm font-mono transition-colors border-l-2 ${
-                l.id === selectedId
-                  ? 'border-violet-500 bg-zinc-800/60 text-zinc-100'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40'
-              }`}
-            >
-              {l.name}
-            </button>
-          ))}
+          <Tabs
+            orientation="vertical"
+            value={selectedId}
+            onValueChange={(id) => {
+              const l = loadouts.find(x => x.id === id)
+              if (l) select(l)
+            }}
+          >
+            <TabsList className="w-52 flex-col items-stretch bg-transparent p-0 h-fit">
+              {loadouts.map(l => (
+                <TabsTrigger
+                  key={l.id}
+                  value={l.id}
+                  className="justify-start rounded-none border-transparent px-3 py-2 text-sm font-mono text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-300 data-active:border-l-2 data-active:border-violet-500 data-active:bg-zinc-800/60 data-active:text-zinc-100 data-active:shadow-none"
+                >
+                  {l.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Right — editor */}
         {selected ? (
-          <div className="flex-1 border border-zinc-800 bg-zinc-900/40 p-6">
+          <Card className="flex-1 bg-zinc-900/40 p-6 ring-zinc-800">
             {/* Name */}
             <div className="mb-6">
-              <label className="block text-xs uppercase tracking-widest text-zinc-600 font-mono mb-2">Loadout name</label>
-              <input
+              <Label className="block text-xs uppercase tracking-widest text-zinc-600 font-mono mb-2">Loadout name</Label>
+              <Input
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
                 className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 font-mono focus:border-violet-500 focus:outline-none w-64"
@@ -194,25 +207,27 @@ export default function FixedAssetsPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="default"
                 onClick={save}
                 disabled={saving}
                 className="border border-violet-600 bg-violet-600 px-4 py-2 text-sm text-zinc-100 hover:bg-violet-500 disabled:opacity-50 font-mono transition-colors"
               >
                 {saving ? 'Saving…' : 'Save changes'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={deleteLoadout}
                 className="border border-zinc-700 px-4 py-2 text-sm text-zinc-500 hover:border-red-700 hover:text-red-400 font-mono transition-colors"
               >
                 Delete loadout
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         ) : (
-          <div className="flex-1 border border-dashed border-zinc-800 flex items-center justify-center">
+          <Card className="flex-1 border border-dashed border-zinc-800 ring-0 flex items-center justify-center">
             <p className="text-zinc-600 font-mono text-sm">No loadouts yet. Create one to get started.</p>
-          </div>
+          </Card>
         )}
       </div>
     </div>

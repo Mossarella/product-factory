@@ -1,6 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { cn } from '@/lib/cn'
 import { avatarColor } from '@/lib/utils'
 import type { ProductConfig, ProductSummary } from '@/lib/types'
 
@@ -15,12 +21,6 @@ function detailStatus(c: ProductConfig): 'ready' | 'in-progress' | 'empty' {
   if (c.complete) return 'ready'
   if (c.mascotFiles.length > 0 || c.etsyTitle.trim() !== '') return 'in-progress'
   return 'empty'
-}
-
-const STATUS_STYLES = {
-  ready: { dot: 'bg-emerald-400', label: 'Ready', text: 'text-emerald-400' },
-  'in-progress': { dot: 'bg-amber-400', label: 'In Progress', text: 'text-amber-400' },
-  empty: { dot: 'bg-zinc-600', label: 'Empty', text: 'text-zinc-500' },
 }
 
 export default function CollectionPage() {
@@ -77,11 +77,11 @@ export default function CollectionPage() {
             <h1 className="text-2xl font-bold text-zinc-100 font-mono">Collection</h1>
             <p className="text-zinc-500 text-sm mt-1 font-mono">{products.length} products</p>
           </div>
-          <input
+          <Input
             placeholder="Search…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none w-44"
+            className="h-auto w-44 rounded-none border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus-visible:border-violet-500 focus-visible:ring-0 md:text-xs dark:bg-zinc-900"
           />
         </div>
       </div>
@@ -96,7 +96,6 @@ export default function CollectionPage() {
           <div className="grid grid-cols-2 gap-3">
             {filtered.map(p => {
               const status = productStatus(p)
-              const s = STATUS_STYLES[status]
               const isSelected = p.name === selectedName
               return (
                 <button
@@ -115,8 +114,7 @@ export default function CollectionPage() {
                   </div>
                   <p className="text-xs font-mono text-zinc-200 truncate leading-tight mb-1">{p.name}</p>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                    <span className={`text-xs font-mono ${s.text}`}>{s.label}</span>
+                    <StatusBadge status={status} />
                   </div>
                 </button>
               )
@@ -141,7 +139,6 @@ export default function CollectionPage() {
           )}
           {selectedName && !loadingDetail && detail && (() => {
             const status = detailStatus(detail)
-            const s = STATUS_STYLES[status]
             return (
               <div className="pb-12">
                 <div className="flex items-start justify-between mb-1">
@@ -154,17 +151,19 @@ export default function CollectionPage() {
                   </div>
                   <a
                     href="/app/factory"
-                    className="border border-violet-700 bg-violet-700/20 px-4 py-1.5 text-xs text-violet-300 hover:bg-violet-700/40 font-mono transition-colors shrink-0 ml-4"
+                    className={cn(buttonVariants({ variant: 'secondary' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors shrink-0 ml-4')}
                   >
                     Open in Factory →
                   </a>
                 </div>
                 <div className="flex items-center gap-1.5 mb-6">
-                  <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                  <span className={`text-sm font-mono ${s.text}`}>{s.label}</span>
+                  <StatusBadge
+                    status={status}
+                    className="[&>span:first-child]:h-2 [&>span:first-child]:w-2 [&>span:last-child]:text-sm"
+                  />
                 </div>
 
-                <hr className="border-zinc-800 mb-5" />
+                <Separator className="mb-5" />
 
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Pricing & License</p>
@@ -185,7 +184,7 @@ export default function CollectionPage() {
                   </div>
                 </div>
 
-                <hr className="border-zinc-800 mb-5" />
+                <Separator className="mb-5" />
 
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Etsy Listing</p>
@@ -215,21 +214,21 @@ export default function CollectionPage() {
 
                 {detail.etsyTags.length > 0 && (
                   <>
-                    <hr className="border-zinc-800 mb-5" />
+                    <Separator className="mb-5" />
                     <div className="mb-5">
                       <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Tags</p>
                       <div className="flex flex-wrap gap-1.5">
                         {detail.etsyTags.map(tag => (
-                          <span key={tag} className="border border-zinc-700 px-2 py-0.5 text-xs font-mono text-zinc-400">
+                          <Badge key={tag} variant="outline" className="rounded-none border-zinc-700 font-mono text-zinc-400">
                             {tag}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
                   </>
                 )}
 
-                <hr className="border-zinc-800 mb-5" />
+                <Separator className="mb-5" />
 
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">
@@ -249,14 +248,14 @@ export default function CollectionPage() {
                   )}
                 </div>
 
-                <hr className="border-zinc-800 mb-5" />
+                <Separator className="mb-5" />
 
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Loadout</p>
                   <p className="text-sm font-mono text-zinc-300">{loadoutName ?? '— None'}</p>
                 </div>
 
-                <hr className="border-zinc-800 mb-5" />
+                <Separator className="mb-5" />
 
                 <div>
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Readiness</p>
