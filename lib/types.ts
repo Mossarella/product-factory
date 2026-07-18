@@ -12,6 +12,13 @@ export interface MascotFile {
   variant: string
 }
 
+export interface FixedAssetFile {
+  id: string
+  assetKey: string
+  filename: string
+  origName: string
+}
+
 export interface ProductConfig {
   name: string
   sku: string
@@ -26,6 +33,7 @@ export interface ProductConfig {
   commercialPrice?: number
   folders: string[]
   mascotFiles: MascotFile[]
+  fixedAssetFiles: FixedAssetFile[]
   etsyTags: string[]
   templateId?: string | null
   complete: boolean
@@ -41,4 +49,5 @@ export interface FixedAssetDef {
   optional?: boolean
   accept?: string
   blob: File | null
+  manuallyPicked?: boolean
 }

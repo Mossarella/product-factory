@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import type { Product, MascotFile } from '@prisma/client'
+import type { Product, MascotFile, FixedAssetFile } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-type ProductWithFiles = Product & { files: MascotFile[] }
+type ProductWithFiles = Product & { files: MascotFile[]; fixedAssetFiles: FixedAssetFile[] }
 
 function toConfig(p: ProductWithFiles) {
   return {
@@ -30,6 +30,12 @@ function toConfig(p: ProductWithFiles) {
       folder: f.folder,
       variant: f.variant,
     })),
+    fixedAssetFiles: p.fixedAssetFiles.map((f) => ({
+      id: f.id,
+      assetKey: f.assetKey,
+      filename: f.filename,
+      origName: f.origName,
+    })),
     etsyTags: p.etsyTags,
     templateId: p.templateId ?? null,
     complete: p.complete,
@@ -45,7 +51,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
   const product = await prisma.product.findUnique({
     where: { userId_name: { userId: session.user.id, name: productName } },
-    include: { files: true },
+    include: { files: true, fixedAssetFiles: true },
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
@@ -72,6 +78,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     origName: string
     folder: string
     variant: string
+  }>) ?? []
+
+  const fixedAssetFiles = (body.fixedAssetFiles as Array<{
+    id?: string
+    assetKey: string
+    filename: string
+    origName: string
   }>) ?? []
 
   const product = await prisma.product.upsert({
@@ -110,7 +123,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       templateId: (body.templateId as string | null | undefined) ?? null,
       complete: (body.complete as boolean) ?? false,
     },
-    include: { files: true },
+    include: { files: true, fixedAssetFiles: true },
   })
 
   // Replace mascot files
@@ -128,9 +141,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     })
   }
 
+  // Replace fixed asset files
+  await prisma.fixedAssetFile.deleteMany({ where: { productId: product.id } })
+  if (fixedAssetFiles.length > 0) {
+    await prisma.fixedAssetFile.createMany({
+      data: fixedAssetFiles.map((f) => ({
+        ...(f.id ? { id: f.id } : {}),
+        productId: product.id,
+        assetKey: f.assetKey,
+        filename: f.filename,
+        origName: f.origName,
+      })),
+    })
+  }
+
   const updated = await prisma.product.findUnique({
     where: { id: product.id },
-    include: { files: true },
+    include: { files: true, fixedAssetFiles: true },
   })
 
   return NextResponse.json(toConfig(updated!))

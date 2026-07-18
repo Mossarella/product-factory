@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -33,11 +33,20 @@ export default function CollectionPage() {
   const [templates, setTemplates] = useState<ProductTemplateSummary[]>([])
   const [search, setSearch] = useState('')
   const [showFullDesc, setShowFullDesc] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+  const [duplicateName, setDuplicateName] = useState('')
+  const [isSubmittingDuplicate, setIsSubmittingDuplicate] = useState(false)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
+
+  const refreshProducts = useCallback(async () => {
+    const response = await fetch('/api/products')
+    if (response.ok) setProducts(await response.json() as ProductSummary[])
+  }, [])
 
   useEffect(() => {
-    fetch('/api/products').then(r => r.json()).then(setProducts)
+    void refreshProducts()
     fetch('/api/product-templates').then(r => r.json()).then(setTemplates)
-  }, [])
+  }, [refreshProducts])
 
   async function selectProduct(name: string) {
     setSelectedName(name)
@@ -48,6 +57,36 @@ export default function CollectionPage() {
     const data: ProductConfig = await res.json()
     setDetailCache(prev => ({ ...prev, [name]: data }))
     setLoadingDetail(false)
+  }
+
+  async function duplicateProduct() {
+    if (!selectedName) return
+    const trimmed = duplicateName.trim()
+    if (!trimmed) return
+    setIsSubmittingDuplicate(true)
+    setDuplicateError(null)
+    try {
+      const response = await fetch(`/api/products/${encodeURIComponent(selectedName)}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newName: trimmed }),
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        setDuplicateError(body.error || 'Could not duplicate product')
+        return
+      }
+      const duplicated: ProductConfig = await response.json()
+      await refreshProducts()
+      setDetailCache((previous) => ({ ...previous, [duplicated.name]: duplicated }))
+      setSelectedName(duplicated.name)
+      setDuplicating(false)
+      setDuplicateName('')
+    } catch {
+      setDuplicateError('Could not duplicate product')
+    } finally {
+      setIsSubmittingDuplicate(false)
+    }
   }
 
   const filtered = products.filter(p =>
@@ -152,13 +191,44 @@ export default function CollectionPage() {
                       Created {formatDate(detail.createdAt)}
                     </p>
                   </div>
-                  <a
-                    href="/app/factory"
-                    className={cn(buttonVariants({ variant: 'secondary' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors shrink-0 ml-4')}
-                  >
-                    Open in Factory →
-                  </a>
+                  <div className="flex gap-2 shrink-0 ml-4">
+                    <Button
+                      variant="outline"
+                      className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                      onClick={() => { setDuplicating((v) => !v); setDuplicateName(''); setDuplicateError(null) }}
+                    >
+                      Duplicate
+                    </Button>
+                    <a
+                      href="/app/factory"
+                      className={cn(buttonVariants({ variant: 'secondary' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors')}
+                    >
+                      Open in Factory →
+                    </a>
+                  </div>
                 </div>
+                {duplicating && (
+                  <form
+                    onSubmit={(event) => { event.preventDefault(); void duplicateProduct() }}
+                    className="flex items-center gap-2 mb-4"
+                  >
+                    <Input
+                      autoFocus
+                      required
+                      placeholder="New product name"
+                      value={duplicateName}
+                      onChange={(event) => setDuplicateName(event.target.value)}
+                      className="h-auto w-56 rounded-none border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300"
+                    />
+                    <Button type="submit" variant="default" disabled={isSubmittingDuplicate} className="h-auto rounded-none px-3 py-1.5 text-xs font-mono">
+                      {isSubmittingDuplicate ? 'Working…' : 'Confirm'}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setDuplicating(false)} className="h-auto rounded-none px-3 py-1.5 text-xs font-mono">
+                      Cancel
+                    </Button>
+                    {duplicateError && <p className="text-xs text-red-400">{duplicateError}</p>}
+                  </form>
+                )}
                 <div className="flex items-center gap-1.5 mb-6">
                   <StatusBadge
                     status={status}
