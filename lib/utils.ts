@@ -32,7 +32,7 @@ export function sanitizeAssetFilename(name: string): string {
   return cleaned || 'CUSTOM'
 }
 
-// Merge a loadout-filtered "visible" subset's edits back into the full
+// Merge a template-filtered "visible" subset's edits back into the full
 // fixed-assets array without dropping items hidden by the filter.
 export function mergeVisibleAssets<T extends { id: string }>(
   current: T[],
