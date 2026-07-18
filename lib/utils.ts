@@ -42,3 +42,15 @@ export function mergeVisibleAssets<T extends { id: string }>(
   const hidden = current.filter((item) => !visibleIds.has(item.id))
   return [...hidden, ...updatedVisible]
 }
+
+export function getInitials(name: string | null | undefined, email: string | null | undefined): string {
+  const trimmedName = name?.trim()
+  if (trimmedName) {
+    const parts = trimmedName.split(/\s+/).filter(Boolean)
+    const initials = parts.slice(0, 2).map((part) => part[0]).join('')
+    if (initials) return initials.toUpperCase()
+  }
+  const localPart = email?.trim().split('@')[0]
+  if (localPart) return localPart.slice(0, 2).toUpperCase()
+  return '?'
+}

@@ -2,12 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
-
-interface SidebarProps {
-  user: { email: string | null | undefined; name: string | null | undefined }
-}
+import { useSession, signOut } from 'next-auth/react'
+import { avatarColor, getInitials } from '@/lib/utils'
+import { cn } from '@/lib/cn'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const NAV = [
   {
@@ -57,8 +62,12 @@ const NAV = [
   },
 ]
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const name = session?.user?.name ?? null
+  const email = session?.user?.email ?? null
+  const image = session?.user?.image ?? null
 
   return (
     <aside className="h-screen w-56 flex flex-col border-r border-zinc-800 bg-zinc-950 shrink-0 fixed left-0 top-0 z-30">
@@ -93,15 +102,35 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* User */}
       <div className="border-t border-zinc-800 px-5 py-4">
-        <p className="text-xs text-zinc-500 font-mono truncate mb-2">{user.email ?? 'unknown'}</p>
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={() => signOut({ callbackUrl: '/' })}
-          className="h-auto rounded-none p-0 font-mono font-normal text-zinc-600 transition-colors hover:text-zinc-400"
-        >
-          Sign out
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex w-full items-center gap-2 outline-none">
+            <Avatar className="h-8 w-8 shrink-0">
+              {image && <AvatarImage src={image} alt="" />}
+              <AvatarFallback className={cn('font-mono text-xs text-white', avatarColor(name ?? email ?? 'user'))}>
+                {getInitials(name, email)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate text-xs text-zinc-500 font-mono">{name ?? email ?? 'Account'}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56">
+            <div className="px-2 py-1.5">
+              <p className="truncate text-sm font-mono text-zinc-100">{name ?? 'Account'}</p>
+              <p className="truncate text-xs font-mono text-zinc-500">{email ?? 'unknown'}</p>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/app/settings" className="font-mono text-sm" />}>
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="font-mono text-sm"
+            >
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )

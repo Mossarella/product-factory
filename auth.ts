@@ -29,13 +29,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: 'jwt',
   },
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) token.sub = user.id
+      if (trigger === 'update' && session) {
+        if (typeof session.name === 'string') token.name = session.name
+        if (typeof session.image === 'string') token.picture = session.image
+      }
       return token
     },
     session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub
+        session.user.name = (token.name as string | null) ?? session.user.name
+        session.user.image = (token.picture as string | null) ?? null
       }
       return session
     },
