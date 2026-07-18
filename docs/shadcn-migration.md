@@ -79,8 +79,8 @@ Font unchanged (Geist Sans/Mono via `next/font`).
 ## Batch plan
 | Batch | Scope | Files | Status |
 |---|---|---|---|
-| 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | in progress |
-| 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | not started |
+| 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | done — PR #1 |
+| 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | in progress |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | not started |
 | 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | not started |
 | 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | not started |
@@ -129,3 +129,56 @@ Each batch = its own branch + PR into `claude/v2-nextjs`. Update the Status colu
 2. `bun test tests/unit/cn.test.ts` passes.
 3. `bun x playwright test tests/e2e/login.spec.ts` passes.
 4. `npx tsc --noEmit` (or `next build`) — no type errors.
+
+## Batch 1 — Implementation
+
+Scope: `components/LicenseBanner.tsx`, `components/FolderManager.tsx`,
+`components/ProductSelector.tsx`, `components/ReadmePreview.tsx`. All four are
+presentational-only changes — no state/logic/prop changes, same behavior.
+
+### New primitive needed
+`ProductSelector.tsx` has a native `<select>` styled like an input — batch 0
+didn't install a Select primitive. Add it now: `npx shadcn add select`.
+
+### Variant mapping per file
+- **LicenseBanner.tsx**: the three colored status banners (pro/success/free-plan)
+  → `Card` with the existing border/bg color classes passed via `className`
+  (emerald for pro/success, zinc for the free-plan banner — same pattern as the
+  login page's colored panels in batch 0). License-key `<input>` → `Input`.
+  "Activate" button → `Button variant="outline"`. "Upgrade → $29" button
+  (`bg-violet-900 border-violet-700`) → `Button variant="secondary"`.
+- **FolderManager.tsx**: folder chip `<span>` → `Badge variant="outline"`
+  wrapping the label + the ▲▼✕ inline action buttons (keep those as plain
+  `<button>` with their existing hover-color-only styling — they're single-glyph
+  micro-controls, not worth forcing into `Button` if it disrupts the inline
+  chip layout; use judgment). "Folder name" `<input>` → `Input`. "Add" button
+  → `Button variant="outline"`.
+- **ProductSelector.tsx**: the shared `buttonClass` constant (reused ~8×) →
+  `Button variant="outline"`, replacing the constant entirely. The product
+  `<select>` → shadcn `Select`. "Upgrade" text-link → `Button variant="link"
+  size="xs"`. "Download ZIP" button (`bg-violet-900`) → `Button
+  variant="secondary"`. The "Save product" button conditionally shows an
+  emerald "dirty" state — keep that as a literal className override (not a new
+  cva variant) on top of `Button variant="outline"`, same pattern as batch 0's
+  colored Card panels. Rename/duplicate/create name-input → `Input`. The
+  `zipPreviewText` `<pre>` block → wrap in `Card`.
+- **ReadmePreview.tsx**: "Refresh" button → `Button variant="outline"`. The
+  preview `<pre>` block → wrap in `Card`.
+
+### Files to modify
+`components/LicenseBanner.tsx`, `components/FolderManager.tsx`,
+`components/ProductSelector.tsx`, `components/ReadmePreview.tsx`.
+
+### Files to create
+`components/ui/select.tsx` (via CLI).
+
+### Out of scope (Batch 1)
+No prop/behavior changes. No changes to `app/app/factory/page.tsx` (which
+renders these components) — that's batch 5.
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. `npm run dev` → the Factory page (`/app/factory`, requires auth) renders
+   these components — visually spot-check against current look if a session
+   is available; otherwise rely on type-check + structural review since these
+   components aren't yet covered by an E2E spec that would need auth.

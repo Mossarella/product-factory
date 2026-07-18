@@ -2,6 +2,10 @@
 
 import { FormEvent, useState } from 'react'
 import { ProductSummary } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Props {
   products: ProductSummary[]
@@ -21,9 +25,6 @@ interface Props {
 }
 
 type NameAction = 'create' | 'rename' | 'duplicate' | null
-
-const buttonClass =
-  'px-3 py-1.5 text-sm font-mono border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50'
 
 export function ProductSelector({
   products,
@@ -70,103 +71,102 @@ export function ProductSelector({
   return (
     <div className="font-mono">
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Active product"
-          className="min-w-52 border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 focus:border-violet-500 focus:outline-none"
-          value={activeProduct ?? ''}
-          onChange={(event) => { if (event.target.value) onSelect(event.target.value) }}
-        >
-          <option value="" disabled>
-            Select a product
-          </option>
+        <Select value={activeProduct ?? undefined} onValueChange={(value) => { if (value) onSelect(value) }}>
+          <SelectTrigger aria-label="Active product" className="min-w-52">
+            <SelectValue placeholder="Select a product" />
+          </SelectTrigger>
+          <SelectContent>
           {products.map((product) => (
-            <option key={product.name} value={product.name}>
+            <SelectItem key={product.name} value={product.name}>
               {product.complete ? '✓' : '○'} {product.name} — {product.createdAt}
-            </option>
+            </SelectItem>
           ))}
-        </select>
+          </SelectContent>
+        </Select>
 
-        <button
+        <Button
           type="button"
-          className={buttonClass}
+          variant="outline"
           disabled={!canCreate}
           title={canCreate ? undefined : 'Free plan: 3 products max'}
           onClick={() => openAction('create')}
         >
           + New
-        </button>
+        </Button>
         {!canCreate && (
-          <button
+          <Button
             type="button"
-            className="text-xs text-violet-400 hover:text-violet-300"
+            variant="link"
+            size="xs"
             onClick={onUpgradeClick}
           >
             Upgrade
-          </button>
+          </Button>
         )}
 
-        <button
+        <Button
           type="button"
-          className={buttonClass}
+          variant="outline"
           disabled={!activeProduct}
           onClick={() => openAction('rename')}
         >
           Rename
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className={buttonClass}
+          variant="outline"
           disabled={!activeProduct}
           onClick={() => openAction('duplicate')}
         >
           Duplicate
-        </button>
+        </Button>
       </div>
 
       {nameAction && (
         <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={submitNameAction}>
-          <input
+          <Input
             autoFocus
             required
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={nameAction === 'create' ? 'New product name' : 'Product name'}
-            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none"
+            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none focus-visible:ring-0"
           />
-          <button type="submit" className={buttonClass} disabled={isSubmitting}>
+          <Button type="submit" variant="outline" disabled={isSubmitting}>
             {isSubmitting ? 'Working…' : 'Confirm'}
-          </button>
-          <button type="button" className={buttonClass} onClick={() => setNameAction(null)}>
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setNameAction(null)}>
             Cancel
-          </button>
+          </Button>
         </form>
       )}
 
       <div className="mt-3 flex flex-wrap gap-2 border-t border-zinc-800 pt-3">
-        <button
+        <Button
           type="button"
-          className={dirty ? 'border border-emerald-700 bg-emerald-950 px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-900' : buttonClass}
+          variant="outline"
+          className={dirty ? 'border-emerald-700 bg-emerald-950 text-emerald-400 hover:bg-emerald-900' : undefined}
           onClick={() => void onSave()}
         >
           Save product {dirty ? '•' : ''}
-        </button>
+        </Button>
         {saveFlash && <span className="text-xs text-emerald-400">Saved!</span>}
-        <button
+        <Button
           type="button"
-          className="border border-violet-700 bg-violet-900 px-3 py-1.5 text-sm text-violet-200 hover:bg-violet-800"
+          variant="secondary"
           onClick={onDownloadZip}
         >
           ⬇ Download ZIP
-        </button>
-        <button type="button" className={buttonClass} onClick={onToggleZipPreview}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onToggleZipPreview}>
           Preview ZIP
-        </button>
+        </Button>
       </div>
 
       {zipPreviewText !== null && (
-        <pre className="mt-3 overflow-x-auto border border-zinc-800 bg-zinc-900 p-3 text-xs text-zinc-400">
-          {zipPreviewText}
-        </pre>
+        <Card className="mt-3 border border-zinc-800 bg-zinc-900 py-0">
+          <pre className="overflow-x-auto p-3 text-xs text-zinc-400">{zipPreviewText}</pre>
+        </Card>
       )}
     </div>
   )
