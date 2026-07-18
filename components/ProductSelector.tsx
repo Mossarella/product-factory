@@ -46,6 +46,11 @@ export function ProductSelector({
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const productSelectItems = products.map((product) => ({
+    value: product.name,
+    label: <>{product.complete ? '✓' : '○'} {product.name} — {product.createdAt}</>,
+  }))
+
   const openAction = (action: Exclude<NameAction, null>) => {
     setName(action === 'rename' ? activeProduct ?? '' : '')
     setNameAction(action)
@@ -71,7 +76,11 @@ export function ProductSelector({
   return (
     <div className="font-mono">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={activeProduct ?? undefined} onValueChange={(value) => { if (value) onSelect(value) }}>
+        <Select
+          value={activeProduct ?? undefined}
+          items={productSelectItems}
+          onValueChange={(value) => { if (value) onSelect(value) }}
+        >
           <SelectTrigger aria-label="Active product" className="min-w-52">
             <SelectValue placeholder="Select a product" />
           </SelectTrigger>
