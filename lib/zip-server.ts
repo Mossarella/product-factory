@@ -1,4 +1,5 @@
 import JSZip from 'jszip'
+import { createHash } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { userProductPath, assetPath, firstFile } from './api-files'
@@ -59,6 +60,7 @@ export interface BuildManifest {
   template: { id: string; name: string } | null
   validation: ValidationEntry[] | null
   warnings: string[]
+  readmeHash: string
 }
 
 const BUILTIN_ASSETS = [
@@ -129,9 +131,23 @@ export async function buildZipBuffer(opts: {
     template: opts.template,
     validation: opts.validation,
     warnings,
+    readmeHash: createHash('sha256').update(opts.readmeText).digest('hex'),
   }
   zip.file('manifest.json', JSON.stringify(manifest, null, 2))
 
   const buffer = await zip.generateAsync({ type: 'nodebuffer' })
   return { buffer, manifest }
+}
+
+export async function rebuildManifestForRevert(
+  buffer: Buffer,
+  overrides: { version: number; builtAt: string },
+): Promise<{ buffer: Buffer; manifest: BuildManifest }> {
+  const zip = await JSZip.loadAsync(buffer)
+  const manifestEntry = zip.file('manifest.json')
+  const previousManifest = JSON.parse(await manifestEntry!.async('text')) as BuildManifest
+  const manifest: BuildManifest = { ...previousManifest, version: overrides.version, builtAt: overrides.builtAt }
+  zip.file('manifest.json', JSON.stringify(manifest, null, 2))
+  const rebuilt = await zip.generateAsync({ type: 'nodebuffer' })
+  return { buffer: rebuilt, manifest }
 }

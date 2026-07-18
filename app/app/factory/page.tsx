@@ -14,6 +14,7 @@ import { LicenseBanner } from '@/components/LicenseBanner'
 import { ProductInfo } from '@/components/ProductInfo'
 import { ProductSelector } from '@/components/ProductSelector'
 import { ReadmePreview } from '@/components/ReadmePreview'
+import { VersionHistory } from '@/components/VersionHistory'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
@@ -83,6 +84,7 @@ export default function Home() {
   const [saveFlash, setSaveFlash] = useState(false)
   const [zipPreviewText, setZipPreviewText] = useState<string | null>(null)
   const [heroImageLoaded, setHeroImageLoaded] = useState(false)
+  const [buildSignal, setBuildSignal] = useState(0)
 
   const refreshProducts = useCallback(async () => {
     const response = await fetch('/api/products')
@@ -459,7 +461,13 @@ export default function Home() {
       {config && (
         <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">7. Build</h2>
-          <BuildProduct activeProduct={activeProduct!} />
+          <BuildProduct activeProduct={activeProduct!} onBuilt={() => setBuildSignal((s) => s + 1)} />
+        </Card>
+      )}
+      {config && (
+        <Card className="gap-0 px-4">
+          <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">8. Version History</h2>
+          <VersionHistory activeProduct={activeProduct!} mode="revert" refreshSignal={buildSignal} />
         </Card>
       )}
     </div>

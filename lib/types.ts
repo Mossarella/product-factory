@@ -24,6 +24,14 @@ export interface LatestBuild {
   createdAt: string
 }
 
+export interface BuildHistoryEntry {
+  version: number
+  fileSize: number
+  changelog: string
+  revertedFrom: number | null
+  createdAt: string
+}
+
 export interface ProductConfig {
   name: string
   sku: string
