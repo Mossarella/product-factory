@@ -86,8 +86,8 @@ mock.module('@/lib/db', () => ({
   },
 }))
 
-const { POST } = await import('@/app/api/products/[name]/build/route')
-const { GET } = await import('@/app/api/products/[name]/build/latest/route')
+const { POST, GET: GET_BUILD } = await import('@/app/api/products/[name]/build/route')
+const { GET: GET_LATEST } = await import('@/app/api/products/[name]/build/latest/route')
 
 function product(overrides: Record<string, unknown> = {}) {
   return {
@@ -118,8 +118,9 @@ function product(overrides: Record<string, unknown> = {}) {
 }
 
 const context = { params: Promise.resolve({ name: 'TestProduct' }) }
-const buildRequest = () => new NextRequest('http://localhost/api/products/TestProduct/build', { method: 'POST' })
+const buildRequest = (body?: string, headers?: HeadersInit) => new NextRequest('http://localhost/api/products/TestProduct/build', { method: 'POST', body, headers })
 const latestRequest = () => new NextRequest('http://localhost/api/products/TestProduct/build/latest')
+const listRequest = () => new NextRequest('http://localhost/api/products/TestProduct/build')
 
 beforeEach(() => {
   currentSession = MOCK_SESSION
@@ -193,28 +194,72 @@ describe('POST /api/products/[name]/build', () => {
     expect(body.manifest.validation).toBeNull()
     expect(mockBuildZipBuffer.mock.calls[0][0].validation).toBeNull()
   })
+
+  it('stores the caller-provided notes as the changelog verbatim when notes are non-empty', async () => {
+    const response = await POST(buildRequest(JSON.stringify({ notes: '  Fixed a typo  ' }), { 'Content-Type': 'application/json' }), context)
+
+    expect((await response.json()).changelog).toBe('Fixed a typo')
+    expect(mockProductBuildCreate.mock.calls[0][0].data.changelog).toBe('Fixed a typo')
+  })
+
+  it('auto-generates the changelog from the manifest diff when notes are blank', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(product({ builds: [] })))
+
+    const response = await POST(buildRequest(), context)
+
+    expect((await response.json()).changelog).toBe('Initial build')
+  })
+})
+
+describe('GET /api/products/[name]/build (list)', () => {
+  it('returns 401 when unauthenticated', async () => {
+    currentSession = null
+    expect((await GET_BUILD(listRequest(), context)).status).toBe(401)
+  })
+
+  it('returns 404 when the product does not exist', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(null))
+    expect((await GET_BUILD(listRequest(), context)).status).toBe(404)
+  })
+
+  it('returns builds newest-first with changelog and revertedFrom fields', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(product({
+      builds: [
+        { version: 2, fileSize: 100, changelog: 'v2 notes', revertedFrom: null, createdAt: new Date('2025-02-01T00:00:00.000Z') },
+        { version: 1, fileSize: 90, changelog: 'Initial build', revertedFrom: null, createdAt: new Date('2025-01-01T00:00:00.000Z') },
+      ],
+    })))
+
+    const response = await GET_BUILD(listRequest(), context)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual([
+      { version: 2, fileSize: 100, changelog: 'v2 notes', revertedFrom: null, createdAt: '2025-02-01T00:00:00.000Z' },
+      { version: 1, fileSize: 90, changelog: 'Initial build', revertedFrom: null, createdAt: '2025-01-01T00:00:00.000Z' },
+    ])
+  })
 })
 
 describe('GET /api/products/[name]/build/latest', () => {
   it('returns 401 when unauthenticated', async () => {
     currentSession = null
-    expect((await GET(latestRequest(), context)).status).toBe(401)
+    expect((await GET_LATEST(latestRequest(), context)).status).toBe(401)
   })
 
   it('returns 404 when the product does not exist', async () => {
     mockFindUnique.mockReturnValue(Promise.resolve(null))
-    expect((await GET(latestRequest(), context)).status).toBe(404)
+    expect((await GET_LATEST(latestRequest(), context)).status).toBe(404)
   })
 
   it('returns 404 when the product has no builds', async () => {
     mockFindUnique.mockReturnValue(Promise.resolve(product({ builds: [] })))
-    expect((await GET(latestRequest(), context)).status).toBe(404)
+    expect((await GET_LATEST(latestRequest(), context)).status).toBe(404)
   })
 
   it('downloads the latest build zip', async () => {
     mockFindUnique.mockReturnValue(Promise.resolve(product({ builds: [{ filename: 'v3.zip', version: 3 }] })))
 
-    const response = await GET(latestRequest(), context)
+    const response = await GET_LATEST(latestRequest(), context)
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('application/zip')

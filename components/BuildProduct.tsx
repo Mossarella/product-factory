@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 const STEPS = [
   'Validate files',
@@ -18,17 +19,20 @@ interface BuildResult {
   version: number
   warnings: string[]
   hasRequiredFailures: boolean
+  changelog: string
 }
 
 interface Props {
   activeProduct: string
+  onBuilt?: () => void
 }
 
-export function BuildProduct({ activeProduct }: Props) {
+export function BuildProduct({ activeProduct, onBuilt }: Props) {
   const [building, setBuilding] = useState(false)
   const [revealedSteps, setRevealedSteps] = useState(0)
   const [result, setResult] = useState<BuildResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState('')
 
   async function build() {
     setBuilding(true)
@@ -41,7 +45,11 @@ export function BuildProduct({ activeProduct }: Props) {
     }, 220)
 
     try {
-      const response = await fetch(`/api/products/${encodeURIComponent(activeProduct)}/build`, { method: 'POST' })
+      const response = await fetch(`/api/products/${encodeURIComponent(activeProduct)}/build`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
         setError(body.error || 'Build failed')
@@ -50,6 +58,8 @@ export function BuildProduct({ activeProduct }: Props) {
       const data: BuildResult = await response.json()
       setRevealedSteps(STEPS.length)
       setResult(data)
+      setNotes('')
+      onBuilt?.()
     } catch {
       setError('Build failed')
     } finally {
@@ -60,6 +70,13 @@ export function BuildProduct({ activeProduct }: Props) {
 
   return (
     <div className="font-mono">
+      <Input
+        placeholder="What changed? (optional)"
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        disabled={building}
+        className="mb-2 h-auto rounded-none border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 placeholder:text-zinc-600"
+      />
       <Button
         type="button"
         variant="default"
@@ -94,6 +111,9 @@ export function BuildProduct({ activeProduct }: Props) {
             <ul className="mt-2 space-y-1 text-xs text-zinc-500">
               {result.warnings.map((w) => <li key={w}>⚠ {w}</li>)}
             </ul>
+          )}
+          {result.changelog && (
+            <p className="mt-2 text-xs text-zinc-500">{result.changelog}</p>
           )}
           <a
             href={`/api/products/${encodeURIComponent(activeProduct)}/build/latest`}

@@ -125,14 +125,16 @@ model FixedAssetFile {
 }
 
 model ProductBuild {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  version   Int
-  filename  String
-  fileSize  Int
-  manifest  Json
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version      Int
+  filename     String
+  fileSize     Int
+  manifest     Json
+  changelog    String   @default("")
+  revertedFrom Int?
+  createdAt    DateTime @default(now())
 
   @@unique([productId, version])
   @@index([productId])

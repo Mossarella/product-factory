@@ -6,16 +6,18 @@ import { prisma } from '@/lib/db'
 import { CONFIG } from '@/config'
 import { userProductPath } from '@/lib/api-files'
 import { buildZipBuffer } from '@/lib/zip-server'
+import { generateChangelog } from '@/lib/build-changelog'
 import { buildReadmeText } from '@/lib/templates-server'
 import { validateProduct } from '@/lib/template-rules'
 import type { TemplateRule } from '@/lib/template-rules'
+import type { BuildManifest } from '@/lib/zip-server'
 import type { ProductConfig } from '@/lib/types'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-export async function POST(_request: NextRequest, { params }: RouteContext) {
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = session.user.id
@@ -24,9 +26,12 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
 
   const product = await prisma.product.findUnique({
     where: { userId_name: { userId, name: productName } },
-    include: { files: true, fixedAssetFiles: true, template: true },
+    include: { files: true, fixedAssetFiles: true, template: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+
+  const body = await request.json().catch(() => ({})) as { notes?: string }
+  const trimmedNotes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 200) : ''
 
   const configForValidation: ProductConfig = {
     name: product.name,
@@ -107,6 +112,9 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
     validation,
   })
 
+  const previousManifest = (product.builds[0]?.manifest as unknown as BuildManifest) ?? null
+  const changelog = trimmedNotes || generateChangelog(manifest, previousManifest)
+
   const filename = `v${version}.zip`
   const directory = userProductPath(userId, product.name, 'builds')
   fs.mkdirSync(directory, { recursive: true })
@@ -121,11 +129,34 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
         filename,
         fileSize: buffer.byteLength,
         manifest: manifest as unknown as object,
+        changelog,
       },
     }),
   ])
 
   const hasRequiredFailures = (validation ?? []).some((v) => v.required && v.status === 'missing')
 
-  return NextResponse.json({ version, manifest, warnings: manifest.warnings, hasRequiredFailures })
+  return NextResponse.json({ version, manifest, warnings: manifest.warnings, hasRequiredFailures, changelog })
+}
+
+export async function GET(_request: NextRequest, { params }: RouteContext) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+  const { name } = await params
+  const productName = decodeURIComponent(name)
+
+  const product = await prisma.product.findUnique({
+    where: { userId_name: { userId, name: productName } },
+    include: { builds: { orderBy: { version: 'desc' } } },
+  })
+  if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+
+  return NextResponse.json(product.builds.map((b) => ({
+    version: b.version,
+    fileSize: b.fileSize,
+    changelog: b.changelog,
+    revertedFrom: b.revertedFrom,
+    createdAt: b.createdAt.toISOString(),
+  })))
 }

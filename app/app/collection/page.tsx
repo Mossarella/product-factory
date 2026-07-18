@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { TemplateValidation } from '@/components/TemplateValidation'
+import { VersionHistory } from '@/components/VersionHistory'
 import { cn } from '@/lib/cn'
 import type { TemplateRule } from '@/lib/template-rules'
 import { avatarColor } from '@/lib/utils'
@@ -336,6 +337,13 @@ export default function CollectionPage() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                <Separator className="mb-5" />
+
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Version History</p>
+                  <VersionHistory activeProduct={detail.name} mode="download" />
                 </div>
 
                 <Separator className="mb-5" />
