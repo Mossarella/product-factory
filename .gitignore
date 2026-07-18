@@ -1,8 +1,8 @@
 # Product catalog — local only
-products/
+/products/
 
 # Avatar uploads — local only
-avatars/
+/avatars/
 
 # License data — never commit
 license.json
