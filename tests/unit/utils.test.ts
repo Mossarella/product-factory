@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { avatarColor, formatDate, greeting, mergeVisibleAssets, sanitizeAssetFilename, tagKey } from '@/lib/utils'
+import { avatarColor, formatDate, getInitials, greeting, mergeVisibleAssets, sanitizeAssetFilename, tagKey } from '@/lib/utils'
 
 describe('greeting()', () => {
   it('returns morning for hour < 12', () => {
@@ -107,5 +107,23 @@ describe('mergeVisibleAssets()', () => {
       { id: 'visible-one', label: 'Updated first' },
     ])
     expect(result.find((item) => item.id === 'visible-two')).toBeUndefined()
+  })
+})
+
+describe('getInitials()', () => {
+  it('returns initials for a two-word name', () => {
+    expect(getInitials('Joe Mama', 'joe@x.com')).toBe('JM')
+  })
+  it('returns the initial for a single-word name', () => {
+    expect(getInitials('Cher', 'cher@x.com')).toBe('C')
+  })
+  it('falls back to the email local-part when name is missing', () => {
+    expect(getInitials(null, 'bob@x.com')).toBe('BO')
+  })
+  it('returns a question mark when name and email are null', () => {
+    expect(getInitials(null, null)).toBe('?')
+  })
+  it('falls back to the email local-part when name is empty', () => {
+    expect(getInitials('', 'ann@x.com')).toBe('AN')
   })
 })
