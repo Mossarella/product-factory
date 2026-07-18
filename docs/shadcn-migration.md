@@ -81,7 +81,8 @@ Font unchanged (Geist Sans/Mono via `next/font`).
 |---|---|---|---|
 | 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | done — PR #1 |
 | 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | done — PR #2 |
-| 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | in progress |
+| 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | done — PR #3 |
+| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | in progress |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | not started |
 | 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | not started |
 | 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | not started |
@@ -265,3 +266,80 @@ custom. No changes to `app/app/factory/page.tsx` — that's batch 5.
    screenshot `/app/factory` to visually confirm all four components (same
    approach used to verify batch 1) — clean up any test product created
    afterward (DB row + `products/<userId>/<name>/` directory).
+
+## Batch 3 — Implementation
+
+Scope: `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx`.
+Presentational-only — no state/logic/prop changes anywhere in this batch,
+EXCEPT the loadout-list Tabs migration described below, which is a structural
+change to how selection is wired (still same net behavior).
+
+### FixedAssets.tsx (the `AssetSlot` sub-component + its exported wrapper)
+- Each `AssetSlot` row (`border-zinc-800 bg-zinc-900/50 p-3`) → `Card`.
+- The thumbnail placeholder box stays a plain `<div>` (media placeholder).
+- The non-builtin label `<input>` → `Input`.
+- "Pick file" → `Button variant="outline"`. "✕ Remove" → `Button
+  variant="destructive"`. "+ Add custom asset" → `Button variant="outline"`.
+
+### app/app/fixed-assets/page.tsx
+- **Loadout list (the Tabs candidate)**: read `components/ui/tabs.tsx` first
+  — it already supports `orientation="vertical"` with matching CSS hooks
+  (`group-data-vertical/tabs:*`), built for exactly this sidebar-nav shape.
+  Replace the vertical button list with `Tabs`/`TabsList`/`TabsTrigger` from
+  `@/components/ui/tabs`: `<Tabs orientation="vertical" value={selectedId ??
+  undefined} onValueChange={(id) => { const l = loadouts.find(x => x.id ===
+  id); if (l) select(l) }}><TabsList className="w-52 flex-col
+  items-stretch">{loadouts.map(l => <TabsTrigger key={l.id} value={l.id}
+  className="justify-start data-active:border-l-2 data-active:border-violet-500
+  data-active:bg-zinc-800/60 data-active:text-zinc-100
+  border-transparent text-zinc-500 hover:text-zinc-300
+  hover:bg-zinc-800/40">{l.name}</TabsTrigger>)}</TabsList></Tabs>`. Do NOT
+  use `TabsContent` — the editor panel is state-driven (renders from
+  `selected`/`editName`/`editAssets`, not per-tab pre-built panels), so it
+  stays rendered separately outside the `Tabs` component, exactly where it is
+  today. This migration touches control flow slightly (selection now flows
+  through `onValueChange` instead of each button's own `onClick`) — verify
+  carefully that clicking a loadout in the browser still switches the editor
+  content correctly. If Base UI's `Tabs` fights the existing controlled-state
+  model in a way that breaks selection, it's acceptable to fall back to
+  leaving the list as plain buttons (matching the pattern already used
+  elsewhere when a shadcn primitive doesn't cleanly fit) — note this
+  explicitly in your output if you take that fallback.
+- "+ New Loadout" button (dashed border) → `Button variant="outline"
+  className="border-dashed ..."` (keep the dashed border + violet hover
+  treatment via className).
+- Editor panel wrapper (`border-zinc-800 bg-zinc-900/40 p-6`) → `Card`.
+- "Loadout name" — this `<label>` is a plain sibling of the `<input>` (NOT
+  wrapping it, unlike the nested-label case in batch 2's `ProductInfo.tsx`),
+  so it's safe to use the `Label` component here → `Label` from
+  `@/components/ui/label`. The name `<input>` → `Input`.
+- Asset-type toggle grid (the 2-column icon/title/description cards that
+  toggle on/off, `on ? violet-tinted : zinc-muted`) stays untouched — these
+  are `<button>` elements with multi-select toggle behavior and a layout
+  (icon + title + description stacked) that doesn't map cleanly to `Button`
+  or `Card` without losing the interactive-element semantics or forcing an
+  awkward fit. Leave as-is.
+- "Save changes" (solid violet) → `Button variant="default"`.
+- "Delete loadout" (neutral outline at rest, red only on hover — distinct
+  from a loud destructive button) → `Button variant="outline"
+  className="hover:border-red-700 hover:text-red-400"` (not
+  `variant="destructive"`, which would be red at rest — that doesn't match
+  this button's actual look).
+- Empty states (dashed "No loadouts yet" placeholder) → `Card` with a
+  `border-dashed` className override, or leave as a plain `<div>` if `Card`
+  fights the centering layout — use judgement.
+
+### Files to modify
+`components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx`.
+
+### Out of scope (Batch 3)
+No prop/behavior changes beyond the Tabs selection wiring described above.
+The asset-type toggle grid stays untouched.
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. Sign in via the dev magic-link bypass, visit `/app/fixed-assets`, create a
+   loadout, click between multiple loadouts to confirm Tabs selection still
+   works, toggle asset types, save, and delete — screenshot to confirm the
+   visual look matches (left-border active indicator, flat corners) — clean
+   up any test loadout created afterward.
