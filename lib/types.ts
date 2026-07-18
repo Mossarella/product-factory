@@ -19,6 +19,11 @@ export interface FixedAssetFile {
   origName: string
 }
 
+export interface LatestBuild {
+  version: number
+  createdAt: string
+}
+
 export interface ProductConfig {
   name: string
   sku: string
@@ -36,6 +41,7 @@ export interface ProductConfig {
   fixedAssetFiles: FixedAssetFile[]
   etsyTags: string[]
   templateId?: string | null
+  latestBuild: LatestBuild | null
   complete: boolean
   createdAt: string
 }

@@ -19,7 +19,6 @@ interface Props {
   dirty: boolean
   saveFlash: boolean
   onSave: () => Promise<void>
-  onDownloadZip: () => void
   onToggleZipPreview: () => void
   zipPreviewText: string | null
 }
@@ -38,7 +37,6 @@ export function ProductSelector({
   dirty,
   saveFlash,
   onSave,
-  onDownloadZip,
   onToggleZipPreview,
   zipPreviewText,
 }: Props) {
@@ -160,13 +158,6 @@ export function ProductSelector({
           Save product {dirty ? '•' : ''}
         </Button>
         {saveFlash && <span className="text-xs text-emerald-400">Saved!</span>}
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onDownloadZip}
-        >
-          ⬇ Download ZIP
-        </Button>
         <Button type="button" variant="outline" onClick={onToggleZipPreview}>
           Preview ZIP
         </Button>

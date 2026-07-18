@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CONFIG } from '@/config'
 import { EtsyListing } from '@/components/EtsyListing'
 import { EtsySlots } from '@/components/EtsySlots'
+import { BuildProduct } from '@/components/BuildProduct'
 import { TemplateValidation } from '@/components/TemplateValidation'
 import { FileEntry } from '@/components/FileManager'
 import FileManager from '@/components/FileManager'
@@ -18,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
 import { type TemplateRule, validateProduct } from '@/lib/template-rules'
 import { mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
-import { buildZip, buildZipTree } from '@/lib/zip'
+import { buildZipTree } from '@/lib/zip'
 
 const INITIAL_FIXED_ASSETS: FixedAssetDef[] = [
   { id: 'thankyou', label: 'Thank You card', slot: '/api/slot/thank-you-image', zipName: 'THANKYOU.png', builtin: true, blob: null },
@@ -61,6 +62,7 @@ function normalizeProductConfig(loaded: Partial<ProductConfig>, fallbackName: st
       variant: file.variant || '',
     })),
     fixedAssetFiles: loaded.fixedAssetFiles ?? [],
+    latestBuild: loaded.latestBuild ?? null,
     etsyTags: loaded.etsyTags ?? [],
     complete: loaded.complete === true,
     createdAt: loaded.createdAt ?? '',
@@ -295,57 +297,6 @@ export default function Home() {
     setTimeout(() => setSaveFlash(false), 2000)
   }, [activeProduct, config, etsyTags, files, fixedAssets, refreshProducts, selectedTemplateId])
 
-  const gatherData = useCallback(() => {
-    if (!config) throw new Error('Select a product first')
-    return {
-      name: config.productName,
-      etsyName: config.etsyTitle,
-      shopName: CONFIG.shopName,
-      contact: config.contact || CONFIG.contact,
-      description: config.description || CONFIG.description,
-      notes: config.notes || CONFIG.readmeFooter,
-      licenseType: config.licenseType,
-      price: config.price,
-      commercialPrice: config.commercialPrice,
-      currency: config.currency,
-      folders: config.folders.map((label) => ({ label, count: files.filter((file) => file.folder === label).length })),
-      etsyTags,
-    }
-  }, [config, etsyTags, files])
-
-  const fillReadmeTemplate = (template: string) => {
-    const data = gatherData()
-    const folders = data.folders.map((folder) => `  - ${folder.label} (${folder.count} files)`).join('\n')
-    const licenseBlock = data.licenseType === 'personal'
-      ? 'Personal use only. Not for commercial resale or redistribution.'
-      : data.licenseType === 'commercial'
-        ? 'Commercial use included. Credit appreciated.'
-        : `Personal use: $${data.price} \u00b7 Commercial license: $${data.commercialPrice ?? '\u2014'} (message shop for commercial)`
-    return template
-      .replace(/{{name}}/g, data.name)
-      .replace(/{{etsyName}}/g, data.etsyName)
-      .replace(/{{shopName}}/g, data.shopName)
-      .replace(/{{contact}}/g, data.contact)
-      .replace(/{{description}}/g, data.description)
-      .replace(/{{notes}}/g, data.notes)
-      .replace(/{{licenseBlock}}/g, licenseBlock)
-      .replace(/{{folders}}/g, folders)
-      .replace(/{{etsyTags}}/g, data.etsyTags.join(', '))
-  }
-
-  const downloadZip = async () => {
-    if (!config) return
-    const response = await fetch('/api/templates/readme.txt')
-    if (!response.ok) throw new Error('Could not load README template')
-    const zip = await buildZip(config.productName, files, fixedAssets, fillReadmeTemplate(await response.text()))
-    const url = URL.createObjectURL(zip)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${config.productName}Pack.zip`
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
-
   const toggleZipPreview = () => {
     if (!config) return
     setZipPreviewText((current) => current === null ? buildZipTree(config.productName, files, fixedAssets) : null)
@@ -407,7 +358,6 @@ export default function Home() {
           dirty={dirty}
           saveFlash={saveFlash}
           onSave={saveProduct}
-          onDownloadZip={() => void downloadZip()}
           onToggleZipPreview={toggleZipPreview}
           zipPreviewText={zipPreviewText}
         />
@@ -504,6 +454,12 @@ export default function Home() {
               heroImageLoaded={heroImageLoaded}
             />
           </div>
+        </Card>
+      )}
+      {config && (
+        <Card className="gap-0 px-4">
+          <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">7. Build</h2>
+          <BuildProduct activeProduct={activeProduct!} />
         </Card>
       )}
     </div>

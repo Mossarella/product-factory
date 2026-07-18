@@ -81,6 +81,8 @@ model Product {
   updatedAt       DateTime         @updatedAt
   files           MascotFile[]
   fixedAssetFiles FixedAssetFile[]
+  builds          ProductBuild[]
+  buildVersion    Int              @default(0)
   templateId      String?
   template        ProductTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
@@ -120,4 +122,18 @@ model FixedAssetFile {
   origName  String
 
   @@unique([productId, assetKey])
+}
+
+model ProductBuild {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version   Int
+  filename  String
+  fileSize  Int
+  manifest  Json
+  createdAt DateTime @default(now())
+
+  @@unique([productId, version])
+  @@index([productId])
 }
