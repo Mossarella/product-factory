@@ -192,6 +192,23 @@ export default function CollectionPage() {
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0 ml-4">
+                    {detail.latestBuild ? (
+                      <a
+                        href={`/api/products/${encodeURIComponent(detail.name)}/build/latest`}
+                        className={cn(buttonVariants({ variant: 'outline' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors')}
+                      >
+                        ⬇ Download (v{detail.latestBuild.version})
+                      </a>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        disabled
+                        title="Build this product in the Factory page first"
+                        className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                      >
+                        ⬇ Download
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import type { Product, MascotFile, FixedAssetFile } from '@prisma/client'
+import type { Product, MascotFile, FixedAssetFile, ProductBuild } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-type ProductWithFiles = Product & { files: MascotFile[]; fixedAssetFiles: FixedAssetFile[] }
+type ProductWithFiles = Product & { files: MascotFile[]; fixedAssetFiles: FixedAssetFile[]; builds: ProductBuild[] }
 
 function toConfig(p: ProductWithFiles) {
   return {
@@ -38,6 +38,7 @@ function toConfig(p: ProductWithFiles) {
     })),
     etsyTags: p.etsyTags,
     templateId: p.templateId ?? null,
+    latestBuild: p.builds[0] ? { version: p.builds[0].version, createdAt: p.builds[0].createdAt.toISOString() } : null,
     complete: p.complete,
     createdAt: p.createdAt.toISOString(),
   }
@@ -51,7 +52,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
   const product = await prisma.product.findUnique({
     where: { userId_name: { userId: session.user.id, name: productName } },
-    include: { files: true, fixedAssetFiles: true },
+    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       templateId: (body.templateId as string | null | undefined) ?? null,
       complete: (body.complete as boolean) ?? false,
     },
-    include: { files: true, fixedAssetFiles: true },
+    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
   })
 
   // Replace mascot files
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const updated = await prisma.product.findUnique({
     where: { id: product.id },
-    include: { files: true, fixedAssetFiles: true },
+    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
   })
 
   return NextResponse.json(toConfig(updated!))

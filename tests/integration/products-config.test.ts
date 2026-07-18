@@ -66,6 +66,7 @@ function product(overrides: Record<string, unknown> = {}) {
     createdAt: new Date('2025-01-01T00:00:00.000Z'),
     files: [],
     fixedAssetFiles: [],
+    builds: [],
     ...overrides,
   }
 }
