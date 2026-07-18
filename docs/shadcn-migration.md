@@ -82,7 +82,8 @@ Font unchanged (Geist Sans/Mono via `next/font`).
 | 0 | Setup + pilot (this spec's immediate scope) | `components.json`, `app/globals.css`, `lib/cn.ts`, `components/ui/*` (button, card, badge, input, textarea, label, separator, dialog, tabs, status-badge), `app/login/page.tsx` | done — PR #1 |
 | 1 | Simple shared components | `LicenseBanner.tsx`, `FolderManager.tsx`, `ProductSelector.tsx`, `ReadmePreview.tsx` | done — PR #2 |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | done — PR #3 |
-| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | in progress |
+| 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | done — PR #4 |
+| 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | in progress |
 | 2 | Complex shared components | `EtsySlots.tsx`, `EtsyListing.tsx`, `ProductInfo.tsx`, `FileManager.tsx` | not started |
 | 3 | Loadout manager (Tabs) | `components/FixedAssets.tsx`, `app/app/fixed-assets/page.tsx` | not started |
 | 4 | Dashboard + Collection | `app/app/dashboard/page.tsx`, `app/app/collection/page.tsx` | not started |
@@ -343,3 +344,69 @@ The asset-type toggle grid stays untouched.
    works, toggle asset types, save, and delete — screenshot to confirm the
    visual look matches (left-border active indicator, flat corners) — clean
    up any test loadout created afterward.
+
+## Batch 4 — Implementation
+
+Scope: `app/app/dashboard/page.tsx` (server component), `app/app/collection/page.tsx`
+(client component). Presentational-only — no data-fetching/logic changes.
+
+### app/app/dashboard/page.tsx
+- All 6 stat/insight cards (`border-zinc-800 bg-zinc-900/60 p-5`, both the
+  main `stats` array grid and the 3 "Insights" cards) → `Card` from
+  `@/components/ui/card`.
+- The "Open Factory →" link is a Next.js `<Link>`, not a `<button>` — do NOT
+  try to wrap it in the `Button` component. Instead apply
+  `buttonVariants({ variant: "secondary" })` (exported from
+  `@/components/ui/button`) directly as its className via `cn()`, e.g.
+  `<Link href="/app/factory" className={cn(buttonVariants({ variant:
+  "secondary" }), "inline-block")}>Open Factory →</Link>` — this gets the
+  translucent-violet-pill look without needing polymorphic rendering.
+
+### app/app/collection/page.tsx
+- Search `<input>` → `Input` from `@/components/ui/input`.
+- **Use the existing `StatusBadge` component** from
+  `@/components/ui/status-badge.tsx` (built in batch 0 specifically for this
+  file's pattern, unused until now) — read that file first. It already
+  exports a `STATUS_STYLES` map with the exact same `ready`/`in-progress`/
+  `empty` keys, colors, and dot+label markup as this file's local
+  `STATUS_STYLES` const. Delete the local `STATUS_STYLES` const in this file
+  and replace both places that render a dot+label pair (the product-grid
+  card status indicator, and the detail-panel header status indicator) with
+  `<StatusBadge status={status} />`. Check whether `status-badge.tsx`'s
+  `StatusBadge` renders at a fixed size/spacing that fits both call sites
+  (the grid card uses a smaller `w-1.5 h-1.5` dot + `text-xs`, the detail
+  header uses a slightly larger `w-2 h-2` dot + `text-sm`) — if `StatusBadge`
+  only supports one size, use it as-is for both (minor, acceptable) or pass a
+  `className` prop if it supports one for size overrides — check the
+  component's actual props first.
+- The product-grid item is a `<button>` (must stay a real interactive
+  button for click handling and keyboard access) — do NOT wrap it in `Card`
+  (which renders a `<div>`, losing button semantics). Leave its own
+  className/border/bg styling untouched; only swap its internal status
+  dot+label for `StatusBadge`.
+- The "Open in Factory →" `<a>` in the detail panel (same translucent-violet
+  pill look as the dashboard's "Open Factory" link) → same
+  `buttonVariants({ variant: "secondary" })` approach via `cn()`.
+- Read-only tag chips in the detail panel (`border-zinc-700 px-2 py-0.5
+  text-xs text-zinc-400`, no remove button — these are display-only, unlike
+  `EtsyListing.tsx`'s editable tags from batch 2) → `Badge variant="outline"`.
+- The 6 `<hr className="border-zinc-800 mb-5" />` dividers → `Separator`
+  from `@/components/ui/separator` (its first real usage in the app) —
+  `<Separator className="mb-5" />`.
+- The readiness checklist (static ✓/✗ rows, dynamic per-item color, no
+  onClick) stays untouched — same precedent as `EtsyListing.tsx`'s readiness
+  checklist in batch 2.
+
+### Files to modify
+`app/app/dashboard/page.tsx`, `app/app/collection/page.tsx`.
+
+### Out of scope (Batch 4)
+No data-fetching or state-logic changes. The product-grid button and the
+readiness checklist stay as plain elements (see above).
+
+### Verification
+1. `npx tsc --noEmit` — no new errors.
+2. Sign in via the dev magic-link bypass, visit `/app/dashboard` and
+   `/app/collection`, screenshot both, select a product in the collection
+   detail panel to confirm `StatusBadge`/`Badge`/`Separator` render
+   correctly and the search input and "Open in Factory" link still work.
