@@ -4,7 +4,6 @@ import path from 'path'
 export const ROOT = process.cwd()
 export const PRODUCTS_DIR = path.join(ROOT, 'products')
 export const ASSETS_DIR = path.join(ROOT, 'assets')
-export const AVATARS_DIR = path.join(ROOT, 'avatars')
 
 export const MIME: Record<string, string> = {
   '.html': 'text/html',
@@ -45,10 +44,6 @@ export function userProductPath(userId: string, name: string, ...segments: strin
 
 export function assetPath(name: string, ...segments: string[]): string {
   return resolveWithin(ASSETS_DIR, name, ...segments)
-}
-
-export function avatarPath(userId: string): string {
-  return resolveWithin(AVATARS_DIR, userId)
 }
 
 export function decodeSegment(segment: string): string {

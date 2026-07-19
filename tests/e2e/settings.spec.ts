@@ -49,3 +49,55 @@ test('updates the sidebar name after saving profile settings', async ({ page }) 
   await expect(page.getByText('Saved!', { exact: true })).toBeVisible()
   await expect(avatarMenuTrigger).toContainText(originalName)
 })
+
+test('uploads a profile avatar and rejects an oversized one', async ({ page }) => {
+  const email = 'admin@example.com'
+
+  const csrfResponse = await page.request.get('/api/auth/csrf')
+  expect(csrfResponse.ok()).toBeTruthy()
+  const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
+
+  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+    form: { email, csrfToken, callbackUrl: '/app/dashboard' },
+  })
+  expect(signInResponse.ok()).toBeTruthy()
+
+  const devUrlResponse = await page.request.get(`/api/auth/dev-url?email=${encodeURIComponent(email)}`)
+  expect(devUrlResponse.ok()).toBeTruthy()
+  const { devLoginUrl } = await devUrlResponse.json() as { devLoginUrl: string | null }
+  expect(devLoginUrl).not.toBeNull()
+  await page.goto(devLoginUrl!)
+
+  await expect(page).toHaveURL(/\/app\/dashboard/)
+  await page.goto('/app/settings')
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+
+  const fileInput = page.locator('input[type="file"]')
+  await fileInput.setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL1uwAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  })
+
+  const avatar = page.locator('img[src*="/api/profile/avatar"]').first()
+  await expect(avatar).toBeVisible()
+  await expect(avatar).toHaveAttribute('src', /\/api\/profile\/avatar\?v=\d+/)
+
+  await page.reload()
+  await expect(avatar).toBeVisible()
+  await expect(avatar).toHaveAttribute('src', /\/api\/profile\/avatar\?v=\d+/)
+
+  const oversizedResponse = await page.request.post('/api/profile/avatar', {
+    headers: {
+      'X-Filename': 'big.png',
+      'Content-Type': 'application/octet-stream',
+    },
+    data: Buffer.alloc(5 * 1024 * 1024 + 1),
+  })
+  expect(oversizedResponse.status()).toBe(413)
+  const oversizedBody = await oversizedResponse.json() as { error: string }
+  expect(oversizedBody.error).toMatch(/size|5MB/i)
+})

@@ -8,13 +8,14 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/cn'
-import { avatarColor, getInitials } from '@/lib/utils'
+import { MAX_AVATAR_BYTES, avatarColor, getInitials } from '@/lib/utils'
 
 export default function SettingsPage() {
   const { data: session, update } = useSession()
   const [name, setName] = useState(session?.user?.name ?? '')
   const [saving, setSaving] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const email = session?.user?.email ?? null
@@ -41,6 +42,11 @@ export default function SettingsPage() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    setAvatarError(null)
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError('Image must be 5MB or smaller.')
+      return
+    }
     const res = await fetch('/api/profile/avatar', {
       method: 'POST',
       headers: { 'X-Filename': file.name },
@@ -49,6 +55,9 @@ export default function SettingsPage() {
     if (res.ok) {
       const data = await res.json() as { image: string }
       await update({ image: data.image })
+    } else {
+      const body = await res.json().catch(() => ({}))
+      setAvatarError(body.error || 'Could not upload image')
     }
   }
 
@@ -74,6 +83,7 @@ export default function SettingsPage() {
             Upload image
           </Button>
         </div>
+        {avatarError && <p className="text-xs text-red-400">{avatarError}</p>}
 
         <div>
           <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Display name</Label>
