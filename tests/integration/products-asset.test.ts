@@ -9,44 +9,32 @@ let currentSession: typeof MOCK_SESSION | null = MOCK_SESSION
 mock.module('@/auth', () => ({ auth: async () => currentSession }))
 mock.module('@/lib/api-files', () => ({
   ROOT: '/tmp/test-root',
-  PRODUCTS_DIR: '/tmp/test-products',
   ASSETS_DIR: '/tmp/test-assets',
-  AVATARS_DIR: '/tmp/test-avatars',
   MIME: { '.png': 'image/png', '.jpg': 'image/jpeg', '.txt': 'text/plain' },
   resolveWithinRoot: (...segments: string[]) => `/tmp/test-root/${segments.join('/')}`,
   resolveWithin: (directory: string, ...segments: string[]) => `${directory}/${segments.join('/')}`,
-  productPath: (name: string, ...segments: string[]) => `/tmp/test-products/${name}/${segments.join('/')}`,
   sanitizeFilename: (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, ''),
-  userProductPath: (...args: string[]) => `/tmp/test-products/${args.join('/')}`,
   assetPath: (name: string, ...segments: string[]) => `/tmp/test-assets/${name}/${segments.join('/')}`,
-  avatarPath: (userId: string) => `/tmp/test-avatars/${userId}`,
   decodeSegment: (segment: string) => decodeURIComponent(segment),
   sanitizeName: (name: string) => name.trim().replace(/[^\w\- ]/g, ''),
   contentTypeFor: (filename: string) => filename.endsWith('.png') ? 'image/png' : 'application/octet-stream',
-  clearDirectory: () => {},
   firstFile: () => undefined,
   readBodyBuffer: (request: Request) => request.arrayBuffer().then((buf: ArrayBuffer) => Buffer.from(buf)),
 }))
 
-const mockMkdirSync = mock(() => {})
-const mockWriteFileSync = mock(() => {})
-const mockExistsSync = mock(() => true)
-const mockStatSync = mock(() => ({ isFile: () => true }))
-const mockReadFileSync = mock(() => Buffer.from('fake-image-data'))
+const mockFindUnique = mock(() => Promise.resolve({ id: 'product-1' }))
+mock.module('@/lib/db', () => ({
+  prisma: { product: { findUnique: mockFindUnique } },
+}))
 
-mock.module('fs', () => ({
-  default: {
-    mkdirSync: mockMkdirSync,
-    writeFileSync: mockWriteFileSync,
-    existsSync: mockExistsSync,
-    statSync: mockStatSync,
-    readFileSync: mockReadFileSync,
-  },
-  mkdirSync: mockMkdirSync,
-  writeFileSync: mockWriteFileSync,
-  existsSync: mockExistsSync,
-  statSync: mockStatSync,
-  readFileSync: mockReadFileSync,
+const mockPutObject = mock(() => Promise.resolve())
+const mockGetObject = mock<(key: string) => Promise<{ body: Buffer; contentType?: string } | null>>(
+  () => Promise.resolve({ body: Buffer.from('fake-image-data'), contentType: 'image/png' }),
+)
+mock.module('@/lib/object-storage', () => ({
+  putObject: mockPutObject,
+  getObject: mockGetObject,
+  productKey: (productId: string, ...segments: string[]) => ['products', productId, ...segments].join('/'),
 }))
 
 const { POST } = await import('@/app/api/products/[name]/asset/route')
@@ -57,11 +45,9 @@ const assetParams = () => Promise.resolve({ name: 'TestProduct', filename: 'imag
 
 beforeEach(() => {
   currentSession = MOCK_SESSION
-  mockMkdirSync.mockImplementation(() => {})
-  mockWriteFileSync.mockImplementation(() => {})
-  mockExistsSync.mockImplementation(() => true)
-  mockStatSync.mockImplementation(() => ({ isFile: () => true }))
-  mockReadFileSync.mockImplementation(() => Buffer.from('fake-image-data'))
+  mockFindUnique.mockImplementation(() => Promise.resolve({ id: 'product-1' }))
+  mockPutObject.mockImplementation(() => Promise.resolve())
+  mockGetObject.mockImplementation(() => Promise.resolve({ body: Buffer.from('fake-image-data'), contentType: 'image/png' }))
 })
 
 afterEach(() => {
@@ -85,11 +71,11 @@ describe('POST /api/products/[name]/asset', () => {
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ success: true })
-    expect(mockWriteFileSync).toHaveBeenCalled()
+    expect(mockPutObject).toHaveBeenCalled()
   })
 
   it('returns 400 when writing the asset fails', async () => {
-    mockWriteFileSync.mockImplementation(() => { throw new Error('disk full') })
+    mockPutObject.mockImplementation(() => { throw new Error('disk full') })
     const req = new NextRequest('http://localhost/api/products/TestProduct/asset', {
       method: 'POST',
       headers: { 'X-Filename': 'image.png' },
@@ -109,7 +95,13 @@ describe('GET /api/products/[name]/asset/[filename]', () => {
   })
 
   it('returns 404 when the asset does not exist', async () => {
-    mockExistsSync.mockImplementation(() => false)
+    mockGetObject.mockImplementation(() => Promise.resolve(null))
+    const res = await GET_ASSET(new NextRequest('http://localhost/api/products/TestProduct/asset/image.png'), { params: assetParams() })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 404 when the product does not exist', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(null))
     const res = await GET_ASSET(new NextRequest('http://localhost/api/products/TestProduct/asset/image.png'), { params: assetParams() })
     expect(res.status).toBe(404)
   })

@@ -8,31 +8,31 @@ let currentSession: typeof MOCK_SESSION | null = MOCK_SESSION
 mock.module('@/auth', () => ({ auth: async () => currentSession }))
 mock.module('@/lib/api-files', () => ({
   ROOT: '/tmp/test-root',
-  PRODUCTS_DIR: '/tmp/test-products',
   ASSETS_DIR: '/tmp/test-assets',
-  AVATARS_DIR: '/tmp/test-avatars',
   MIME: { '.png': 'image/png', '.jpg': 'image/jpeg', '.txt': 'text/plain' },
   resolveWithinRoot: (...segments: string[]) => `/tmp/test-root/${segments.join('/')}`,
   resolveWithin: (directory: string, ...segments: string[]) => `${directory}/${segments.join('/')}`,
-  productPath: (name: string, ...segments: string[]) => `/tmp/test-products/${name}/${segments.join('/')}`,
-  userProductPath: (userId: string, name: string, ...segments: string[]) => `/tmp/test-products/${userId}/${name}/${segments.join('/')}`,
   assetPath: (name: string, ...segments: string[]) => `/tmp/test-assets/${name}/${segments.join('/')}`,
-  avatarPath: (userId: string) => `/tmp/test-avatars/${userId}`,
   decodeSegment: (segment: string) => decodeURIComponent(segment),
   sanitizeName: (n: string) => n.replace(/[^a-zA-Z0-9-_]/g, ''),
   sanitizeFilename: (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, ''),
   contentTypeFor: (filename: string) => filename.endsWith('.png') ? 'image/png' : 'application/octet-stream',
-  clearDirectory: () => {},
   firstFile: () => undefined,
   readBodyBuffer: (request: Request) => request.arrayBuffer().then((buf: ArrayBuffer) => Buffer.from(buf)),
 }))
 
-const mockExistsSync = mock(() => true)
-const mockCpSync = mock(() => {})
-mock.module('fs', () => ({
-  default: { existsSync: mockExistsSync, cpSync: mockCpSync },
-  existsSync: mockExistsSync,
-  cpSync: mockCpSync,
+const mockPutObject = mock(() => Promise.resolve())
+const mockGetObject = mock(() => Promise.resolve(null))
+const mockDeleteObject = mock(() => Promise.resolve())
+const mockObjectExists = mock(() => Promise.resolve(false))
+const mockCopyObjectsByPrefix = mock(() => Promise.resolve())
+mock.module('@/lib/object-storage', () => ({
+  putObject: mockPutObject,
+  getObject: mockGetObject,
+  deleteObject: mockDeleteObject,
+  objectExists: mockObjectExists,
+  copyObjectsByPrefix: mockCopyObjectsByPrefix,
+  productKey: (productId: string, ...segments: string[]) => ['products', productId, ...segments].join('/'),
 }))
 
 const mockFindUnique = mock(() => Promise.resolve(null))
@@ -92,11 +92,10 @@ const params = (name = 'SourceProduct') => ({ params: Promise.resolve({ name }) 
 
 beforeEach(() => {
   currentSession = MOCK_SESSION
-  mockExistsSync.mockReset()
-  mockCpSync.mockReset()
+  mockCopyObjectsByPrefix.mockReset()
   mockFindUnique.mockReset()
   mockCreate.mockReset()
-  mockExistsSync.mockReturnValue(true)
+  mockCopyObjectsByPrefix.mockReturnValue(Promise.resolve())
   mockFindUnique.mockResolvedValue(null)
   mockCreate.mockResolvedValue(duplicatedProduct())
 })
@@ -129,11 +128,7 @@ describe('POST /api/products/[name]/duplicate', () => {
     const res = await POST(request('DuplicateProduct'), params())
 
     expect(res.status).toBe(200)
-    expect(mockCpSync).toHaveBeenCalledWith(
-      '/tmp/test-products/user-test-123/SourceProduct',
-      '/tmp/test-products/user-test-123/DuplicateProduct',
-      { recursive: true },
-    )
+    expect(mockCopyObjectsByPrefix).toHaveBeenCalledWith('products/product-source/', 'products/product-duplicate/')
     expect(mockCreate.mock.calls[0][0].data.templateId).toBe('tmpl_abc')
     expect(mockCreate.mock.calls[0][0].data.fixedAssetFiles.create).toEqual([
       { assetKey: 'thankyou', filename: 'thankyou.png', origName: 'orig.png' },

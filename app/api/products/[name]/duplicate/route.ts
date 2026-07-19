@@ -1,9 +1,8 @@
-import fs from 'fs'
-import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { PRODUCTS_DIR, sanitizeName } from '@/lib/api-files'
+import { sanitizeName } from '@/lib/api-files'
+import { copyObjectsByPrefix, productKey } from '@/lib/object-storage'
 import type { Product, MascotFile, FixedAssetFile } from '@prisma/client'
 
 interface RouteContext {
@@ -62,10 +61,6 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   })
   if (!source) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
-  const srcDir = path.join(PRODUCTS_DIR, userId, sourceName)
-  const destDir = path.join(PRODUCTS_DIR, userId, sanitizedNew)
-  if (fs.existsSync(srcDir)) fs.cpSync(srcDir, destDir, { recursive: true })
-
   const duplicate = await prisma.product.create({
     data: {
       userId,
@@ -102,6 +97,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     },
     include: { files: true, fixedAssetFiles: true },
   })
+
+  await copyObjectsByPrefix(productKey(source.id) + '/', productKey(duplicate.id) + '/')
 
   return NextResponse.json(toConfig(duplicate))
 }

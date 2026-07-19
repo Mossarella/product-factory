@@ -1,10 +1,8 @@
-import fs from 'fs'
-import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { CONFIG } from '@/config'
-import { userProductPath } from '@/lib/api-files'
+import { productKey, putObject } from '@/lib/object-storage'
 import { buildZipBuffer } from '@/lib/zip-server'
 import { generateChangelog } from '@/lib/build-changelog'
 import { buildReadmeText } from '@/lib/templates-server'
@@ -92,8 +90,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const version = product.buildVersion + 1
 
   const { buffer, manifest } = await buildZipBuffer({
-    userId,
-    storageProductName: product.name,
+    productId: product.id,
     displayProductName: product.productName || product.name,
     mascotFiles: product.files.map((f) => ({
       filename: f.filename,
@@ -116,9 +113,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const changelog = trimmedNotes || generateChangelog(manifest, previousManifest)
 
   const filename = `v${version}.zip`
-  const directory = userProductPath(userId, product.name, 'builds')
-  fs.mkdirSync(directory, { recursive: true })
-  fs.writeFileSync(path.join(directory, filename), buffer)
+  await putObject(productKey(product.id, 'builds', filename), buffer, 'application/zip')
 
   await prisma.$transaction([
     prisma.product.update({ where: { id: product.id }, data: { buildVersion: version } }),

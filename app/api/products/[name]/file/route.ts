@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const filename = sanitizeFilename(request.headers.get('x-filename') ?? 'file')
     const buffer = await readBodyBuffer(request)
-    await putObject(productKey(product.id, 'fixed-assets', filename), buffer, contentTypeFor(filename))
+    await putObject(productKey(product.id, 'mascot-files', filename), buffer, contentTypeFor(filename))
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })

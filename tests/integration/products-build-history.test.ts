@@ -8,43 +8,33 @@ let currentSession: typeof MOCK_SESSION | null = MOCK_SESSION
 mock.module('@/auth', () => ({ auth: async () => currentSession }))
 mock.module('@/lib/api-files', () => ({
   ROOT: '/tmp/test-root',
-  PRODUCTS_DIR: '/tmp/test-products',
   ASSETS_DIR: '/tmp/test-assets',
-  AVATARS_DIR: '/tmp/test-avatars',
   MIME: { '.png': 'image/png', '.jpg': 'image/jpeg', '.txt': 'text/plain', '.zip': 'application/zip' },
   resolveWithinRoot: (...segments: string[]) => `/tmp/test-root/${segments.join('/')}`,
   resolveWithin: (directory: string, ...segments: string[]) => `${directory}/${segments.join('/')}`,
-  productPath: (name: string, ...segments: string[]) => `/tmp/test-products/${name}/${segments.join('/')}`,
-  userProductPath: (userId: string, name: string, ...segments: string[]) => `/tmp/test-products/${userId}/${name}/${segments.join('/')}`,
   assetPath: (name: string, ...segments: string[]) => `/tmp/test-assets/${name}/${segments.join('/')}`,
-  avatarPath: (userId: string) => `/tmp/test-avatars/${userId}`,
   decodeSegment: (segment: string) => decodeURIComponent(segment),
   sanitizeName: (name: string) => name.trim().replace(/[^\w\- ]/g, ''),
   sanitizeFilename: (filename: string) => filename.replace(/[^a-zA-Z0-9._-]/g, ''),
   contentTypeFor: (filename: string) => filename.endsWith('.png') ? 'image/png' : 'application/octet-stream',
-  clearDirectory: () => {},
   firstFile: () => undefined,
   readBodyBuffer: (request: Request) => request.arrayBuffer().then((buf) => Buffer.from(buf)),
 }))
 
-const mockExistsSync = mock(() => true)
-const mockReadFileSync = mock(() => Buffer.from('fake-zip'))
-const mockMkdirSync = mock(() => {})
-const mockWriteFileSync = mock(() => {})
-const mockStatSync = mock(() => ({ isFile: () => true }))
-mock.module('fs', () => ({
-  default: {
-    existsSync: mockExistsSync,
-    readFileSync: mockReadFileSync,
-    mkdirSync: mockMkdirSync,
-    writeFileSync: mockWriteFileSync,
-    statSync: mockStatSync,
-  },
-  existsSync: mockExistsSync,
-  readFileSync: mockReadFileSync,
-  mkdirSync: mockMkdirSync,
-  writeFileSync: mockWriteFileSync,
-  statSync: mockStatSync,
+const mockGetObject = mock<(key: string) => Promise<{ body: Buffer; contentType?: string } | null>>(
+  () => Promise.resolve({ body: Buffer.from('fake-zip'), contentType: 'application/zip' }),
+)
+const mockPutObject = mock(() => Promise.resolve())
+const mockDeleteObject = mock(() => Promise.resolve())
+const mockObjectExists = mock(() => Promise.resolve(false))
+const mockCopyObjectsByPrefix = mock(() => Promise.resolve())
+mock.module('@/lib/object-storage', () => ({
+  getObject: mockGetObject,
+  putObject: mockPutObject,
+  deleteObject: mockDeleteObject,
+  objectExists: mockObjectExists,
+  copyObjectsByPrefix: mockCopyObjectsByPrefix,
+  productKey: (productId: string, ...segments: string[]) => ['products', productId, ...segments].join('/'),
 }))
 
 const defaultManifest = () => ({
@@ -83,22 +73,16 @@ const revertRequest = () => new NextRequest('http://localhost/api/products/TestP
 
 beforeEach(() => {
   currentSession = MOCK_SESSION
-  mockExistsSync.mockReset()
-  mockReadFileSync.mockReset()
-  mockMkdirSync.mockReset()
-  mockWriteFileSync.mockReset()
-  mockStatSync.mockReset()
+  mockGetObject.mockReset()
+  mockPutObject.mockReset()
   mockBuildZipBuffer.mockReset()
   mockRebuildManifestForRevert.mockReset()
   mockFindUnique.mockReset()
   mockProductUpdate.mockReset()
   mockProductBuildCreate.mockReset()
   mockTransaction.mockReset()
-  mockExistsSync.mockReturnValue(true)
-  mockReadFileSync.mockReturnValue(Buffer.from('fake-zip'))
-  mockMkdirSync.mockImplementation(() => {})
-  mockWriteFileSync.mockImplementation(() => {})
-  mockStatSync.mockReturnValue({ isFile: () => true })
+  mockGetObject.mockReturnValue(Promise.resolve({ body: Buffer.from('fake-zip'), contentType: 'application/zip' }))
+  mockPutObject.mockReturnValue(Promise.resolve())
   mockBuildZipBuffer.mockReturnValue(Promise.resolve({ buffer: Buffer.from('fake-zip'), manifest: defaultManifest() }))
   mockRebuildManifestForRevert.mockReturnValue(Promise.resolve({ buffer: Buffer.from('fake-zip'), manifest: defaultManifest() }))
   mockFindUnique.mockReturnValue(Promise.resolve(null))

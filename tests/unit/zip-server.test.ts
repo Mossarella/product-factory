@@ -3,6 +3,13 @@ import JSZip from 'jszip'
 
 const existsSync = mock<(diskPath: string) => boolean>(() => true)
 const readFileSync = mock<(diskPath: string) => Buffer>(() => Buffer.from('fake-file-content'))
+const mockGetObject = mock<(key: string) => Promise<{ body: Buffer; contentType?: string; metadata?: Record<string, string> } | null>>(
+  () => Promise.resolve({ body: Buffer.from('fake-file-content') }),
+)
+const mockPutObject = mock(() => Promise.resolve())
+const mockDeleteObject = mock(() => Promise.resolve())
+const mockObjectExists = mock(() => Promise.resolve(false))
+const mockCopyObjectsByPrefix = mock(() => Promise.resolve())
 let shopDefaultFilename: string | undefined
 
 // Mock filesystem and api-files before importing zip-server so these tests do no I/O.
@@ -33,12 +40,20 @@ mock.module('@/lib/api-files', () => ({
   readBodyBuffer: (request: Request) => request.arrayBuffer().then((buf: ArrayBuffer) => Buffer.from(buf)),
 }))
 
+mock.module('@/lib/object-storage', () => ({
+  putObject: mockPutObject,
+  getObject: mockGetObject,
+  deleteObject: mockDeleteObject,
+  objectExists: mockObjectExists,
+  copyObjectsByPrefix: mockCopyObjectsByPrefix,
+  productKey: (productId: string, ...segments: string[]) => ['products', productId, ...segments].join('/'),
+}))
+
 const { buildZipBuffer, resolveFilename } = await import('@/lib/zip-server')
 
 function buildOptions(overrides: Partial<Parameters<typeof buildZipBuffer>[0]> = {}) {
   return {
-    userId: 'user-1',
-    storageProductName: 'stored-product',
+    productId: 'product-1',
     displayProductName: 'MyProduct',
     mascotFiles: [],
     fixedAssetFiles: [],
@@ -56,6 +71,8 @@ beforeEach(() => {
   existsSync.mockReturnValue(true)
   readFileSync.mockReset()
   readFileSync.mockReturnValue(Buffer.from('fake-file-content'))
+  mockGetObject.mockReset()
+  mockGetObject.mockReturnValue(Promise.resolve({ body: Buffer.from('fake-file-content') }))
 })
 
 describe('resolveFilename()', () => {
@@ -91,9 +108,10 @@ describe('buildZipBuffer()', () => {
     ])
   })
 
-  it('skips a mascot file that is missing from disk and records a warning', async () => {
-    const missingPath = '/tmp/test-products/user-1/stored-product/mascot-files/missing.png'
-    existsSync.mockImplementation((diskPath) => diskPath !== missingPath)
+  it('skips a mascot file that is missing from object storage and records a warning', async () => {
+    mockGetObject.mockImplementation((key: string) => Promise.resolve(
+      key.includes('missing.png') ? null : { body: Buffer.from('fake-file-content') },
+    ))
 
     const { manifest } = await buildZipBuffer(buildOptions({
       mascotFiles: [{ filename: 'missing.png', origName: 'missing-original.png', folder: 'Main', variant: '' }],
