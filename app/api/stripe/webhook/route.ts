@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
-import { issueKey } from '@/lib/keys'
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY
@@ -23,8 +23,20 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    const key = issueKey()
-    console.log(`=== License key issued: ${key} ===`)
+    const checkoutSession = event.data.object as Stripe.Checkout.Session
+    const userId = checkoutSession.client_reference_id
+    if (userId) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { plan: 'pro', licenseActivatedAt: new Date() },
+        })
+      } catch (err) {
+        console.error(`Stripe webhook: could not grant plan to user ${userId}`, err)
+      }
+    } else {
+      console.error('Stripe webhook: checkout.session.completed with no client_reference_id')
+    }
   }
 
   return NextResponse.json({ received: true })

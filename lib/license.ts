@@ -1,22 +1,9 @@
-import fs from 'fs'
-import path from 'path'
+import { prisma } from '@/lib/db'
 
-const LICENSE_PATH = path.join(process.cwd(), 'license.json')
-
-export interface LicenseData {
-  key: string
-  plan: 'free' | 'pro'
-  activatedAt: string
-}
-
-export function readLicense(): { plan: 'free' | 'pro'; activatedAt?: string; key?: string } {
-  try {
-    return JSON.parse(fs.readFileSync(LICENSE_PATH, 'utf8'))
-  } catch {
-    return { plan: 'free' }
+export async function getUserLicense(userId: string): Promise<{ plan: 'free' | 'pro'; activatedAt?: string }> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, licenseActivatedAt: true } })
+  return {
+    plan: (user?.plan as 'free' | 'pro') ?? 'free',
+    activatedAt: user?.licenseActivatedAt?.toISOString(),
   }
-}
-
-export function writeLicense(data: LicenseData): void {
-  fs.writeFileSync(LICENSE_PATH, JSON.stringify(data, null, 2))
 }
