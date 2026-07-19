@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "bun test",
+    "test": "bun test tests/unit tests/integration",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
+    "test:live": "bun test tests/live",
     "test:e2e": "bun x playwright test"
   },
   "prisma": {
@@ -18,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.1",
     "@auth/prisma-adapter": "^2.11.2",
+    "@aws-sdk/client-s3": "^3.1090.0",
     "@base-ui/react": "^1.6.0",
     "@prisma/client": "^6.19.3",
     "class-variance-authority": "^0.7.1",

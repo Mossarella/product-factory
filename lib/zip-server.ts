@@ -2,7 +2,8 @@ import JSZip from 'jszip'
 import { createHash } from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import { userProductPath, assetPath, firstFile } from './api-files'
+import { assetPath, firstFile } from './api-files'
+import { getObject, productKey } from './object-storage'
 import { sanitizeAssetFilename } from './utils'
 
 export interface BuildMascotFile {
@@ -69,8 +70,7 @@ const BUILTIN_ASSETS = [
 ]
 
 export async function buildZipBuffer(opts: {
-  userId: string
-  storageProductName: string
+  productId: string
   displayProductName: string
   mascotFiles: BuildMascotFile[]
   fixedAssetFiles: BuildFixedAsset[]
@@ -86,30 +86,30 @@ export async function buildZipBuffer(opts: {
 
   const grouped = groupFiles(opts.mascotFiles)
   for (const [folder, files] of grouped) {
-    files.forEach((file, index) => {
-      const diskPath = userProductPath(opts.userId, opts.storageProductName, 'mascot-files', file.filename)
-      if (!fs.existsSync(diskPath)) {
+    for (const [index, file] of files.entries()) {
+      const object = await getObject(productKey(opts.productId, 'mascot-files', file.filename))
+      if (!object) {
         warnings.push(`Skipped missing file: ${file.origName}`)
-        return
+        continue
       }
       const zipFilename = resolveFilename(opts.displayProductName, file, index, files.length)
-      zip.folder('Files')!.folder(folder)!.file(zipFilename, fs.readFileSync(diskPath))
+      zip.folder('Files')!.folder(folder)!.file(zipFilename, object.body)
       manifestFiles.push({ folder, zipFilename, origName: file.origName })
-    })
+    }
   }
 
   zip.file('README.txt', opts.readmeText)
 
   const overriddenKeys = new Set(opts.fixedAssetFiles.map((f) => f.assetKey))
   for (const asset of opts.fixedAssetFiles) {
-    const diskPath = userProductPath(opts.userId, opts.storageProductName, 'fixed-assets', asset.filename)
-    if (!fs.existsSync(diskPath)) {
+    const object = await getObject(productKey(opts.productId, 'fixed-assets', asset.filename))
+    if (!object) {
       warnings.push(`Skipped missing fixed asset: ${asset.assetKey}`)
       continue
     }
     const ext = extension(asset.origName) || 'png'
     const zipFilename = `${sanitizeAssetFilename(asset.assetKey)}.${ext}`
-    zip.file(zipFilename, fs.readFileSync(diskPath))
+    zip.file(zipFilename, object.body)
     manifestAssets.push({ assetKey: asset.assetKey, zipFilename, source: 'override' })
   }
 

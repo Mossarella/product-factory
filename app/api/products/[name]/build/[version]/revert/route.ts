@@ -1,9 +1,7 @@
-import fs from 'fs'
-import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { userProductPath } from '@/lib/api-files'
+import { getObject, productKey, putObject } from '@/lib/object-storage'
 import { rebuildManifestForRevert } from '@/lib/zip-server'
 
 interface RouteContext {
@@ -28,20 +26,18 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   const targetBuild = product.builds[0]
   if (!targetBuild) return NextResponse.json({ error: 'Build not found' }, { status: 404 })
 
-  const sourcePath = userProductPath(userId, product.name, 'builds', targetBuild.filename)
-  if (!fs.existsSync(sourcePath)) return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
+  const sourceObject = await getObject(productKey(product.id, 'builds', targetBuild.filename))
+  if (!sourceObject) return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
 
   const newVersion = product.buildVersion + 1
   const builtAt = new Date().toISOString()
-  const { buffer, manifest } = await rebuildManifestForRevert(fs.readFileSync(sourcePath), {
+  const { buffer, manifest } = await rebuildManifestForRevert(sourceObject.body, {
     version: newVersion,
     builtAt,
   })
 
   const filename = `v${newVersion}.zip`
-  const directory = userProductPath(userId, product.name, 'builds')
-  fs.mkdirSync(directory, { recursive: true })
-  fs.writeFileSync(path.join(directory, filename), buffer)
+  await putObject(productKey(product.id, 'builds', filename), buffer, 'application/zip')
 
   const changelog = `Reverted to v${targetVersion}`
 

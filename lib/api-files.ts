@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 
 export const ROOT = process.cwd()
-export const PRODUCTS_DIR = path.join(ROOT, 'products')
 export const ASSETS_DIR = path.join(ROOT, 'assets')
 
 export const MIME: Record<string, string> = {
@@ -34,14 +33,6 @@ export function resolveWithin(directory: string, ...segments: string[]): string 
   return resolved
 }
 
-export function productPath(name: string, ...segments: string[]): string {
-  return resolveWithin(PRODUCTS_DIR, name, ...segments)
-}
-
-export function userProductPath(userId: string, name: string, ...segments: string[]): string {
-  return resolveWithin(PRODUCTS_DIR, userId, name, ...segments)
-}
-
 export function assetPath(name: string, ...segments: string[]): string {
   return resolveWithin(ASSETS_DIR, name, ...segments)
 }
@@ -60,13 +51,6 @@ export function sanitizeFilename(filename: string): string {
 
 export function contentTypeFor(filename: string): string {
   return MIME[path.extname(filename).toLowerCase()] ?? 'application/octet-stream'
-}
-
-export function clearDirectory(directory: string): void {
-  fs.mkdirSync(directory, { recursive: true })
-  for (const entry of fs.readdirSync(directory)) {
-    fs.rmSync(path.join(directory, entry), { recursive: true, force: true })
-  }
 }
 
 export function firstFile(directory: string): string | undefined {

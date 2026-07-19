@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/db'
+import { sanitizeName } from '@/lib/api-files'
+import type { Product, MascotFile } from '@prisma/client'
+
+interface RouteContext {
+  params: Promise<{ name: string }>
+}
+
+type ProductWithFiles = Product & { files: MascotFile[] }
+
+function toConfig(p: ProductWithFiles) {
+  return {
+    name: p.name,
+    sku: p.sku,
+    productName: p.productName,
+    etsyTitle: p.etsyTitle,
+    description: p.description,
+    notes: p.notes,
+    contact: p.contact,
+    price: p.price,
+    currency: p.currency,
+    licenseType: p.licenseType,
+    commercialPrice: p.commercialPrice ?? undefined,
+    folders: p.folders,
+    mascotFiles: p.files.map((f) => ({
+      id: f.id,
+      filename: f.filename,
+      origName: f.origName,
+      folder: f.folder,
+      variant: f.variant,
+    })),
+    etsyTags: p.etsyTags,
+    complete: p.complete,
+    createdAt: p.createdAt.toISOString(),
+  }
+}
+
+export async function POST(request: NextRequest, { params }: RouteContext) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
+  const { name } = await params
+  const oldName = decodeURIComponent(name)
+  const { newName } = (await request.json()) as { newName: string }
+  const sanitizedNew = sanitizeName(newName ?? '')
+  if (!sanitizedNew) return NextResponse.json({ error: 'Invalid name' }, { status: 400 })
+
+  const existing = await prisma.product.findUnique({
+    where: { userId_name: { userId, name: oldName } },
+  })
+  if (!existing) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+
+  const conflict = await prisma.product.findUnique({
+    where: { userId_name: { userId, name: sanitizedNew } },
+  })
+  if (conflict) return NextResponse.json({ error: 'Product already exists' }, { status: 409 })
+
+  const updated = await prisma.product.update({
+    where: { id: existing.id },
+    data: { name: sanitizedNew },
+    include: { files: true },
+  })
+
+  return NextResponse.json(toConfig(updated))
+}

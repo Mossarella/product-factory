@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { heroSlotEmpty, computeStats } from '@/lib/dashboard-stats'
+import { computeStats } from '@/lib/dashboard-stats'
 
 export async function GET() {
   const session = await auth()
@@ -11,6 +11,7 @@ export async function GET() {
   const products = await prisma.product.findMany({
     where: { userId },
     select: {
+      id: true,
       name: true,
       complete: true,
       description: true,
@@ -21,7 +22,7 @@ export async function GET() {
     },
   })
 
-  const stats = computeStats(products, userId)
+  const stats = await computeStats(products)
 
   return NextResponse.json({
     ...stats,

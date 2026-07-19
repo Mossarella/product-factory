@@ -1,8 +1,7 @@
-import fs from 'fs'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { userProductPath } from '@/lib/api-files'
+import { getObject, productKey } from '@/lib/object-storage'
 
 interface RouteContext {
   params: Promise<{ name: string }>
@@ -24,19 +23,14 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   const latestBuild = product.builds[0]
   if (!latestBuild) return NextResponse.json({ error: 'No build found' }, { status: 404 })
 
-  try {
-    const filePath = userProductPath(userId, product.name, 'builds', latestBuild.filename)
-    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-      return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
-    }
-    const downloadName = `${(product.productName || product.name).replace(/[^\w\- ]/g, '')}Pack.zip`
-    return new NextResponse(fs.readFileSync(filePath), {
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${downloadName}"`,
-      },
-    })
-  } catch {
-    return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
-  }
+  const object = await getObject(productKey(product.id, 'builds', latestBuild.filename))
+  if (!object) return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
+
+  const downloadName = `${(product.productName || product.name).replace(/[^\w\- ]/g, '')}Pack.zip`
+  return new NextResponse(new Uint8Array(object.body), {
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${downloadName}"`,
+    },
+  })
 }

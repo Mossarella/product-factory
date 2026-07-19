@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { greeting, formatDate } from '@/lib/utils'
-import { heroSlotEmpty, computeStats } from '@/lib/dashboard-stats'
+import { computeStats } from '@/lib/dashboard-stats'
 import { Card } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
@@ -16,6 +16,7 @@ export default async function DashboardPage() {
   const products = await prisma.product.findMany({
     where: { userId },
     select: {
+      id: true,
       name: true,
       complete: true,
       description: true,
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
     },
   })
 
-  const { total, readyToPublish, needsReview, missingHero, needReadme, thisMonth, noGifPreview, sharedTags } = computeStats(products, userId)
+  const { total, readyToPublish, needsReview, missingHero, needReadme, thisMonth, noGifPreview, sharedTags } = await computeStats(products)
 
   const stats = [
     { label: 'Total Products', value: total, color: 'text-zinc-100' },

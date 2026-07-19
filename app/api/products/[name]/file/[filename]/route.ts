@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   const product = await prisma.product.findUnique({ where: { userId_name: { userId, name: productName } } })
   if (!product) return NextResponse.json({ error: 'File not found' }, { status: 404 })
 
-  const object = await getObject(productKey(product.id, 'fixed-assets', safeFilename))
+  const object = await getObject(productKey(product.id, 'mascot-files', safeFilename))
   if (!object) return NextResponse.json({ error: 'File not found' }, { status: 404 })
 
   return new NextResponse(new Uint8Array(object.body), {

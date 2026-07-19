@@ -1,9 +1,7 @@
-import fs from 'fs'
-import path from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { PRODUCTS_DIR, sanitizeName } from '@/lib/api-files'
+import { sanitizeName } from '@/lib/api-files'
 
 export async function GET() {
   const session = await auth()
@@ -45,15 +43,6 @@ export async function POST(request: NextRequest) {
     where: { userId_name: { userId, name: sanitizedName } },
   })
   if (existing) return NextResponse.json({ error: 'Product already exists' }, { status: 409 })
-
-  const productDir = path.join(PRODUCTS_DIR, userId, sanitizedName)
-  for (const sub of [
-    'mascot-files', 'etsy-files', 'veado-file',
-    'assets/etsy-hero', 'assets/etsy-expressions', 'assets/etsy-files',
-    'assets/etsy-preview', 'assets/etsy-detail', 'assets/etsy-branding',
-  ]) {
-    fs.mkdirSync(path.join(productDir, sub), { recursive: true })
-  }
 
   const product = await prisma.product.create({
     data: {
