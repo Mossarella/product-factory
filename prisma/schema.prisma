@@ -10,19 +10,34 @@ datasource db {
 // ─── Auth.js required tables ──────────────────────────────────────────────────
 
 model User {
-  id               String            @id @default(cuid())
-  email            String            @unique
-  name             String?
-  emailVerified    DateTime?
-  image            String?
-  avatarData       Bytes?
-  avatarMime       String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  accounts         Account[]
-  sessions         Session[]
-  products         Product[]
-  productTemplates ProductTemplate[]
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  name               String?
+  emailVerified      DateTime?
+  image              String?
+  avatarData         Bytes?
+  avatarMime         String?
+  plan               String            @default("free")
+  licenseActivatedAt DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  accounts           Account[]
+  sessions           Session[]
+  products           Product[]
+  productTemplates   ProductTemplate[]
+  licenseKeys        LicenseKey[]
+}
+
+model LicenseKey {
+  id           String    @id @default(cuid())
+  key          String    @unique
+  plan         String    @default("pro")
+  issuedAt     DateTime  @default(now())
+  usedAt       DateTime?
+  usedByUserId String?
+  usedByUser   User?     @relation(fields: [usedByUserId], references: [id])
+
+  @@index([usedByUserId])
 }
 
 model Account {

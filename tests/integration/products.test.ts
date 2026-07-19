@@ -31,6 +31,7 @@ mock.module('@/lib/api-files', () => ({
 const mockFindMany = mock(() => Promise.resolve([]))
 const mockCount = mock(() => Promise.resolve(0))
 const mockFindUnique = mock(() => Promise.resolve(null))
+const mockUserFindUnique = mock(() => Promise.resolve({ plan: 'pro' }))
 const mockCreate = mock(() => Promise.resolve({
   name: 'TestProduct',
   sku: '', productName: 'TestProduct', etsyTitle: '',
@@ -43,20 +44,22 @@ const mockCreate = mock(() => Promise.resolve({
 mock.module('@/lib/db', () => ({
   prisma: {
     product: { findMany: mockFindMany, count: mockCount, findUnique: mockFindUnique, create: mockCreate },
+    user: { findUnique: mockUserFindUnique },
   },
 }))
 
 // Also mock fs for mkdirSync in POST
 mock.module('fs', () => ({
-  default: { mkdirSync: () => {}, readFileSync: () => JSON.stringify({ plan: 'pro' }) },
+  default: { mkdirSync: () => {} },
   mkdirSync: () => {},
-  readFileSync: () => JSON.stringify({ plan: 'pro' }),
 }))
 
 const { GET, POST } = await import('@/app/api/products/route')
 
 beforeEach(() => {
   currentSession = MOCK_SESSION
+  mockUserFindUnique.mockClear()
+  mockUserFindUnique.mockReturnValue(Promise.resolve({ plan: 'pro' }))
 })
 
 afterEach(() => {
@@ -115,5 +118,32 @@ describe('POST /api/products', () => {
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.name).toBe('TestProduct')
+  })
+
+  it('returns 403 when a free-plan user has reached the 3-product limit', async () => {
+    mockUserFindUnique.mockReturnValue(Promise.resolve({ plan: 'free' }))
+    mockCount.mockReturnValue(Promise.resolve(3))
+    const req = new NextRequest('http://localhost/api/products', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'TestProduct' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toContain('limit')
+  })
+
+  it('allows creating a 4th product for a pro-plan user', async () => {
+    mockUserFindUnique.mockReturnValue(Promise.resolve({ plan: 'pro' }))
+    mockCount.mockReturnValue(Promise.resolve(3))
+    mockFindUnique.mockReturnValue(Promise.resolve(null))
+    const req = new NextRequest('http://localhost/api/products', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'TestProduct' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
   })
 })
