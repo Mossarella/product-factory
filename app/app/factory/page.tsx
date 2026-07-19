@@ -120,6 +120,8 @@ export default function Home() {
   ), [selectedTemplateId, templates])
 
   useEffect(() => {
+    // Reconciles fixedAssets (holds uploaded blobs) with the template's required keys; intentional sync-on-change, not a fetch effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFixedAssets((current) => {
       const knownIds = new Set(current.map((a) => a.id))
       const missingKeys = activeAssets.filter(

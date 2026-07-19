@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Legacy v1 vanilla Node server, unused in v2
+    "server.js",
   ]),
 ]);
 
