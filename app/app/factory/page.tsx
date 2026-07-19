@@ -244,6 +244,24 @@ export default function Home() {
     await loadProduct(duplicate.name)
   }
 
+  const deleteProduct = async () => {
+    if (!activeProduct) return
+    const response = await fetch(`/api/products/${encodeURIComponent(activeProduct)}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error('Could not delete product')
+    setActiveProduct(null)
+    setConfig(null)
+    setFiles([])
+    setFixedAssets(INITIAL_FIXED_ASSETS)
+    setSelectedTemplateId(null)
+    setEtsyTags([])
+    setDirty(false)
+    setSaveFlash(false)
+    setZipPreviewText(null)
+    setHeroImageLoaded(false)
+    setBuildSignal(0)
+    await refreshProducts()
+  }
+
   const saveProduct = useCallback(async () => {
     if (!activeProduct || !config) return
     if (files.some((file) => !file.file || !file.folder)) {
@@ -359,6 +377,7 @@ export default function Home() {
           onCreate={createProduct}
           onRename={renameProduct}
           onDuplicate={duplicateProduct}
+          onDelete={deleteProduct}
           canCreate={canCreate}
           onUpgradeClick={buyLicense}
           dirty={dirty}

@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react'
 import { ProductSummary } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -14,6 +15,7 @@ interface Props {
   onCreate: (name: string) => Promise<void>
   onRename: (newName: string) => Promise<void>
   onDuplicate: (newName: string) => Promise<void>
+  onDelete: () => Promise<void>
   canCreate: boolean
   onUpgradeClick: () => void
   dirty: boolean
@@ -32,6 +34,7 @@ export function ProductSelector({
   onCreate,
   onRename,
   onDuplicate,
+  onDelete,
   canCreate,
   onUpgradeClick,
   dirty,
@@ -43,6 +46,8 @@ export function ProductSelector({
   const [nameAction, setNameAction] = useState<NameAction>(null)
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const productSelectItems = products.map((product) => ({
     value: product.name,
@@ -68,6 +73,16 @@ export function ProductSelector({
       setName('')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await onDelete()
+      setDeleteDialogOpen(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -127,6 +142,25 @@ export function ProductSelector({
         >
           Duplicate
         </Button>
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogTrigger render={<Button type="button" variant="destructive" disabled={!activeProduct} />}>
+            Delete
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete {activeProduct}?</DialogTitle>
+              <DialogDescription>
+                This permanently deletes the product and all of its files. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+              <Button type="button" variant="destructive" disabled={isDeleting} onClick={() => void confirmDelete()}>
+                {isDeleting ? 'Deleting…' : 'Confirm delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {nameAction && (

@@ -86,3 +86,19 @@ export async function copyObjectsByPrefix(sourcePrefix: string, destPrefix: stri
     continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined
   } while (continuationToken)
 }
+
+export async function deleteObjectsByPrefix(prefix: string): Promise<void> {
+  let continuationToken: string | undefined
+  do {
+    const listed = await client.send(new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }))
+    for (const object of listed.Contents ?? []) {
+      if (!object.Key) continue
+      await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: object.Key }))
+    }
+    continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined
+  } while (continuationToken)
+}

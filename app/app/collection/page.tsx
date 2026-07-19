@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -38,6 +39,9 @@ export default function CollectionPage() {
   const [duplicateName, setDuplicateName] = useState('')
   const [isSubmittingDuplicate, setIsSubmittingDuplicate] = useState(false)
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const refreshProducts = useCallback(async () => {
     const response = await fetch('/api/products')
@@ -89,6 +93,33 @@ export default function CollectionPage() {
       setDuplicateError('Could not duplicate product')
     } finally {
       setIsSubmittingDuplicate(false)
+    }
+  }
+
+  async function deleteProduct() {
+    if (!selectedName) return
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      const response = await fetch(`/api/products/${encodeURIComponent(selectedName)}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        setDeleteError(body.error || 'Could not delete product')
+        return
+      }
+      const deletedName = selectedName
+      setProducts((previous) => previous.filter((p) => p.name !== deletedName))
+      setDetailCache((previous) => {
+        const next = { ...previous }
+        delete next[deletedName]
+        return next
+      })
+      setSelectedName(null)
+      setDeleteDialogOpen(false)
+    } catch {
+      setDeleteError('Could not delete product')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -219,6 +250,33 @@ export default function CollectionPage() {
                     >
                       Duplicate
                     </Button>
+                    <Dialog open={deleteDialogOpen} onOpenChange={(open) => { setDeleteDialogOpen(open); if (open) setDeleteError(null) }}>
+                      <DialogTrigger
+                        render={
+                          <Button
+                            variant="destructive"
+                            className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                          />
+                        }
+                      >
+                        Delete
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete {detail.productName || detail.name}?</DialogTitle>
+                          <DialogDescription>
+                            This permanently deletes the product and all of its files. This cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
+                        <DialogFooter>
+                          <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+                          <Button type="button" variant="destructive" disabled={isDeleting} onClick={() => void deleteProduct()}>
+                            {isDeleting ? 'Deleting…' : 'Confirm delete'}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                     <a
                       href="/app/factory"
                       className={cn(buttonVariants({ variant: 'secondary' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors')}
