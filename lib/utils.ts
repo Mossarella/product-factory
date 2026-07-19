@@ -3,6 +3,9 @@ const AVATAR_COLORS = [
   'bg-violet-700', 'bg-emerald-700', 'bg-amber-700',
   'bg-sky-700', 'bg-rose-700', 'bg-teal-700',
 ]
+
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+
 export function avatarColor(name: string): string {
   return AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 }
