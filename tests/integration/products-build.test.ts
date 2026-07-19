@@ -103,6 +103,7 @@ function product(overrides: Record<string, unknown> = {}) {
     files: [],
     fixedAssetFiles: [],
     builds: [],
+    user: { name: 'Test User', shopName: null, shopContact: null, shopDescription: null, readmeFooter: null },
     ...overrides,
   }
 }
@@ -192,6 +193,26 @@ describe('POST /api/products/[name]/build', () => {
     const response = await POST(buildRequest(), context)
 
     expect((await response.json()).changelog).toBe('Initial build')
+  })
+
+  it('uses the user shop name when resolving README template data', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(product({
+      user: { name: 'Real Name', shopName: 'Custom Shop', shopContact: null, shopDescription: null, readmeFooter: null },
+    })))
+
+    await POST(buildRequest(), context)
+
+    expect(mockBuildReadmeText.mock.calls[0][0].shopName).toBe('Custom Shop')
+  })
+
+  it('falls back to the user name when resolving README template data without a shop name', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve(product({
+      user: { name: 'Real Name', shopName: null, shopContact: null, shopDescription: null, readmeFooter: null },
+    })))
+
+    await POST(buildRequest(), context)
+
+    expect(mockBuildReadmeText.mock.calls[0][0].shopName).toBe('Real Name')
   })
 })
 

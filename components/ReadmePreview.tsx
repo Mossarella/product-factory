@@ -10,9 +10,10 @@ import { FileEntry } from './FileManager'
 interface Props {
   config: ProductConfig
   files: FileEntry[]
+  shopIdentity: { name?: string | null; shopName?: string | null; shopContact?: string | null; shopDescription?: string | null; readmeFooter?: string | null }
 }
 
-export function ReadmePreview({ config, files }: Props) {
+export function ReadmePreview({ config, files, shopIdentity }: Props) {
   const [preview, setPreview] = useState('')
 
   const refresh = async () => {
@@ -29,10 +30,10 @@ export function ReadmePreview({ config, files }: Props) {
     setPreview((await response.text())
       .replace(/{{name}}/g, config.productName)
       .replace(/{{etsyName}}/g, config.etsyTitle)
-      .replace(/{{shopName}}/g, CONFIG.shopName)
-      .replace(/{{contact}}/g, config.contact || CONFIG.contact)
-      .replace(/{{description}}/g, config.description || CONFIG.description)
-      .replace(/{{notes}}/g, config.notes || CONFIG.readmeFooter)
+      .replace(/{{shopName}}/g, shopIdentity.shopName || shopIdentity.name || 'My Shop')
+      .replace(/{{contact}}/g, config.contact || shopIdentity.shopContact || '')
+      .replace(/{{description}}/g, config.description || shopIdentity.shopDescription || CONFIG.defaultShopDescription)
+      .replace(/{{notes}}/g, config.notes || shopIdentity.readmeFooter || CONFIG.defaultReadmeFooter)
       .replace(/{{licenseBlock}}/g, licenseBlock)
       .replace(/{{folders}}/g, folders)
       .replace(/{{etsyTags}}/g, config.etsyTags.join(', ')))

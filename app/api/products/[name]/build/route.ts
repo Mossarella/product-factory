@@ -5,6 +5,7 @@ import { CONFIG } from '@/config'
 import { productKey, putObject } from '@/lib/object-storage'
 import { buildZipBuffer } from '@/lib/zip-server'
 import { generateChangelog } from '@/lib/build-changelog'
+import { resolveTemplateData } from '@/lib/templates'
 import { buildReadmeText } from '@/lib/templates-server'
 import { validateProduct } from '@/lib/template-rules'
 import type { TemplateRule } from '@/lib/template-rules'
@@ -24,7 +25,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
   const product = await prisma.product.findUnique({
     where: { userId_name: { userId, name: productName } },
-    include: { files: true, fixedAssetFiles: true, template: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
+    include: {
+      files: true,
+      fixedAssetFiles: true,
+      template: true,
+      user: { select: { name: true, shopName: true, shopContact: true, shopDescription: true, readmeFooter: true } },
+      builds: { orderBy: { version: 'desc' }, take: 1 },
+    },
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
@@ -72,20 +79,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     count: product.files.filter((f) => f.folder === label).length,
   }))
 
-  const readmeText = buildReadmeText({
-    name: product.productName,
-    etsyName: product.etsyTitle,
-    shopName: CONFIG.shopName,
-    contact: product.contact || CONFIG.contact,
-    description: product.description || CONFIG.description,
-    notes: product.notes || CONFIG.readmeFooter,
-    licenseType: product.licenseType as 'personal' | 'commercial' | 'both',
-    price: product.price,
-    commercialPrice: product.commercialPrice ?? undefined,
-    currency: product.currency,
-    folders: folderCounts,
-    etsyTags: product.etsyTags,
-  })
+  const readmeText = buildReadmeText(resolveTemplateData(
+    {
+      productName: product.productName,
+      etsyTitle: product.etsyTitle,
+      contact: product.contact,
+      description: product.description,
+      notes: product.notes,
+      licenseType: product.licenseType as 'personal' | 'commercial' | 'both',
+      price: product.price,
+      commercialPrice: product.commercialPrice ?? undefined,
+      currency: product.currency,
+      folders: folderCounts,
+      etsyTags: product.etsyTags,
+    },
+    product.user,
+    { defaultShopDescription: CONFIG.defaultShopDescription, defaultReadmeFooter: CONFIG.defaultReadmeFooter },
+  ))
 
   const version = product.buildVersion + 1
 

@@ -35,3 +35,46 @@ export function fillTemplate(template: string, d: TemplateData): string {
     .replace(/{{folders}}/g, folders)
     .replace(/{{licenseBlock}}/g, licenseBlock)
 }
+
+export interface ShopIdentity {
+  name?: string | null
+  shopName?: string | null
+  shopContact?: string | null
+  shopDescription?: string | null
+  readmeFooter?: string | null
+}
+
+export interface ProductTemplateFields {
+  productName: string
+  etsyTitle: string
+  contact: string
+  description: string
+  notes: string
+  licenseType: 'personal' | 'commercial' | 'both'
+  price: number
+  commercialPrice?: number
+  currency: string
+  folders: Array<{ label: string; count: number }>
+  etsyTags: string[]
+}
+
+export function resolveTemplateData(
+  product: ProductTemplateFields,
+  shop: ShopIdentity,
+  defaults: { defaultShopDescription: string; defaultReadmeFooter: string },
+): TemplateData {
+  return {
+    name: product.productName,
+    etsyName: product.etsyTitle,
+    shopName: shop.shopName || shop.name || 'My Shop',
+    contact: product.contact || shop.shopContact || '',
+    description: product.description || shop.shopDescription || defaults.defaultShopDescription,
+    notes: product.notes || shop.readmeFooter || defaults.defaultReadmeFooter,
+    licenseType: product.licenseType,
+    price: product.price,
+    commercialPrice: product.commercialPrice,
+    currency: product.currency,
+    folders: product.folders,
+    etsyTags: product.etsyTags,
+  }
+}

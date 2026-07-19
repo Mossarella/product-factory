@@ -68,13 +68,14 @@ export function Sidebar() {
   const name = session?.user?.name ?? null
   const email = session?.user?.email ?? null
   const image = session?.user?.image ?? null
+  const shopLabel = session?.user?.shopName || name || 'My Shop'
 
   return (
     <aside className="h-screen w-56 flex flex-col border-r border-zinc-800 bg-zinc-950 shrink-0 fixed left-0 top-0 z-30">
       {/* Brand */}
       <Link href="/app/dashboard" className="px-5 py-5 block hover:bg-zinc-900/40 transition-colors">
         <p className="text-sm font-bold tracking-widest uppercase text-zinc-100 font-mono">Factory</p>
-        <p className="text-xs text-zinc-600 font-mono mt-0.5">MossarellaStudio</p>
+        <p className="text-xs text-zinc-600 font-mono mt-0.5">{shopLabel}</p>
       </Link>
 
       <div className="h-px bg-zinc-800 mx-3" />

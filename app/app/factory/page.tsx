@@ -72,6 +72,7 @@ function normalizeProductConfig(loaded: Partial<ProductConfig>, fallbackName: st
 
 export default function Home() {
   const [license, setLicense] = useState<License>({ plan: 'free' })
+  const [shopIdentity, setShopIdentity] = useState<{ name?: string | null; shopName?: string | null; shopContact?: string | null; shopDescription?: string | null; readmeFooter?: string | null }>({})
   const [products, setProducts] = useState<ProductSummary[]>([])
   const [activeProduct, setActiveProduct] = useState<string | null>(null)
   const [config, setConfig] = useState<ProductConfig | null>(null)
@@ -93,8 +94,9 @@ export default function Home() {
 
   useEffect(() => {
     void (async () => {
-      const [licenseResponse] = await Promise.all([fetch('/api/license'), refreshProducts()])
+      const [licenseResponse, profileResponse] = await Promise.all([fetch('/api/license'), fetch('/api/profile'), refreshProducts()])
       if (licenseResponse.ok) setLicense(await licenseResponse.json() as License)
+      if (profileResponse.ok) setShopIdentity(await profileResponse.json())
 
       setEtsyTags(CONFIG.etsyTagDefaults)
       setFixedAssets([
@@ -340,7 +342,7 @@ export default function Home() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
       <div className="flex items-center gap-3 mb-1">
         <img src="/api/slot/logo" alt="logo" className="w-10 h-10 object-contain rounded" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-        <h1 className="text-xl font-mono font-bold">MossarellaStudio — Product Factory</h1>
+        <h1 className="text-xl font-mono font-bold">Product Factory</h1>
       </div>
       <p className="text-zinc-500 text-sm">Pack your digital product → generate README → download ZIP → list on Etsy</p>
 
@@ -438,7 +440,7 @@ export default function Home() {
       {config && (
         <Card className="gap-0 px-4">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">5. README Preview</h2>
-          <ReadmePreview config={config} files={files} />
+          <ReadmePreview config={config} files={files} shopIdentity={shopIdentity} />
         </Card>
       )}
       {config && (
@@ -452,6 +454,7 @@ export default function Home() {
               files={files}
               fixedAssets={fixedAssets}
               etsyTags={etsyTags}
+              shopIdentity={shopIdentity}
               onTagsChange={handleTagsChange}
               heroImageLoaded={heroImageLoaded}
             />

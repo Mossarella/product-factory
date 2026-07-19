@@ -17,13 +17,14 @@ interface Props {
   etsyTags: string[]
   onTagsChange: (tags: string[]) => void
   heroImageLoaded?: boolean
+  shopIdentity: { name?: string | null; shopName?: string | null; shopContact?: string | null; shopDescription?: string | null; readmeFooter?: string | null }
 }
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTags, onTagsChange, heroImageLoaded = false }: Props) {
+export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTags, onTagsChange, heroImageLoaded = false, shopIdentity }: Props) {
   const [newTag, setNewTag] = useState('')
   const [description, setDescription] = useState('')
   const [loadingDescription, setLoadingDescription] = useState(false)
@@ -38,7 +39,7 @@ export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTag
   const templateData = useMemo<TemplateData>(() => ({
     name: config.productName,
     etsyName: config.etsyTitle,
-    shopName: '',
+    shopName: shopIdentity.shopName || shopIdentity.name || 'My Shop',
     contact: config.contact,
     description: config.description,
     notes: config.notes,
@@ -48,7 +49,7 @@ export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTag
     currency: config.currency,
     folders: config.folders.map((label) => ({ label, count: files.filter((file) => file.folder === label).length })),
     etsyTags,
-  }), [config, etsyTags, files])
+  }), [config, etsyTags, files, shopIdentity])
 
   function addTag() {
     const tag = newTag.trim()
