@@ -45,9 +45,11 @@ export default function CollectionPage() {
   }, [])
 
   useEffect(() => {
-    void refreshProducts()
+    fetch('/api/products')
+      .then((response) => (response.ok ? response.json() as Promise<ProductSummary[]> : null))
+      .then((data) => { if (data) setProducts(data) })
     fetch('/api/product-templates').then(r => r.json()).then(setTemplates)
-  }, [refreshProducts])
+  }, [])
 
   async function selectProduct(name: string) {
     setSelectedName(name)

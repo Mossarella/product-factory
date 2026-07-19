@@ -29,7 +29,16 @@ export function VersionHistory({ activeProduct, mode, refreshSignal }: Props) {
     setLoading(false)
   }, [activeProduct])
 
-  useEffect(() => { void refresh() }, [refresh, refreshSignal])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+    fetch(`/api/products/${encodeURIComponent(activeProduct)}/build`)
+      .then((response) => (response.ok ? response.json() as Promise<BuildHistoryEntry[]> : null))
+      .then((data) => {
+        if (data) setHistory(data)
+        setLoading(false)
+      })
+  }, [activeProduct, refreshSignal])
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
