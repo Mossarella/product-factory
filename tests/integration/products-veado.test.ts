@@ -101,6 +101,19 @@ describe('POST /api/products/[name]/veado', () => {
     expect(res.status).toBe(404)
   })
 
+  it('returns 413 when Content-Length exceeds 50MB', async () => {
+    const req = new NextRequest('http://localhost/api/products/TestProduct/veado', {
+      method: 'POST',
+      headers: { 'X-Filename': 'scene.veado', 'Content-Length': String(50 * 1024 * 1024 + 1) },
+      body: new Uint8Array([1]),
+    })
+    const res = await POST(req, { params: params() })
+
+    expect(res.status).toBe(413)
+    expect((await res.json()).error).toContain('50MB')
+    expect(mockPutObject).not.toHaveBeenCalled()
+  })
+
   it('uploads the veado file with its sanitized filename in metadata', async () => {
     const req = new NextRequest('http://localhost/api/products/TestProduct/veado', {
       method: 'POST',

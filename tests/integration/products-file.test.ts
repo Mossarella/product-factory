@@ -57,6 +57,19 @@ describe('POST /api/products/[name]/file', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 413 when Content-Length exceeds 50MB', async () => {
+    const req = new NextRequest('http://localhost/api/products/TestProduct/file', {
+      method: 'POST',
+      headers: { 'X-Filename': 'image.png', 'Content-Length': String(50 * 1024 * 1024 + 1) },
+      body: new Uint8Array([1]),
+    })
+    const res = await POST(req, { params: uploadParams() })
+
+    expect(res.status).toBe(413)
+    expect((await res.json()).error).toContain('50MB')
+    expect(mockPutObject).not.toHaveBeenCalled()
+  })
+
   it('returns 404 when the product does not exist', async () => {
     mockFindUnique.mockImplementation(() => Promise.resolve(null))
     const req = new NextRequest('http://localhost/api/products/TestProduct/file', {

@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { contentTypeFor } from '@/lib/api-files'
 import { deleteObject, getObject, productKey, putObject } from '@/lib/object-storage'
+import { MAX_PRODUCT_FILE_BYTES } from '@/lib/utils'
 
 interface RouteContext {
   params: Promise<{ name: string; slot: string }>
@@ -51,9 +52,17 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const product = await prisma.product.findUnique({ where: { userId_name: { userId, name: productName } } })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
+  const contentLength = Number(request.headers.get('content-length') ?? '0')
+  if (contentLength > MAX_PRODUCT_FILE_BYTES) {
+    return NextResponse.json({ error: 'File must be 50MB or smaller' }, { status: 413 })
+  }
+
   try {
     const originalFilename = request.headers.get('x-filename') ?? 'file'
     const buffer = Buffer.from(await request.arrayBuffer())
+    if (buffer.byteLength > MAX_PRODUCT_FILE_BYTES) {
+      return NextResponse.json({ error: 'File must be 50MB or smaller' }, { status: 413 })
+    }
     await putObject(productKey(product.id, 'etsy-slots', decodedSlot), buffer, contentTypeFor(originalFilename))
     return NextResponse.json({ success: true })
   } catch {

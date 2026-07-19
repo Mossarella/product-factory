@@ -5,6 +5,7 @@ const AVATAR_COLORS = [
 ]
 
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024
+export const MAX_PRODUCT_FILE_BYTES = 50 * 1024 * 1024
 
 export function avatarColor(name: string): string {
   return AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]

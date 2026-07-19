@@ -113,6 +113,19 @@ describe('POST /api/products/[name]/slot/[slot]', () => {
     expect(res.status).toBe(404)
   })
 
+  it('returns 413 when Content-Length exceeds 50MB', async () => {
+    const req = new NextRequest('http://localhost/api/products/TestProduct/slot/etsy-hero', {
+      method: 'POST',
+      headers: { 'X-Filename': 'hero.png', 'Content-Length': String(50 * 1024 * 1024 + 1) },
+      body: new Uint8Array([1]),
+    })
+    const res = await POST(req, { params: slotParams() })
+
+    expect(res.status).toBe(413)
+    expect((await res.json()).error).toContain('50MB')
+    expect(mockPutObject).not.toHaveBeenCalled()
+  })
+
   it('uploads the slot and returns success', async () => {
     const req = new NextRequest('http://localhost/api/products/TestProduct/slot/etsy-hero', {
       method: 'POST',

@@ -74,6 +74,20 @@ describe('POST /api/products/[name]/asset', () => {
     expect(mockPutObject).toHaveBeenCalled()
   })
 
+  it('returns 413 when Content-Length exceeds 50MB', async () => {
+    mockPutObject.mockClear()
+    const req = new NextRequest('http://localhost/api/products/TestProduct/asset', {
+      method: 'POST',
+      headers: { 'X-Filename': 'image.png', 'Content-Length': String(50 * 1024 * 1024 + 1) },
+      body: new Uint8Array([1]),
+    })
+    const res = await POST(req, { params: uploadParams() })
+
+    expect(res.status).toBe(413)
+    expect((await res.json()).error).toContain('50MB')
+    expect(mockPutObject).not.toHaveBeenCalled()
+  })
+
   it('returns 400 when writing the asset fails', async () => {
     mockPutObject.mockImplementation(() => { throw new Error('disk full') })
     const req = new NextRequest('http://localhost/api/products/TestProduct/asset', {
