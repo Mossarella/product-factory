@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit -p tsconfig.ci.json",
-    "test": "bun test tests/unit tests/integration",
-    "test:unit": "bun test tests/unit",
-    "test:integration": "bun test tests/integration",
+    "test": "bun test --isolate tests/unit tests/integration",
+    "test:unit": "bun test --isolate tests/unit",
+    "test:integration": "bun test --isolate tests/integration",
     "test:live": "bun test tests/live",
     "test:e2e": "bun x playwright test"
   },
