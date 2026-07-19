@@ -53,7 +53,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="border-b border-zinc-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <span className="text-sm font-bold tracking-tight">MossarellaStudio — Product Factory</span>
+          <span className="text-sm font-bold tracking-tight">Product Factory</span>
           <div className="flex items-center gap-3">
             <Link href="/app" className={cn(buttonVariants({ variant: 'outline' }), 'h-auto rounded-none border-zinc-700 bg-zinc-800 px-4 py-2 font-normal text-zinc-300 hover:border-violet-500 hover:text-zinc-100 transition-colors')}>
               Open App
@@ -200,7 +200,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="px-6 py-8">
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-600">
-          <span>MossarellaStudio — Product Factory</span>
+          <span>Product Factory</span>
           <span>© 2025</span>
         </div>
       </footer>

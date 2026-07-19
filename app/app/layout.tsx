@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { SessionProviderWrapper } from '@/components/SessionProviderWrapper'
 
 export const metadata: Metadata = {
-  title: 'Product Factory — MossarellaStudio',
+  title: 'Product Factory',
   description: 'Pack your digital products. List on Etsy.',
 }
 

@@ -49,7 +49,6 @@ export default function LoginPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-mono flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-zinc-600 mb-2">MossarellaStudio</p>
           <h1 className="text-2xl font-bold text-zinc-100">Product Factory</h1>
           <p className="text-zinc-500 text-sm mt-1">Sign in to manage your digital products</p>
         </div>

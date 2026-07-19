@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,23 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [shopName, setShopName] = useState('')
+  const [shopContact, setShopContact] = useState('')
+  const [shopDescription, setShopDescription] = useState('')
+  const [readmeFooter, setReadmeFooter] = useState('')
+  const [shopSaving, setShopSaving] = useState(false)
+  const [shopSaveFlash, setShopSaveFlash] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/profile').then((r) => (r.ok ? r.json() : null)).then((data) => {
+      if (!data) return
+      setShopName(data.shopName ?? '')
+      setShopContact(data.shopContact ?? '')
+      setShopDescription(data.shopDescription ?? '')
+      setReadmeFooter(data.readmeFooter ?? '')
+    })
+  }, [])
 
   const email = session?.user?.email ?? null
   const image = session?.user?.image ?? null
@@ -36,6 +52,21 @@ export default function SettingsPage() {
       setTimeout(() => setSaveFlash(false), 2000)
     }
     setSaving(false)
+  }
+
+  async function saveShopProfile() {
+    setShopSaving(true)
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, shopName, shopContact, shopDescription, readmeFooter }),
+    })
+    if (res.ok) {
+      await update({ shopName, shopContact, shopDescription, readmeFooter })
+      setShopSaveFlash(true)
+      setTimeout(() => setShopSaveFlash(false), 2000)
+    }
+    setShopSaving(false)
   }
 
   async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -99,6 +130,35 @@ export default function SettingsPage() {
         <div>
           <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Email</Label>
           <p className="text-sm text-zinc-300">{email ?? '—'}</p>
+        </div>
+      </Card>
+
+      <Card className="gap-4 px-4 py-4 font-mono ring-zinc-800">
+        <h2 className="text-xs text-zinc-600 uppercase tracking-widest">Shop Profile</h2>
+        <p className="text-xs text-zinc-500">
+          Used in your generated READMEs and Etsy listings. Leave blank to use a generic default.
+        </p>
+        <div>
+          <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Shop name</Label>
+          <Input value={shopName} onChange={(e) => setShopName(e.target.value)} className="max-w-xs" placeholder={name || 'My Shop'} />
+        </div>
+        <div>
+          <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Contact info</Label>
+          <Input value={shopContact} onChange={(e) => setShopContact(e.target.value)} className="max-w-xs" placeholder="etsy.com/shop/yourshop" />
+        </div>
+        <div>
+          <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Default product description</Label>
+          <Input value={shopDescription} onChange={(e) => setShopDescription(e.target.value)} placeholder="A handcrafted digital product made with love." />
+        </div>
+        <div>
+          <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">README footer / license note</Label>
+          <Input value={readmeFooter} onChange={(e) => setReadmeFooter(e.target.value)} placeholder="Personal and commercial use allowed with credit. Do not redistribute." />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="default" disabled={shopSaving} onClick={() => void saveShopProfile()}>
+            {shopSaving ? 'Saving…' : 'Save'}
+          </Button>
+          {shopSaveFlash && <span className="text-xs text-emerald-400">Saved!</span>}
         </div>
       </Card>
     </div>
