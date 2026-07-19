@@ -1,9 +1,34 @@
 import { auth } from '@/auth'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 
 export default auth((req) => {
-  const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
+
+  if (req.method === 'POST' && pathname.startsWith('/api/products/') && pathname.endsWith('/ai')) {
+    const result = checkRateLimit(`ai:${req.auth?.user?.id ?? 'anonymous'}`, 10, 60_000)
+
+    if (!result.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } }
+      )
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/signin/resend') {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const result = checkRateLimit(`signin:${ip}`, 5, 15 * 60_000)
+
+    if (!result.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } }
+      )
+    }
+  }
+
+  const isLoggedIn = !!req.auth
 
   const needsAuth =
     pathname.startsWith('/app') ||
@@ -20,5 +45,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/app/:path*', '/api/products/:path*', '/api/license', '/api/activate', '/api/buy'],
+  matcher: ['/app/:path*', '/api/products/:path*', '/api/license', '/api/activate', '/api/buy', '/api/auth/:path*'],
 }
