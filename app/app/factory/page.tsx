@@ -19,7 +19,7 @@ import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
 import { type TemplateRule, validateProduct } from '@/lib/template-rules'
-import { mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
+import { MAX_PRODUCT_FILE_BYTES, mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
 import { buildZipTree } from '@/lib/zip'
 
 const INITIAL_FIXED_ASSETS: FixedAssetDef[] = [
@@ -83,6 +83,7 @@ export default function Home() {
   const [etsyTags, setEtsyTags] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [zipPreviewText, setZipPreviewText] = useState<string | null>(null)
   const [heroImageLoaded, setHeroImageLoaded] = useState(false)
   const [buildSignal, setBuildSignal] = useState(0)
@@ -263,62 +264,77 @@ export default function Home() {
   }
 
   const saveProduct = useCallback(async () => {
+    setSaveError(null)
     if (!activeProduct || !config) return
     if (files.some((file) => !file.file || !file.folder)) {
       window.alert('Each product file needs a file and folder.')
       return
     }
 
-    const encodedName = encodeURIComponent(activeProduct)
-    await Promise.all(files.map(async (file) => {
-      const response = await fetch(`/api/products/${encodedName}/file`, {
-        method: 'POST',
-        headers: { 'X-Filename': storedFilename(file) },
-        body: file.file,
-      })
-      if (!response.ok) throw new Error(`Could not upload ${file.file.name}`)
-    }))
-
     const persistableAssets = fixedAssets.filter((asset) => asset.blob && (!asset.builtin || asset.manuallyPicked))
-
-    await Promise.all(persistableAssets.map(async (asset) => {
-      const response = await fetch(`/api/products/${encodedName}/asset`, {
-        method: 'POST',
-        headers: { 'X-Filename': storedAssetFilename(asset) },
-        body: asset.blob,
-      })
-      if (!response.ok) throw new Error(`Could not upload ${asset.label}`)
-    }))
-
-    const fixedAssetFiles = persistableAssets.map((asset) => ({
-      id: config.fixedAssetFiles.find((file) => file.assetKey === asset.id)?.id ?? crypto.randomUUID(),
-      assetKey: asset.id,
-      filename: storedAssetFilename(asset),
-      origName: asset.blob!.name,
-    }))
-
-    const mascotFiles = files.map((file) => ({
-      id: file.id,
-      filename: storedFilename(file),
-      origName: file.file.name,
-      folder: file.folder,
-      variant: file.variant,
-    }))
-    const nextConfig: ProductConfig = {
-      ...config,
-      name: activeProduct,
-      mascotFiles,
-      fixedAssetFiles,
-      etsyTags,
-      complete: Boolean(config.productName && config.etsyTitle && config.price > 0 && files.length > 0),
+    const oversizedFile = files.find((file) => file.file.size > MAX_PRODUCT_FILE_BYTES)
+    if (oversizedFile) {
+      setSaveError(`${oversizedFile.file.name} is larger than 50MB.`)
+      return
     }
-    const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify({ ...nextConfig, templateId: selectedTemplateId }) })
-    if (!response.ok) throw new Error('Could not save product')
-    setConfig(nextConfig)
-    await refreshProducts()
-    setDirty(false)
-    setSaveFlash(true)
-    setTimeout(() => setSaveFlash(false), 2000)
+    const oversizedAsset = persistableAssets.find((asset) => asset.blob!.size > MAX_PRODUCT_FILE_BYTES)
+    if (oversizedAsset) {
+      setSaveError(`${oversizedAsset.label} is larger than 50MB.`)
+      return
+    }
+
+    try {
+      const encodedName = encodeURIComponent(activeProduct)
+      await Promise.all(files.map(async (file) => {
+        const response = await fetch(`/api/products/${encodedName}/file`, {
+          method: 'POST',
+          headers: { 'X-Filename': storedFilename(file) },
+          body: file.file,
+        })
+        if (!response.ok) throw new Error(`Could not upload ${file.file.name}`)
+      }))
+
+      await Promise.all(persistableAssets.map(async (asset) => {
+        const response = await fetch(`/api/products/${encodedName}/asset`, {
+          method: 'POST',
+          headers: { 'X-Filename': storedAssetFilename(asset) },
+          body: asset.blob,
+        })
+        if (!response.ok) throw new Error(`Could not upload ${asset.label}`)
+      }))
+
+      const fixedAssetFiles = persistableAssets.map((asset) => ({
+        id: config.fixedAssetFiles.find((file) => file.assetKey === asset.id)?.id ?? crypto.randomUUID(),
+        assetKey: asset.id,
+        filename: storedAssetFilename(asset),
+        origName: asset.blob!.name,
+      }))
+
+      const mascotFiles = files.map((file) => ({
+        id: file.id,
+        filename: storedFilename(file),
+        origName: file.file.name,
+        folder: file.folder,
+        variant: file.variant,
+      }))
+      const nextConfig: ProductConfig = {
+        ...config,
+        name: activeProduct,
+        mascotFiles,
+        fixedAssetFiles,
+        etsyTags,
+        complete: Boolean(config.productName && config.etsyTitle && config.price > 0 && files.length > 0),
+      }
+      const response = await fetch(`/api/products/${encodedName}/config`, { method: 'POST', body: JSON.stringify({ ...nextConfig, templateId: selectedTemplateId }) })
+      if (!response.ok) throw new Error('Could not save product')
+      setConfig(nextConfig)
+      await refreshProducts()
+      setDirty(false)
+      setSaveFlash(true)
+      setTimeout(() => setSaveFlash(false), 2000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save product')
+    }
   }, [activeProduct, config, etsyTags, files, fixedAssets, refreshProducts, selectedTemplateId])
 
   const toggleZipPreview = () => {
@@ -382,6 +398,7 @@ export default function Home() {
           onUpgradeClick={buyLicense}
           dirty={dirty}
           saveFlash={saveFlash}
+          saveError={saveError}
           onSave={saveProduct}
           onToggleZipPreview={toggleZipPreview}
           zipPreviewText={zipPreviewText}
