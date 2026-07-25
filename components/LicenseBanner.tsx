@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input'
 interface Props {
   plan: 'free' | 'pro'
   activatedAt?: string
+  subscriptionStatus?: string
   onActivate: (key: string) => Promise<void>
   onBuyClick: () => void
+  onManageClick: () => void
 }
 
-export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Props) {
+export function LicenseBanner({ plan, activatedAt, subscriptionStatus, onActivate, onBuyClick, onManageClick }: Props) {
   const [key, setKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -20,9 +22,22 @@ export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Pro
 
   if (plan === 'pro') {
     return (
-      <Card className="flex items-center gap-2 border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-xs font-mono text-emerald-400">
-        <span>✓ Pro</span>
-        {activatedAt && <span className="text-zinc-600">activated {activatedAt}</span>}
+      <Card className="border border-emerald-800 bg-emerald-950/40 px-3 py-2 font-mono text-xs text-emerald-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span>✓ Pro</span>
+          {activatedAt && <span className="text-zinc-600">activated {activatedAt}</span>}
+          {subscriptionStatus && (
+            <Button
+              variant="outline"
+              type="button"
+              size="sm"
+              className="ml-auto"
+              onClick={onManageClick}
+            >
+              Manage subscription
+            </Button>
+          )}
+        </div>
       </Card>
     )
   }
@@ -37,7 +52,7 @@ export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Pro
       await onActivate(trimmed)
       setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid license key')
+      setError(err instanceof Error ? err.message : 'Invalid promo code')
     } finally {
       setLoading(false)
     }
@@ -46,7 +61,7 @@ export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Pro
   if (success) {
     return (
       <Card className="border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-xs font-mono text-emerald-400">
-        ✓ License activated — Pro plan unlocked
+        ✓ Promo code activated — Pro plan unlocked
       </Card>
     )
   }
@@ -59,7 +74,7 @@ export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Pro
           <Input
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder="Enter license key"
+            placeholder="Have a promo code?"
             className="min-w-48 flex-1 border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none focus-visible:ring-0"
           />
           <Button
@@ -75,7 +90,7 @@ export function LicenseBanner({ plan, activatedAt, onActivate, onBuyClick }: Pro
           type="button"
           onClick={onBuyClick}
         >
-          Upgrade → $29 one-time
+          Upgrade to Pro
         </Button>
       </div>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}

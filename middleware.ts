@@ -35,7 +35,8 @@ export default auth((req) => {
     pathname.startsWith('/api/products') ||
     pathname === '/api/license' ||
     pathname === '/api/activate' ||
-    pathname === '/api/buy'
+    pathname === '/api/buy' ||
+    pathname === '/api/billing/portal'
 
   if (!isLoggedIn && needsAuth) {
     const loginUrl = new URL('/login', req.nextUrl.origin)
@@ -45,5 +46,13 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/app/:path*', '/api/products/:path*', '/api/license', '/api/activate', '/api/buy', '/api/auth/:path*'],
+  matcher: [
+    '/app/:path*',
+    '/api/products/:path*',
+    '/api/license',
+    '/api/activate',
+    '/api/buy',
+    '/api/billing/portal',
+    '/api/auth/:path*',
+  ],
 }

@@ -4,7 +4,32 @@ import { NextRequest } from 'next/server'
 const originalSecretKey = process.env.STRIPE_SECRET_KEY
 const originalWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-const mockUserUpdate = mock(() => Promise.resolve({}))
+type UserUpdateArgs = {
+  where: { id: string }
+  data: {
+    plan: string
+    licenseActivatedAt: Date
+    stripeCustomerId: string
+    stripeSubscriptionId: string
+    subscriptionStatus: string
+  }
+}
+type UserUpdateManyArgs = {
+  where: {
+    stripeCustomerId: string
+    OR: Array<{ stripeSubscriptionId: string | null }>
+  }
+  data: {
+    plan: string
+    stripeSubscriptionId: string
+    subscriptionStatus: string
+  }
+}
+
+const mockUserUpdate = mock<(args: UserUpdateArgs) => Promise<{}>>(() => Promise.resolve({}))
+const mockUserUpdateMany = mock<(args: UserUpdateManyArgs) => Promise<{ count: number }>>(() =>
+  Promise.resolve({ count: 1 })
+)
 const mockConstructEvent = mock(() => ({
   type: 'payment_intent.succeeded',
   data: { object: {} },
@@ -12,7 +37,7 @@ const mockConstructEvent = mock(() => ({
 
 mock.module('@/lib/db', () => ({
   prisma: {
-    user: { update: mockUserUpdate },
+    user: { update: mockUserUpdate, updateMany: mockUserUpdateMany },
   },
 }))
 
@@ -44,6 +69,8 @@ beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_fake'
   mockUserUpdate.mockReset()
   mockUserUpdate.mockReturnValue(Promise.resolve({}))
+  mockUserUpdateMany.mockReset()
+  mockUserUpdateMany.mockReturnValue(Promise.resolve({ count: 1 }))
   mockConstructEvent.mockReset()
   mockConstructEvent.mockReturnValue({
     type: 'payment_intent.succeeded',
@@ -81,7 +108,13 @@ describe('POST /api/stripe/webhook', () => {
   it('grants pro access for a completed checkout session', async () => {
     mockConstructEvent.mockReturnValue({
       type: 'checkout.session.completed',
-      data: { object: { client_reference_id: 'user-abc' } },
+      data: {
+        object: {
+          client_reference_id: 'user-abc',
+          customer: 'cus_123',
+          subscription: 'sub_456',
+        },
+      },
     })
 
     const response = await POST(request())
@@ -93,6 +126,83 @@ describe('POST /api/stripe/webhook', () => {
     expect(update.where).toEqual({ id: 'user-abc' })
     expect(update.data.plan).toBe('pro')
     expect(update.data.licenseActivatedAt).toBeInstanceOf(Date)
+    expect(update.data.stripeCustomerId).toBe('cus_123')
+    expect(update.data.stripeSubscriptionId).toBe('sub_456')
+    expect(update.data.subscriptionStatus).toBe('active')
+  })
+
+  it('syncs an active subscription update to pro access', async () => {
+    mockConstructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: { object: { id: 'sub_456', customer: 'cus_123', status: 'active' } },
+    })
+
+    const response = await POST(request())
+
+    expect(response.status).toBe(200)
+    expect(mockUserUpdateMany).toHaveBeenCalledWith({
+      where: {
+        stripeCustomerId: 'cus_123',
+        OR: [{ stripeSubscriptionId: 'sub_456' }, { stripeSubscriptionId: null }],
+      },
+      data: expect.objectContaining({
+        plan: 'pro',
+        subscriptionStatus: 'active',
+      }),
+    })
+  })
+
+  it('removes pro access for a past-due subscription update', async () => {
+    mockConstructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: { object: { id: 'sub_456', customer: 'cus_123', status: 'past_due' } },
+    })
+
+    await POST(request())
+
+    expect(mockUserUpdateMany).toHaveBeenCalledWith({
+      where: {
+        stripeCustomerId: 'cus_123',
+        OR: [{ stripeSubscriptionId: 'sub_456' }, { stripeSubscriptionId: null }],
+      },
+      data: expect.objectContaining({ plan: 'free' }),
+    })
+  })
+
+  it('removes pro access for a deleted subscription', async () => {
+    mockConstructEvent.mockReturnValue({
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_456', customer: 'cus_123', status: 'canceled' } },
+    })
+
+    await POST(request())
+
+    expect(mockUserUpdateMany).toHaveBeenCalledTimes(1)
+    expect(mockUserUpdateMany).toHaveBeenCalledWith({
+      where: {
+        stripeCustomerId: 'cus_123',
+        OR: [{ stripeSubscriptionId: 'sub_456' }, { stripeSubscriptionId: null }],
+      },
+      data: expect.objectContaining({
+        plan: 'free',
+        subscriptionStatus: 'canceled',
+      }),
+    })
+  })
+
+  it('does not let a delayed deleted subscription event target a newer subscription', async () => {
+    mockConstructEvent.mockReturnValue({
+      type: 'customer.subscription.deleted',
+      data: { object: { id: 'sub_old', customer: 'cus_123', status: 'canceled' } },
+    })
+
+    await POST(request())
+
+    const [update] = mockUserUpdateMany.mock.calls[0]!
+    expect(update.where).toEqual({
+      stripeCustomerId: 'cus_123',
+      OR: [{ stripeSubscriptionId: 'sub_old' }, { stripeSubscriptionId: null }],
+    })
   })
 
   it('does not grant access when the checkout has no client reference ID', async () => {
