@@ -29,13 +29,40 @@ export async function POST(req: NextRequest) {
       try {
         await prisma.user.update({
           where: { id: userId },
-          data: { plan: 'pro', licenseActivatedAt: new Date() },
+          data: {
+            plan: 'pro',
+            licenseActivatedAt: new Date(),
+            stripeCustomerId: checkoutSession.customer as string,
+            stripeSubscriptionId: checkoutSession.subscription as string,
+            subscriptionStatus: 'active',
+          },
         })
       } catch (err) {
         console.error(`Stripe webhook: could not grant plan to user ${userId}`, err)
       }
     } else {
       console.error('Stripe webhook: checkout.session.completed with no client_reference_id')
+    }
+  }
+
+  if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription
+    const customerId = subscription.customer as string
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+    try {
+      await prisma.user.updateMany({
+        where: {
+          stripeCustomerId: customerId,
+          OR: [{ stripeSubscriptionId: subscription.id }, { stripeSubscriptionId: null }],
+        },
+        data: {
+          subscriptionStatus: subscription.status,
+          stripeSubscriptionId: subscription.id,
+          plan: isActive ? 'pro' : 'free',
+        },
+      })
+    } catch (err) {
+      console.error(`Stripe webhook: could not sync subscription for customer ${customerId}`, err)
     }
   }
 

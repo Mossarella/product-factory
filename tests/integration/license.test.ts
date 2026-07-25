@@ -7,7 +7,7 @@ let currentSession: typeof MOCK_SESSION | null = MOCK_SESSION
 // Mock auth and prisma before importing the route
 mock.module('@/auth', () => ({ auth: async () => currentSession }))
 
-const mockFindUnique = mock(() => Promise.resolve(null))
+const mockFindUnique = mock((..._args: any[]) => Promise.resolve<any>(null))
 
 mock.module('@/lib/db', () => ({
   prisma: {
@@ -37,7 +37,7 @@ describe('GET /api/license', () => {
   })
 
   it('returns a free license when the user has not activated one', async () => {
-    mockFindUnique.mockReturnValue(Promise.resolve({ plan: 'free', licenseActivatedAt: null }))
+    mockFindUnique.mockReturnValue(Promise.resolve({ plan: 'free', licenseActivatedAt: null, subscriptionStatus: null }))
 
     const res = await GET()
 
@@ -47,7 +47,7 @@ describe('GET /api/license', () => {
     expect(body.activatedAt).toBeUndefined()
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { id: MOCK_USER.id },
-      select: { plan: true, licenseActivatedAt: true },
+      select: { plan: true, licenseActivatedAt: true, subscriptionStatus: true },
     })
   })
 
@@ -56,6 +56,7 @@ describe('GET /api/license', () => {
     mockFindUnique.mockReturnValue(Promise.resolve({
       plan: 'pro',
       licenseActivatedAt: new Date(activatedAt),
+      subscriptionStatus: null,
     }))
 
     const res = await GET()
@@ -64,11 +65,24 @@ describe('GET /api/license', () => {
     expect(await res.json()).toEqual({ plan: 'pro', activatedAt })
   })
 
+  it('returns the subscription status when present', async () => {
+    mockFindUnique.mockReturnValue(Promise.resolve({
+      plan: 'pro',
+      licenseActivatedAt: null,
+      subscriptionStatus: 'active',
+    }))
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ plan: 'pro', subscriptionStatus: 'active' })
+  })
+
   it('keeps license results isolated to the current session user', async () => {
     mockFindUnique.mockImplementation((args: { where: { id: string } }) => Promise.resolve(
       args.where.id === 'user-a'
-        ? { plan: 'pro', licenseActivatedAt: null }
-        : { plan: 'free', licenseActivatedAt: null },
+        ? { plan: 'pro', licenseActivatedAt: null, subscriptionStatus: null }
+        : { plan: 'free', licenseActivatedAt: null, subscriptionStatus: null },
     ))
 
     currentSession = { user: { id: 'user-a', email: 'a@example.com', name: 'User A' } }
@@ -79,6 +93,6 @@ describe('GET /api/license', () => {
 
     expect(await firstResponse.json()).toEqual({ plan: 'pro' })
     expect(await secondResponse.json()).toEqual({ plan: 'free' })
-    expect(mockFindUnique.mock.calls.map(([args]: [{ where: { id: string } }]) => args.where.id)).toEqual(['user-a', 'user-b'])
+    expect(mockFindUnique.mock.calls.map(([args]) => (args as { where: { id: string } }).where.id)).toEqual(['user-a', 'user-b'])
   })
 })
