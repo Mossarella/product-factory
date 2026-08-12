@@ -26,7 +26,7 @@ function LoginForm() {
     setError('')
     setDevLoginUrl(null)
     try {
-      const result = await signIn('resend', { email: trimmed, redirect: false, callbackUrl })
+      const result = await signIn('nodemailer', { email: trimmed, redirect: false, callbackUrl })
       if (result?.error) {
         setError('Could not send magic link. Check your email address and try again.')
         return

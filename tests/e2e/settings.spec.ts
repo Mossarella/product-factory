@@ -11,7 +11,7 @@ test('updates the sidebar name after saving profile settings', async ({ page }) 
   expect(csrfResponse.ok()).toBeTruthy()
   const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
 
-  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
     form: { email, csrfToken, callbackUrl: '/app/dashboard' },
   })
   expect(signInResponse.ok()).toBeTruthy()
@@ -57,7 +57,7 @@ test('uploads a profile avatar and rejects an oversized one', async ({ page }) =
   expect(csrfResponse.ok()).toBeTruthy()
   const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
 
-  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
     form: { email, csrfToken, callbackUrl: '/app/dashboard' },
   })
   expect(signInResponse.ok()).toBeTruthy()

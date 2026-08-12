@@ -11,8 +11,9 @@ const REQUIRED_VARS = [
   'S3_SECRET_ACCESS_KEY',
 ] as const
 
-const OPTIONAL_VARS = ['RESEND_API_KEY', 'STRIPE_SECRET_KEY', 'ANTHROPIC_API_KEY'] as const
-const ENV_KEYS = ['NODE_ENV', ...REQUIRED_VARS, ...OPTIONAL_VARS] as const
+const OPTIONAL_VARS = ['STRIPE_SECRET_KEY', 'ANTHROPIC_API_KEY'] as const
+const SMTP_VARS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASSWORD', 'AUTH_EMAIL_FROM'] as const
+const ENV_KEYS = ['NODE_ENV', ...REQUIRED_VARS, ...OPTIONAL_VARS, ...SMTP_VARS] as const
 
 const originalEnv = new Map<string, string | undefined>()
 
@@ -55,11 +56,25 @@ describe('validateEnv()', () => {
     )
   })
 
+  it('throws when production SMTP configuration is missing', () => {
+    process.env.NODE_ENV = 'production'
+    for (const name of REQUIRED_VARS) {
+      process.env[name] = 'test-value'
+    }
+
+    expect(() => validateEnv()).toThrow('Missing required SMTP environment variables: SMTP_HOST, AUTH_EMAIL_FROM')
+  })
+
   it('does not throw in production when required variables are set', () => {
     process.env.NODE_ENV = 'production'
     for (const name of REQUIRED_VARS) {
       process.env[name] = 'test-value'
     }
+    process.env.SMTP_HOST = 'smtp.test.example'
+    process.env.SMTP_PORT = '587'
+    process.env.SMTP_USER = 'smtp-user'
+    process.env.SMTP_PASSWORD = 'smtp-password'
+    process.env.AUTH_EMAIL_FROM = 'Product Factory <noreply@test.example>'
     for (const name of OPTIONAL_VARS) {
       delete process.env[name]
     }
