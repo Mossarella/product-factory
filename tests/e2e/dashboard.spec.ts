@@ -7,7 +7,7 @@ test.skip(!!process.env.CI, 'Requires running DB and dev server')
 
 test('dashboard shows greeting', async ({ page }) => {
   // Use the dev bypass — POST to sign in, then GET dev-url
-  const signInRes = await page.request.post('/api/auth/signin/resend', {
+  const signInRes = await page.request.post('/api/auth/signin/nodemailer', {
     data: { email: 'admin@example.com', csrfToken: '' },
   })
   // In a real test we'd navigate through the dev bypass

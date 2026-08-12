@@ -7,7 +7,7 @@ test('validates a product against required and optional template rules', async (
   // Sign in through the local development magic-link bypass.
   const csrfRes = await request.get('/api/auth/csrf')
   const { csrfToken } = await csrfRes.json() as { csrfToken: string }
-  await request.post('/api/auth/signin/resend', {
+  await request.post('/api/auth/signin/nodemailer', {
     form: { email: 'admin@example.com', csrfToken, callbackUrl: '/app' },
   })
   const devRes = await request.get('/api/auth/dev-url?email=admin@example.com')

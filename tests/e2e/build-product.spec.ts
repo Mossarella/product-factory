@@ -15,7 +15,7 @@ test('builds a product and exposes its latest download', async ({ page }) => {
   expect(csrfResponse.ok()).toBeTruthy()
   const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
 
-  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
     form: { email, csrfToken, callbackUrl: '/app/factory' },
   })
   expect(signInResponse.ok()).toBeTruthy()
@@ -57,7 +57,7 @@ test('shows version history with changelog and supports revert and per-version d
   expect(csrfResponse.ok()).toBeTruthy()
   const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
 
-  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
     form: { email, csrfToken, callbackUrl: '/app/factory' },
   })
   expect(signInResponse.ok()).toBeTruthy()

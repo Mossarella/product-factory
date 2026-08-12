@@ -9,7 +9,7 @@ test('generates an Etsy description', async ({ page }) => {
   expect(csrfResponse.ok()).toBeTruthy()
   const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
 
-  const signInResponse = await page.request.post('/api/auth/signin/resend', {
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
     form: { email, csrfToken, callbackUrl: '/app/factory' },
   })
   expect(signInResponse.ok()).toBeTruthy()
