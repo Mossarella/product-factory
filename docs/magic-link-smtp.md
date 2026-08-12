@@ -4,7 +4,8 @@
 Replace the production magic-link delivery provider with Auth.js Nodemailer backed by configurable SMTP credentials, while preserving the existing development bypass and login page experience. The goal is a simple email-only sign-in flow that works with common SMTP providers without requiring a Resend account.
 
 ## Follows the pattern of
-- `auth.ts` — existing Auth.js provider configuration, Prisma adapter, JWT sessions, and development-only `sendVerificationRequest` override.
+- `auth.ts` — Node-side Auth.js provider configuration, Prisma adapter, JWT sessions, and development-only `sendVerificationRequest` override.
+- `auth.config.ts` — Edge-safe shared Auth.js pages, JWT session, and callback configuration used by middleware without importing Nodemailer or Prisma.
 - `app/login/page.tsx` — existing email submission, `signIn` call, verification confirmation state, and development login-link display.
 - `app/api/auth/dev-url/route.ts` and `lib/dev-auth.ts` — development-only bypass behavior that must remain unchanged.
 - `lib/env.ts` and `tests/unit/env.test.ts` — environment validation and test isolation conventions.
@@ -16,7 +17,7 @@ Replace the production magic-link delivery provider with Auth.js Nodemailer back
 - Configure Auth.js with the `nodemailer` provider and an SMTP transport built from environment variables.
 - Support `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `AUTH_EMAIL_FROM`.
 - Allow `SMTP_SECURE` to be set explicitly; otherwise infer secure transport for port 465.
-- Keep the development bypass: outside production, do not send real email, capture the generated URL in `lib/dev-auth.ts`, and keep the clickable dev link on the login page.
+- Keep the development bypass: outside production, do not send real email, capture the generated URL in `lib/dev-auth.ts`, and keep the clickable dev link on the login page. There is no special bypass email; any syntactically valid test address works, such as `dev@example.com`.
 - Update the login client and e2e helpers to use provider id `nodemailer` instead of `resend`.
 - In production, return a clear configuration failure if the SMTP host or sender address is missing rather than silently falling back to a fake provider.
 - Keep the current success and error UX: show a confirmation state after a successful request and an inline error when delivery fails.
@@ -29,7 +30,7 @@ Replace the production magic-link delivery provider with Auth.js Nodemailer back
 - Update `.env.example` with a copy-pasteable SMTP block and remove Resend as the required magic-link configuration.
 
 ## Architecture check
-- Auth configuration belongs in `auth.ts`; SMTP values are read server-side only.
+- Edge-safe Auth.js configuration belongs in `auth.config.ts`; Node-only provider and SMTP values remain server-side in `auth.ts`.
 - Environment validation belongs in `lib/env.ts` and is tested through `tests/unit/env.test.ts`.
 - Client code may call `signIn('nodemailer', ...)` but must not import Nodemailer or read SMTP variables.
 - The provider should be configured with the existing `sendVerificationRequest` override only in non-production.
@@ -43,7 +44,9 @@ Replace the production magic-link delivery provider with Auth.js Nodemailer back
 ## Implementation
 
 ### Files to modify
+- `auth.config.ts`: hold the Edge-safe Auth.js configuration shared by middleware and the Node auth entrypoint.
 - `auth.ts`: switch from Resend to Nodemailer and construct the SMTP server configuration from server-only environment variables; retain the development override.
+- `middleware.ts`: use the Edge-safe config and rate-limit the Nodemailer sign-in route.
 - `app/login/page.tsx`: call `signIn('nodemailer', ...)`.
 - `lib/env.ts`: validate production SMTP host, port, user/password as appropriate, and sender configuration with a clear error.
 - `.env.example`: document SMTP settings and remove the Resend magic-link block.

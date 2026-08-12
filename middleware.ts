@@ -1,8 +1,9 @@
-import { auth } from '@/auth'
+import NextAuth from 'next-auth'
+import authConfig from './auth.config'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 
-export default auth((req) => {
+export default NextAuth(authConfig).auth((req) => {
   const { pathname } = req.nextUrl
 
   if (req.method === 'POST' && pathname.startsWith('/api/products/') && pathname.endsWith('/ai')) {
@@ -16,7 +17,7 @@ export default auth((req) => {
     }
   }
 
-  if (req.method === 'POST' && pathname === '/api/auth/signin/resend') {
+  if (req.method === 'POST' && pathname === '/api/auth/signin/nodemailer') {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
     const result = checkRateLimit(`signin:${ip}`, 5, 15 * 60_000)
 
