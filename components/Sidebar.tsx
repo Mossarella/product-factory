@@ -71,27 +71,28 @@ export function Sidebar() {
   const shopLabel = session?.user?.shopName || name || 'My Shop'
 
   return (
-    <aside className="h-screen w-56 flex flex-col border-r border-zinc-800 bg-zinc-950 shrink-0 fixed left-0 top-0 z-30">
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-56 shrink-0 flex-col border-r border-violet-400/15 bg-zinc-950/95 shadow-[12px_0_40px_rgba(0,0,0,.22)]">
       {/* Brand */}
-      <Link href="/app/dashboard" className="px-5 py-5 block hover:bg-zinc-900/40 transition-colors">
-        <p className="text-sm font-bold tracking-widest uppercase text-zinc-100 font-mono">Factory</p>
+      <Link href="/app/dashboard" className="block border-b border-white/10 px-5 py-5 transition-colors hover:bg-violet-950/20">
+        <div className="mb-2 flex items-center gap-2 text-[9px] font-mono uppercase tracking-[0.28em] text-violet-300/70"><span className="h-1.5 w-1.5 bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,.9)]" /> Virtual stockroom</div>
+        <p className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-100 font-mono">Factory</p>
         <p className="text-xs text-zinc-600 font-mono mt-0.5">{shopLabel}</p>
       </Link>
 
-      <div className="h-px bg-zinc-800 mx-3" />
+      <div className="mx-3 h-px bg-white/10" />
 
       {/* Nav */}
-      <nav className="flex-1 py-3 space-y-0.5">
+      <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-5 py-2.5 text-sm font-mono transition-colors ${
+              className={`flex items-center gap-3 border px-3 py-2.5 text-sm font-mono transition-colors ${
                 active
-                  ? 'border-l-2 border-violet-500 bg-zinc-800/60 text-zinc-100'
-                  : 'border-l-2 border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40'
+                  ? 'border-violet-400/40 bg-violet-950/30 text-zinc-100 shadow-[inset_3px_0_0_rgba(167,139,250,.9)]'
+                  : 'border-white/5 text-zinc-500 hover:border-white/15 hover:bg-white/5 hover:text-zinc-300'
               }`}
             >
               <span className="shrink-0">{icon}</span>
@@ -102,7 +103,7 @@ export function Sidebar() {
       </nav>
 
       {/* User */}
-      <div className="border-t border-zinc-800 px-5 py-4">
+      <div className="border-t border-white/10 px-4 py-4">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex w-full items-center gap-2 outline-none">
             <Avatar className="h-8 w-8 shrink-0">

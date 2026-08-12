@@ -376,16 +376,17 @@ export default function Home() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      <div className="flex items-center gap-3 mb-1">
+    <div className="min-h-screen min-w-0 max-w-5xl p-5 sm:p-8">
+      <div className="mb-2 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.28em] text-violet-300/70"><span className="h-1.5 w-1.5 bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,.9)]" /> Factory / packaging bay</div>
+      <div className="flex flex-wrap items-center gap-3 mb-1">
         <img src="/api/slot/logo" alt="logo" className="w-10 h-10 object-contain rounded" onError={(event) => { event.currentTarget.style.display = 'none' }} />
-        <h1 className="text-xl font-mono font-bold">Product Factory</h1>
+        <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-100 font-mono">Product Factory</h1>
       </div>
-      <p className="text-zinc-500 text-sm">Pack your digital product → generate README → download ZIP → list on Etsy</p>
+      <p className="mb-6 text-xs font-mono text-zinc-500">Pack your digital product → generate README → download ZIP → list on Etsy</p>
 
       <LicenseBanner plan={license.plan} activatedAt={license.activatedAt} subscriptionStatus={license.subscriptionStatus} onActivate={activateLicense} onBuyClick={buyLicense} onManageClick={manageSubscription} />
 
-      <Card className="gap-0 bg-zinc-950 px-4">
+      <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">Product</h2>
         <ProductSelector
           products={products}
@@ -437,33 +438,33 @@ export default function Home() {
       </Card>
 
       {!config && (
-        <Card className="gap-0 border border-dashed border-zinc-800 p-8 text-center text-zinc-600 text-sm ring-0">
+        <Card className="gap-0 border border-dashed border-violet-400/20 bg-zinc-900/30 p-8 text-center text-zinc-600 text-sm ring-0">
           <p className="mb-1">Select a product above to get started</p>
           <p className="text-xs text-zinc-700">or create a new one with &quot;+ New&quot;</p>
         </Card>
       )}
 
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">1. Product Info</h2>
           <ProductInfo config={config} onChange={handleConfigChange} />
         </Card>
       )}
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">2. File Folders</h2>
           <p className="text-zinc-600 text-xs mb-3">Define folders to organize your files in the ZIP.</p>
           <FolderManager folders={config.folders} onChange={(folders) => handleConfigChange({ folders })} />
         </Card>
       )}
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">3. Product Files</h2>
           <FileManager files={files} folders={config.folders} onChange={handleFilesChange} productName={config.productName} />
         </Card>
       )}
 
-      <Card className="gap-0 px-4">
+      <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">4. Fixed Assets</h2>
         <p className="text-zinc-600 text-xs mb-3">Shared across all products. Auto-loaded from assets/ folder.</p>
         <FixedAssets
@@ -477,13 +478,13 @@ export default function Home() {
         />
       </Card>
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">5. README Preview</h2>
           <ReadmePreview config={config} files={files} shopIdentity={shopIdentity} />
         </Card>
       )}
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">6. Etsy Listing</h2>
           <EtsySlots activeProduct={activeProduct!} onHeroLoaded={setHeroImageLoaded} />
           <div className="mt-4">
@@ -501,13 +502,13 @@ export default function Home() {
         </Card>
       )}
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">7. Build</h2>
           <BuildProduct activeProduct={activeProduct!} onBuilt={() => setBuildSignal((s) => s + 1)} />
         </Card>
       )}
       {config && (
-        <Card className="gap-0 px-4">
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">8. Version History</h2>
           <VersionHistory activeProduct={activeProduct!} mode="revert" refreshSignal={buildSignal} />
         </Card>

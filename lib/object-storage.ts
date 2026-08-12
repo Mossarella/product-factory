@@ -53,6 +53,10 @@ export async function getObject(
 }
 
 export async function objectExists(key: string): Promise<boolean> {
+  // Object storage is optional in local development. An unset bucket means
+  // the object cannot exist, and should not make Dashboard rendering fail.
+  if (!BUCKET) return false
+
   try {
     await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
     return true

@@ -8,8 +8,14 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 ];
 
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
   output: 'standalone',
+  ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   async headers() {
     return [
       {

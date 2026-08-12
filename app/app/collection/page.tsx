@@ -11,7 +11,7 @@ import { TemplateValidation } from '@/components/TemplateValidation'
 import { VersionHistory } from '@/components/VersionHistory'
 import { cn } from '@/lib/cn'
 import type { TemplateRule } from '@/lib/template-rules'
-import { avatarColor } from '@/lib/utils'
+import { productPlaceholder } from '@/lib/product-placeholder'
 import type { ProductConfig, ProductSummary } from '@/lib/types'
 
 type ProductTemplateSummary = { id: string; name: string; rules: TemplateRule[] }
@@ -42,6 +42,9 @@ export default function CollectionPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [loadingSamples, setLoadingSamples] = useState(false)
+  const [sampleMessage, setSampleMessage] = useState<string | null>(null)
+  const [sampleError, setSampleError] = useState<string | null>(null)
 
   const refreshProducts = useCallback(async () => {
     const response = await fetch('/api/products')
@@ -54,6 +57,27 @@ export default function CollectionPage() {
       .then((data) => { if (data) setProducts(data) })
     fetch('/api/product-templates').then(r => r.json()).then(setTemplates)
   }, [])
+
+  async function loadSampleCollection() {
+    setLoadingSamples(true)
+    setSampleMessage(null)
+    setSampleError(null)
+    try {
+      const response = await fetch('/api/products/sample', { method: 'POST' })
+      const body = await response.json().catch(() => ({})) as { created?: number; existing?: number; products?: string[]; error?: string }
+      if (!response.ok) {
+        setSampleError(body.error || 'Could not load the sample collection')
+        return
+      }
+      await refreshProducts()
+      setSampleMessage(`${body.created ?? 0} sample products added${body.existing ? ` · ${body.existing} already in stock` : ''}`)
+      if (body.products?.[0]) await selectProduct(body.products[0])
+    } catch {
+      setSampleError('Could not load the sample collection')
+    } finally {
+      setLoadingSamples(false)
+    }
+  }
 
   async function selectProduct(name: string) {
     setSelectedName(name)
@@ -146,51 +170,86 @@ export default function CollectionPage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Page header */}
-      <div className="px-8 pt-8 pb-4 shrink-0">
-        <div className="flex items-center justify-between">
+      {/* Inventory HUD header */}
+      <div className="shrink-0 border-b border-white/10 bg-zinc-950/80 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100 font-mono">Collection</h1>
-            <p className="text-zinc-500 text-sm mt-1 font-mono">{products.length} products</p>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.28em] text-violet-300/70">
+              <span className="h-1.5 w-1.5 bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,.9)]" />
+              Digital stockroom / collection
+            </div>
+            <h1 className="text-3xl font-black uppercase tracking-tight text-zinc-100 font-mono">Collection</h1>
+            <p className="mt-1 max-w-2xl text-xs font-mono leading-relaxed text-zinc-500">
+              Package digital products, keep every listing detail together, and prepare Etsy-ready stock. No sales or performance tracking.
+            </p>
           </div>
-          <Input
-            placeholder="Search…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="h-auto w-44 rounded-none border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus-visible:border-violet-500 focus-visible:ring-0 md:text-xs dark:bg-zinc-900"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="border border-white/10 bg-black/30 px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+              <span className="text-zinc-200">{products.length}</span> stock items
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loadingSamples}
+              onClick={() => void loadSampleCollection()}
+              className="h-auto rounded-none border-violet-400/40 bg-violet-950/20 px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-violet-200 hover:bg-violet-900/30"
+            >
+              {loadingSamples ? 'Loading samples…' : 'Load sample collection'}
+            </Button>
+            <Input
+              aria-label="Search collection"
+              placeholder="Search stock…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="h-auto w-full rounded-none border-white/10 bg-black/30 px-3 py-2 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus-visible:border-violet-500 focus-visible:ring-0 sm:w-48"
+            />
+          </div>
         </div>
+        {sampleMessage && <p role="status" className="mt-3 text-xs font-mono text-emerald-400">{sampleMessage}</p>}
+        {sampleError && <p role="alert" className="mt-3 text-xs font-mono text-red-400">{sampleError}</p>}
       </div>
 
-      {/* Main two-panel area */}
-      <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
-        {/* Left — grid */}
-        <div className="w-72 shrink-0 overflow-y-auto pr-2">
+      {/* Main inventory + detail area */}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-5 sm:px-6 lg:flex-row lg:px-8">
+        {/* Inventory grid */}
+        <div className="min-h-0 w-full overflow-y-auto pr-1 lg:w-[min(54%,680px)]">
           {filtered.length === 0 && (
-            <p className="text-zinc-600 font-mono text-sm mt-4">No products found.</p>
+            <div className="border border-dashed border-white/10 bg-zinc-900/30 p-8 text-center text-zinc-600 font-mono text-sm">No products found.</div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {filtered.map(p => {
               const status = productStatus(p)
               const isSelected = p.name === selectedName
+              const placeholder = productPlaceholder(p.name)
               return (
                 <button
                   key={p.name}
-                  onClick={() => selectProduct(p.name)}
-                  className={`text-left border p-3 transition-colors ${
-                    isSelected
-                      ? 'border-violet-500 bg-zinc-800/80'
-                      : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-600'
-                  }`}
+                  aria-pressed={isSelected}
+                  onClick={() => void selectProduct(p.name)}
+                  className={cn(
+                    'group relative overflow-hidden border bg-zinc-950 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
+                    isSelected ? `${placeholder.accent} ring-1 ring-violet-300/80 shadow-[0_0_28px_rgba(139,92,246,.18)]` : 'border-white/10 hover:border-white/30',
+                  )}
                 >
-                  <div className={`w-10 h-10 ${avatarColor(p.name)} flex items-center justify-center mb-3`}>
-                    <span className="text-white font-bold font-mono text-lg uppercase">
-                      {p.name[0]}
-                    </span>
+                  <div aria-hidden="true" className={cn('relative aspect-[4/3] overflow-hidden bg-gradient-to-br', placeholder.panel, placeholder.art)}>
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.06)_1px,transparent_1px)] bg-[size:18px_18px] opacity-30" />
+                    <div className="absolute left-2 top-2 flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest text-white/70">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.9)]" />
+                      STOCKED
+                    </div>
+                    <span className="absolute bottom-1 right-2 text-4xl font-black text-white/80 drop-shadow-lg">{placeholder.glyph}</span>
+                    <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/80 to-transparent" />
                   </div>
-                  <p className="text-xs font-mono text-zinc-200 truncate leading-tight mb-1">{p.name}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <StatusBadge status={status} />
+                  <div className="border-t border-white/10 p-2.5">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="truncate text-[9px] font-mono uppercase tracking-widest text-violet-200/80">{placeholder.category}</p>
+                      <span className="shrink-0 text-[10px] font-mono text-zinc-400">${placeholder.price}</span>
+                    </div>
+                    <p className="min-h-8 text-xs font-semibold leading-4 text-zinc-100">{p.name}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
+                      <span className="truncate text-[9px] font-mono text-zinc-600">{p.name.slice(0, 12).toUpperCase()}</span>
+                      <StatusBadge status={status} className="[&>span:last-child]:text-[9px]" />
+                    </div>
                   </div>
                 </button>
               )
@@ -199,10 +258,10 @@ export default function CollectionPage() {
         </div>
 
         {/* Divider */}
-        <div className="w-px bg-zinc-800 shrink-0" />
+        <div className="hidden h-auto w-px bg-white/10 lg:block" />
 
         {/* Right — detail */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
           {!selectedName && (
             <div className="h-full flex items-center justify-center">
               <p className="text-zinc-600 font-mono text-sm">Select a product to view details.</p>
@@ -216,20 +275,20 @@ export default function CollectionPage() {
           {selectedName && !loadingDetail && detail && (() => {
             const status = detailStatus(detail)
             return (
-              <div className="pb-12">
-                <div className="flex items-start justify-between mb-1">
-                  <div>
-                    <h2 className="text-xl font-bold text-zinc-100 font-mono">{detail.productName || detail.name}</h2>
+              <div className="min-w-0 max-w-full overflow-x-hidden pb-12">
+                <div className="flex min-w-0 flex-col gap-3 mb-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-xl font-bold text-zinc-100 font-mono">{detail.productName || detail.name}</h2>
                     <p className="text-xs text-zinc-600 font-mono mt-0.5">
                       {detail.sku && <span className="mr-3">{detail.sku}</span>}
                       Created {formatDate(detail.createdAt)}
                     </p>
                   </div>
-                  <div className="flex gap-2 shrink-0 ml-4">
+                  <div className="flex min-w-0 flex-wrap gap-2 sm:ml-4 sm:justify-end">
                     {detail.latestBuild ? (
                       <a
                         href={`/api/products/${encodeURIComponent(detail.name)}/build/latest`}
-                        className={cn(buttonVariants({ variant: 'outline' }), 'h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors')}
+                        className={cn(buttonVariants({ variant: 'outline' }), 'h-auto max-w-full rounded-none px-3 py-1.5 text-xs font-mono transition-colors')}
                       >
                         ⬇ Download (v{detail.latestBuild.version})
                       </a>
@@ -238,14 +297,14 @@ export default function CollectionPage() {
                         variant="outline"
                         disabled
                         title="Build this product in the Factory page first"
-                        className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                        className="h-auto max-w-full rounded-none px-3 py-1.5 text-xs font-mono transition-colors"
                       >
                         ⬇ Download
                       </Button>
                     )}
                     <Button
                       variant="outline"
-                      className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                      className="h-auto max-w-full rounded-none px-3 py-1.5 text-xs font-mono transition-colors"
                       onClick={() => { setDuplicating((v) => !v); setDuplicateName(''); setDuplicateError(null) }}
                     >
                       Duplicate
@@ -255,7 +314,7 @@ export default function CollectionPage() {
                         render={
                           <Button
                             variant="destructive"
-                            className="h-auto rounded-none px-4 py-1.5 text-xs font-mono transition-colors"
+                            className="h-auto max-w-full rounded-none px-3 py-1.5 text-xs font-mono transition-colors"
                           />
                         }
                       >
@@ -340,13 +399,13 @@ export default function CollectionPage() {
                 <div className="mb-5">
                   <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Etsy Listing</p>
                   {detail.etsyTitle ? (
-                    <p className="text-sm font-mono text-zinc-200 mb-3 leading-relaxed">{detail.etsyTitle}</p>
+                    <p className="break-words text-sm font-mono text-zinc-200 mb-3 leading-relaxed">{detail.etsyTitle}</p>
                   ) : (
                     <p className="text-sm font-mono text-zinc-600 mb-3 italic">No title set</p>
                   )}
                   {detail.description ? (
                     <div>
-                      <p className={`text-xs font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap ${!showFullDesc ? 'line-clamp-4' : ''}`}>
+                      <p className={`break-words text-xs font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap ${!showFullDesc ? 'line-clamp-4' : ''}`}>
                         {detail.description}
                       </p>
                       {detail.description.length > 200 && (
@@ -390,9 +449,10 @@ export default function CollectionPage() {
                   ) : (
                     <div className="space-y-1">
                       {Object.entries(filesByFolder).map(([folder, count]) => (
-                        <div key={folder} className="flex justify-between text-xs font-mono">
-                          <span className="text-zinc-400">{folder}</span>
-                          <span className="text-zinc-600">{count} file{count !== 1 ? 's' : ''}</span>
+                        <div key={folder} className="flex min-w-0 items-start justify-between gap-3 text-xs font-mono">
+
+                          <span className="min-w-0 break-words text-zinc-400">{folder}</span>
+                          <span className="shrink-0 text-zinc-600">{count} file{count !== 1 ? 's' : ''}</span>
                         </div>
                       ))}
                     </div>

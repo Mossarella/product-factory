@@ -15,9 +15,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SessionProviderWrapper session={session}>
-      <div className="flex min-h-screen bg-zinc-950">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(76,29,149,.16),transparent_38%),#09090b]">
         <Sidebar />
-        <main className="ml-56 flex-1 min-h-screen overflow-auto">
+        <main className="ml-56 min-w-0 min-h-screen overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </div>

@@ -93,16 +93,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-mono font-bold text-zinc-100">Settings</h1>
-        <p className="text-zinc-500 text-sm mt-1">Your profile and account details.</p>
+    <div className="min-h-screen max-w-3xl p-5 sm:p-8">
+      <div className="mb-8 border-b border-white/10 pb-6">
+        <div className="mb-2 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.28em] text-violet-300/70"><span className="h-1.5 w-1.5 bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,.9)]" /> System / profile</div>
+        <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-100 font-mono">Settings</h1>
+        <p className="mt-1 text-xs font-mono text-zinc-500">Your profile and account details.</p>
       </div>
 
-      <Card className="gap-4 px-4 py-4 font-mono ring-zinc-800">
+      <Card className="mb-5 gap-4 border-white/10 bg-zinc-900/45 px-4 py-4 font-mono ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest">Profile</h2>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Avatar className="h-16 w-16">
             {image && <AvatarImage src={image} alt="" />}
             <AvatarFallback className={cn('text-lg text-white', avatarColor(name || email || 'user'))}>
@@ -118,7 +119,7 @@ export default function SettingsPage() {
 
         <div>
           <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Display name</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-xs" />
             <Button type="button" variant="default" disabled={saving} onClick={() => void saveName()}>
               {saving ? 'Saving…' : 'Save'}
@@ -133,7 +134,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="gap-4 px-4 py-4 font-mono ring-zinc-800">
+      <Card className="mb-5 gap-4 border-white/10 bg-zinc-900/45 px-4 py-4 font-mono ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest">Shop Profile</h2>
         <p className="text-xs text-zinc-500">
           Used in your generated READMEs and Etsy listings. Leave blank to use a generic default.
@@ -154,7 +155,7 @@ export default function SettingsPage() {
           <Label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">README footer / license note</Label>
           <Input value={readmeFooter} onChange={(e) => setReadmeFooter(e.target.value)} placeholder="Personal and commercial use allowed with credit. Do not redistribute." />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="default" disabled={shopSaving} onClick={() => void saveShopProfile()}>
             {shopSaving ? 'Saving…' : 'Save'}
           </Button>
