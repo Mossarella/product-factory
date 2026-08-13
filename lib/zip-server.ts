@@ -4,6 +4,8 @@ import fs from 'fs'
 import path from 'path'
 import { assetPath, firstFile } from './api-files'
 import { sanitizeAssetFilename } from './utils'
+import type { ReleaseSnapshot } from './release-snapshot'
+import { buildEtsyListingText } from './release-snapshot'
 
 export interface BuildMascotFile {
   filename: string
@@ -61,6 +63,7 @@ export interface BuildManifest {
   validation: ValidationEntry[] | null
   warnings: string[]
   readmeHash: string
+  releaseArtifacts: { listingJson: string; listingText: string; summaryJson: string } | null
 }
 
 const BUILTIN_ASSETS = [
@@ -77,6 +80,8 @@ export async function buildZipBuffer(opts: {
   version: number
   template: { id: string; name: string } | null
   validation: ValidationEntry[] | null
+  releaseSnapshot?: ReleaseSnapshot
+  builtAt?: string
   downloadFile: (storagePath: string) => Promise<Buffer | null>
 }): Promise<{ buffer: Buffer; manifest: BuildManifest }> {
   const zip = new JSZip()
@@ -99,6 +104,12 @@ export async function buildZipBuffer(opts: {
   }
 
   zip.file('README.txt', opts.readmeText)
+
+  if (opts.releaseSnapshot) {
+    zip.file('etsy-listing.json', JSON.stringify(opts.releaseSnapshot.listing, null, 2))
+    zip.file('etsy-listing.txt', buildEtsyListingText(opts.releaseSnapshot.listing))
+    zip.file('release-summary.json', JSON.stringify(opts.releaseSnapshot.summary, null, 2))
+  }
 
   const overriddenKeys = new Set(opts.fixedAssetFiles.map((f) => f.assetKey))
   for (const asset of opts.fixedAssetFiles) {
@@ -125,13 +136,14 @@ export async function buildZipBuffer(opts: {
   const manifest: BuildManifest = {
     version: opts.version,
     productName: opts.displayProductName,
-    builtAt: new Date().toISOString(),
+    builtAt: opts.builtAt ?? new Date().toISOString(),
     files: manifestFiles,
     fixedAssets: manifestAssets,
     template: opts.template,
     validation: opts.validation,
     warnings,
     readmeHash: createHash('sha256').update(opts.readmeText).digest('hex'),
+    releaseArtifacts: opts.releaseSnapshot ? { listingJson: 'etsy-listing.json', listingText: 'etsy-listing.txt', summaryJson: 'release-summary.json' } : null,
   }
   zip.file('manifest.json', JSON.stringify(manifest, null, 2))
 

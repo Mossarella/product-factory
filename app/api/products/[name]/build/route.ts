@@ -9,6 +9,7 @@ import { buildReadmeText } from '@/lib/templates-server'
 import { validateProduct } from '@/lib/template-rules'
 import type { TemplateRule } from '@/lib/template-rules'
 import type { BuildManifest } from '@/lib/zip-server'
+import { buildReleaseSnapshot } from '@/lib/release-snapshot'
 import type { ProductConfig } from '@/lib/types'
 
 interface RouteContext {
@@ -105,20 +106,39 @@ export async function POST(request: Request, { params }: RouteContext) {
   }, { defaultShopDescription: CONFIG.defaultShopDescription, defaultReadmeFooter: CONFIG.defaultReadmeFooter }))
 
   const version = product.build_version + 1
-  const { buffer, manifest } = await buildZipBuffer({
+  const builtAt = new Date().toISOString()
+  const buildOptions = {
     productId: product.id,
     displayProductName: product.product_name || product.name,
     mascotFiles: mascotFiles.map(({ id: _id, ...file }) => file),
     fixedAssetFiles: fixedFiles.map(({ id: _id, ...file }) => file),
     readmeText,
     version,
+    builtAt,
     template: template ? { id: template.id, name: template.name } : null,
     validation,
-    downloadFile: async (relativePath) => {
+    downloadFile: async (relativePath: string) => {
       const { data: object } = await supabase.storage.from(PRODUCT_FILES_BUCKET).download(productStoragePath(user.id, product.id, relativePath))
       return object ? Buffer.from(await object.arrayBuffer()) : null
     },
+  }
+  const { manifest: initialManifest } = await buildZipBuffer(buildOptions)
+  const releaseSnapshot = buildReleaseSnapshot({
+    productId: product.id,
+    productName: product.product_name || product.name,
+    sku: product.sku,
+    etsyTitle: product.etsy_title,
+    description: product.description,
+    etsyTags: product.etsy_tags,
+    price: Number(product.price),
+    currency: product.currency,
+    licenseType: product.license_type,
+    commercialPrice: product.commercial_price == null ? null : Number(product.commercial_price),
+    version,
+    builtAt,
+    manifest: initialManifest,
   })
+  const { buffer, manifest } = await buildZipBuffer({ ...buildOptions, releaseSnapshot })
 
   const previousManifest = (builds?.[0]?.manifest as unknown as BuildManifest) ?? null
   const changelog = trimmedNotes || generateChangelog(manifest, previousManifest)

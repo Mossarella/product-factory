@@ -32,6 +32,19 @@ export interface BuildHistoryEntry {
   createdAt: string
 }
 
+export interface ReleaseHistoryEntry {
+  id: string
+  product_id: string
+  build_id: string
+  version: number
+  bundle_filename: string
+  bundle_size: number
+  bundle_sha256: string
+  listing_snapshot: Record<string, unknown>
+  release_summary: Record<string, unknown>
+  created_at: string
+}
+
 export interface ProductConfig {
   name: string
   sku: string

@@ -31,6 +31,9 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [ ] Migrate Stripe checkout/portal/webhook routes after payment-provider integration testing.
 - [ ] Verify that every query remains owner-scoped through both repository filters and RLS.
 - [x] Apply and verify the owner-scoped product events migration for dashboard telemetry.
+- [x] Add and apply the owner-scoped `product_releases` migration for immutable release snapshots.
+- [x] Add private release-bundle persistence, idempotent finalization, owner-scoped release history, and secure release downloads.
+- [x] Add the Factory and Collection HUD Release panel with finalization, history, and download actions.
 
 ## P1 — Supabase Storage and packaging
 
@@ -48,12 +51,12 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Remove Auth.js and Nodemailer from the active runtime. Historical migration notes remain in `docs/`.
 - [x] Remove Prisma runtime usage, seed/schema files, and local PostgreSQL assumptions from the active runtime.
 - [x] Remove the S3/MinIO helper and Docker storage dependency from the active runtime.
-- [ ] Update environment documentation and deployment configuration.
+- [x] Update environment documentation and deployment configuration guidance in `.env.example` and `docs/deployment-readiness.md`.
 - [ ] Remove obsolete development bypasses and secrets.
 
 ## P2 — Verification and deployment
 
-- [ ] Run TypeScript, ESLint, unit, integration, and Playwright tests. Dashboard Playwright smoke coverage passes; the authenticated packaging spec remains gated on `SUPABASE_E2E_EMAIL` and `SUPABASE_E2E_MAGIC_LINK`.
+- [ ] Run TypeScript, ESLint, unit, integration, and Playwright tests. Dashboard Playwright smoke coverage passes; the authenticated packaging and release specs remain gated on `SUPABASE_E2E_EMAIL` and `SUPABASE_E2E_MAGIC_LINK`.
 - [ ] Add RLS isolation tests proving one user cannot read or modify another user's products or files.
 - [ ] Add Storage policy tests for upload, read, update, delete, and unauthorized access.
 - [ ] Select a persistent Next.js deployment host.
@@ -73,4 +76,44 @@ Completed locally and remotely:
 - [x] First typed products API cutover.
 - [x] Migration architecture documentation.
 
-Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. The Supabase foundation, Product Templates, Settings, Factory adapters, license activation/status, six-product sample loader, and packaging readiness UX are migrated. Stripe checkout, billing portal, and webhook work is intentionally deferred; remaining core focus is Etsy listing generation, package inspection, reusable assets, and live browser verification.
+Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. The Supabase foundation, Product Templates, Settings, Factory adapters, license activation/status, six-product sample loader, packaging readiness UX, package inspection, reusable asset loadouts, dashboard telemetry, release-bundle ZIP artifacts, release persistence/download routes, and HUD release panels are implemented. Migration `0007_product_releases` is applied remotely. Stripe checkout, billing portal, and webhook work is intentionally deferred.
+
+## Remaining roadmap — batch execution order
+
+### Batch 1 — Security and isolation verification
+
+- [x] Add authenticated two-owner RLS tests for products, product builds, product events, and product releases; live execution remains credential-gated.
+- [x] Add private Storage isolation tests for source files, build ZIPs, and release ZIPs covering upload, read, update, delete, and unauthorized access; live execution remains credential-gated.
+- [ ] Add route-level ownership tests for release history, finalization, and downloads.
+- [ ] Verify release Storage cleanup when database persistence fails.
+- [ ] Apply any required policy fixes discovered by Batch 1 tests.
+
+### Batch 2 — Release workflow hardening
+
+- [ ] Test and polish Draft, Packaged, Released, and Release Failed states.
+- [ ] Cover stale build state, missing embedded artifacts, duplicate finalization, Storage failure, and database failure in the UI and API.
+- [ ] Verify idempotent release finalization and reproducible release downloads.
+- [ ] Add release history refresh behavior after build, revert, and finalization.
+
+### Batch 3 — Static quality and regression gates
+
+- [x] Fix the remaining TypeScript errors in Factory save handling, Etsy listing save handling, and duplicate-route row typing.
+- [x] Resolve ESLint errors and remove avoidable `any` usage in active tests and mocks.
+- [x] Run Bun unit and integration suites in the supported environment; focused suites pass.
+- [ ] Add login, logout, expired-session, and Auth callback regression tests.
+- [ ] Run authenticated Playwright packaging, release finalization, and download tests.
+
+### Batch 4 — Environment and deployment readiness
+
+- [x] Update environment documentation and deployment configuration guidance in `.env.example` and `docs/deployment-readiness.md`.
+- [ ] Remove obsolete development bypasses and secrets.
+- [ ] Configure production Supabase redirect URLs and email templates.
+- [ ] Select a persistent Next.js deployment host.
+- [ ] Deploy a persistent review environment instead of relying on temporary sandbox proxy URLs.
+- [ ] Verify production Storage, Auth, and database policy behavior after deployment.
+
+### Deferred after core release workflow
+
+- [ ] Migrate Stripe checkout, billing portal, and webhook routes after payment-provider integration testing.
+- [ ] Add development-only test login for `test@example.com`, disabled in production.
+- [ ] Do not add sales, conversion, or marketplace-performance tracking; Product Factory is a virtual stockroom and packaging tool.

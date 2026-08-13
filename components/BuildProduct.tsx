@@ -26,7 +26,7 @@ interface BuildResult {
 interface Props {
   activeProduct: string
   readiness?: BuildReadiness | null
-  onBuilt?: () => void
+  onBuilt?: (result: BuildResult) => void
 }
 
 export function BuildProduct({ activeProduct, readiness, onBuilt }: Props) {
@@ -65,7 +65,7 @@ export function BuildProduct({ activeProduct, readiness, onBuilt }: Props) {
       setRevealedSteps(STEPS.length)
       setResult(data)
       setNotes('')
-      onBuilt?.()
+      onBuilt?.(data)
     } catch {
       setError('Build failed')
     } finally {

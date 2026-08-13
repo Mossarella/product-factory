@@ -7,7 +7,7 @@ let currentSession: typeof MOCK_SESSION | null = MOCK_SESSION
 // Mock auth and prisma before importing the route
 mock.module('@/auth', () => ({ auth: async () => currentSession }))
 
-const mockFindUnique = mock((..._args: any[]) => Promise.resolve<any>(null))
+const mockFindUnique = mock((..._args: unknown[]) => Promise.resolve<null>(null))
 
 mock.module('@/lib/db', () => ({
   prisma: {

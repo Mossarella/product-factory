@@ -26,7 +26,7 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTags, onTagsChange, onConfigChange, heroImageLoaded = false, shopIdentity }: Props) {
+export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTags, onTagsChange, onConfigChange, onSaveListing, heroImageLoaded = false, shopIdentity }: Props) {
   const [newTag, setNewTag] = useState('')
   const [description, setDescription] = useState(config.description)
   const [loadingDescription, setLoadingDescription] = useState(false)
@@ -40,6 +40,8 @@ export function EtsyListing({ activeProduct, config, files, fixedAssets, etsyTag
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
+    // The editor must mirror the persisted description when the selected product changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDescription(config.description)
   }, [config.description])
 

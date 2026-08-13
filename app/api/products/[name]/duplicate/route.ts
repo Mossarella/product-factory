@@ -7,7 +7,35 @@ interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-function toConfig(product: any, files: any[], fixedAssetFiles: any[]) {
+type DuplicateProductRow = {
+  name: string
+  sku: string | null
+  product_name: string
+  etsy_title: string
+  description: string
+  notes: string | null
+  contact: string | null
+  price: number | string
+  currency: string
+  license_type: string
+  commercial_price: number | string | null
+  folders: string[]
+  etsy_tags: string[]
+  template_id: string | null
+  complete: boolean
+  created_at: string
+}
+
+type DuplicateFileRow = {
+  id?: string
+  filename: string
+  original_name: string
+  folder?: string | null
+  variant?: string | null
+  asset_key?: string
+}
+
+function toConfig(product: DuplicateProductRow, files: DuplicateFileRow[], fixedAssetFiles: DuplicateFileRow[]) {
   return {
     name: product.name,
     sku: product.sku,

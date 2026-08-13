@@ -34,6 +34,12 @@ export type Database = {
         Update: { created_at?: string; event_type?: string; id?: string; metadata?: Json; owner_id?: string; product_id?: string | null }
         Relationships: []
       }
+      product_releases: {
+        Row: { bundle_filename: string; bundle_sha256: string; bundle_size: number; bundle_storage_path: string; build_id: string; created_at: string; id: string; listing_snapshot: Json; owner_id: string; product_id: string; release_summary: Json; version: number }
+        Insert: { bundle_filename: string; bundle_sha256: string; bundle_size: number; bundle_storage_path: string; build_id: string; created_at?: string; id?: string; listing_snapshot?: Json; owner_id: string; product_id: string; release_summary?: Json; version: number }
+        Update: { bundle_filename?: string; bundle_sha256?: string; bundle_size?: number; bundle_storage_path?: string; build_id?: string; created_at?: string; id?: string; listing_snapshot?: Json; owner_id?: string; product_id?: string; release_summary?: Json; version?: number }
+        Relationships: []
+      }
       product_templates: {
         Row: { assets: string[]; created_at: string; id: string; name: string; owner_id: string; rules: Json; updated_at: string }
         Insert: { assets?: string[]; created_at?: string; id?: string; name: string; owner_id: string; rules?: Json; updated_at?: string }

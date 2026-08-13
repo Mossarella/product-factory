@@ -42,6 +42,8 @@ mock.module('@/lib/zip-server', () => ({
 
 function builder(table: string) {
   const state: { rows: unknown; single: unknown } = { rows: null, single: null }
+  // The mocked Supabase builder is intentionally dynamic to exercise route chaining.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: Record<string, any> = {
     select: mock(() => chain),
     eq: mock((column: string, value: unknown) => {
@@ -154,7 +156,7 @@ describe('Supabase packaging workflow', () => {
     const response = await POST(new Request('http://localhost/api/products/TestProduct/build', { method: 'POST' }), context)
     expect(response.status).toBe(500)
     expect(await response.json()).toMatchObject({ error: 'database unavailable' })
-    expect(removedPaths).toEqual(['user-test-123/product-1/builds/v1.zip'])
+    expect(removedPaths).toEqual(['user-test-123/product-1/v1.zip'])
     expect(storedObjects.size).toBe(0)
     expect(builds).toHaveLength(0)
   })
@@ -164,7 +166,7 @@ describe('Supabase packaging workflow', () => {
     const response = await POST(new Request('http://localhost/api/products/TestProduct/build', { method: 'POST' }), context)
     expect(response.status).toBe(500)
     expect(await response.json()).toMatchObject({ error: 'product update unavailable' })
-    expect(removedPaths).toEqual(['user-test-123/product-1/builds/v1.zip'])
+    expect(removedPaths).toEqual(['user-test-123/product-1/v1.zip'])
     expect(storedObjects.size).toBe(0)
     expect(builds).toHaveLength(0)
   })
