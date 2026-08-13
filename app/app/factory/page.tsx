@@ -15,6 +15,7 @@ import { ProductInfo } from '@/components/ProductInfo'
 import { ProductSelector } from '@/components/ProductSelector'
 import { ReadmePreview } from '@/components/ReadmePreview'
 import { VersionHistory } from '@/components/VersionHistory'
+import { ReleasePanel } from '@/components/ReleasePanel'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
@@ -89,6 +90,7 @@ export default function Home() {
   const [zipPreviewText, setZipPreviewText] = useState<string | null>(null)
   const [heroImageLoaded, setHeroImageLoaded] = useState(false)
   const [buildSignal, setBuildSignal] = useState(0)
+  const [latestBuiltVersion, setLatestBuiltVersion] = useState<number | null>(null)
 
   const refreshProducts = useCallback(async () => {
     const response = await fetch('/api/products')
@@ -177,6 +179,7 @@ export default function Home() {
     setSelectedTemplateId((loaded as { templateId?: string | null }).templateId ?? null)
     setFiles([])
     setHeroImageLoaded(false)
+    setLatestBuiltVersion(normalized.latestBuild?.version ?? null)
     setEtsyTags(normalized.etsyTags)
 
     const restored = await Promise.all(normalized.mascotFiles.map(async (entry) => {
@@ -269,6 +272,7 @@ export default function Home() {
     setZipPreviewText(null)
     setHeroImageLoaded(false)
     setBuildSignal(0)
+    setLatestBuiltVersion(null)
     await refreshProducts()
   }
 
@@ -449,7 +453,7 @@ export default function Home() {
           dirty={dirty}
           saveFlash={saveFlash}
           saveError={saveError}
-          onSave={saveProduct}
+          onSave={async () => { await saveProduct(); }}
           onToggleZipPreview={toggleZipPreview}
           zipPreviewText={zipPreviewText}
         />
@@ -558,13 +562,26 @@ export default function Home() {
       {config && (
         <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">7. Build</h2>
-          <BuildProduct activeProduct={activeProduct!} readiness={readiness} onBuilt={() => setBuildSignal((s) => s + 1)} />
+          <BuildProduct
+            activeProduct={activeProduct!}
+            readiness={readiness}
+            onBuilt={(result) => {
+              setLatestBuiltVersion(result.version)
+              setBuildSignal((s) => s + 1)
+            }}
+          />
         </Card>
       )}
       {config && (
         <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">8. Version History</h2>
           <VersionHistory activeProduct={activeProduct!} mode="revert" refreshSignal={buildSignal} />
+        </Card>
+      )}
+      {config && (
+        <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
+          <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">9. Release</h2>
+          <ReleasePanel activeProduct={activeProduct!} buildVersion={latestBuiltVersion ?? config.latestBuild?.version ?? null} refreshSignal={buildSignal} />
         </Card>
       )}
     </div>
