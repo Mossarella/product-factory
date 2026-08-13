@@ -51,6 +51,11 @@ export function ProductSelector({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const previewLines = zipPreviewText?.split('\n').map((line) => line.trim()).filter(Boolean) ?? []
+  const previewFileCount = previewLines.filter((line) => !line.endsWith('/')).length
+  const previewHasReadme = previewLines.some((line) => line.toLowerCase().includes('readme.md'))
+  const previewHasManifest = previewLines.some((line) => line.toLowerCase().includes('manifest.json'))
+
   const productSelectItems = products.map((product) => ({
     value: product.name,
     label: <>{product.complete ? '✓' : '○'} {product.name} — {product.createdAt}</>,
@@ -201,8 +206,17 @@ export function ProductSelector({
       </div>
 
       {zipPreviewText !== null && (
-        <Card className="mt-3 border border-zinc-800 bg-zinc-900 py-0">
-          <pre className="overflow-x-auto p-3 text-xs text-zinc-400">{zipPreviewText}</pre>
+        <Card className="mt-3 border border-violet-400/20 bg-zinc-900/80 py-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2 font-mono text-[10px] uppercase tracking-widest">
+            <span className="text-violet-300">Package inspection</span>
+            <span className="text-zinc-500">{previewFileCount} files · preview only</span>
+          </div>
+          <div className="flex flex-wrap gap-2 px-3 py-2 font-mono text-xs">
+            <span className={previewHasReadme ? 'text-emerald-400' : 'text-amber-400'}>{previewHasReadme ? '✓' : '△'} README.md</span>
+            <span className={previewHasManifest ? 'text-emerald-400' : 'text-amber-400'}>{previewHasManifest ? '✓' : '△'} manifest.json</span>
+          </div>
+          {(!previewHasReadme || !previewHasManifest) && <p className="px-3 pb-2 font-mono text-xs text-amber-300">Review the warnings above before packaging.</p>}
+          <pre className="max-h-64 overflow-auto border-t border-zinc-800 p-3 text-xs text-zinc-400">{zipPreviewText}</pre>
         </Card>
       )}
     </div>
