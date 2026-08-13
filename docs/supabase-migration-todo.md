@@ -23,7 +23,7 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Add generated live-schema types and the first typed Supabase products API access.
 - [x] Replace Prisma reads and writes in Dashboard.
 - [x] Replace Prisma reads and writes in Collection, including product config, file uploads/downloads, slot assets, Veado assets, rename, duplicate, and delete.
-- [ ] Port the idempotent six-product sample loader.
+- [x] Port and test the idempotent six-product sample loader.
 - [x] Replace Product Templates CRUD data access.
 - [x] Replace Settings profile and avatar data access.
 - [x] Replace Factory profile, license-status, template, product, and build adapters.
@@ -70,4 +70,4 @@ Completed locally and remotely:
 - [x] First typed products API cutover.
 - [x] Migration architecture documentation.
 
-Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. Remaining work is to migrate adjacent Product Templates, Settings, Factory, and other legacy routes, then remove Auth.js, Nodemailer, Prisma, and the S3/MinIO helper after the full test suite passes.
+Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. The Supabase foundation, Product Templates, Settings, Factory adapters, license activation/status, and six-product sample loader are migrated. Stripe checkout, billing portal, and webhook work is intentionally deferred; remaining core focus is product packaging, Etsy listing generation, and end-to-end build/download verification.
