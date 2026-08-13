@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FixedAssetDef, ProductConfig, ProductSummary } from '@/lib/types'
 import { type TemplateRule, validateProduct } from '@/lib/template-rules'
+import { evaluateBuildReadiness } from '@/lib/build-readiness'
 import { MAX_PRODUCT_FILE_BYTES, mergeVisibleAssets, sanitizeAssetFilename } from '@/lib/utils'
 import { buildZipTree } from '@/lib/zip'
 
@@ -370,6 +371,16 @@ export default function Home() {
 
   const canCreate = license.plan === 'pro' || products.length < 3
   const visibleFixedAssets = fixedAssets.filter(a => activeAssets.includes(a.id))
+  const readiness = config
+    ? evaluateBuildReadiness(
+        { ...config, etsyTags },
+        files.map((entry) => ({ origName: entry.file.name, folder: entry.folder, variant: entry.variant })),
+        fixedAssets.map((asset) => ({ id: asset.id, blob: asset.blob })),
+        templates.find((template) => template.id === selectedTemplateId)?.rules ?? [],
+        heroImageLoaded,
+        shopIdentity,
+      )
+    : null
   const templateSelectItems = [
     { value: '__none__', label: '— None —' },
     ...templates.map((template) => ({ value: template.id, label: template.name })),
@@ -504,7 +515,7 @@ export default function Home() {
       {config && (
         <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
           <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">7. Build</h2>
-          <BuildProduct activeProduct={activeProduct!} onBuilt={() => setBuildSignal((s) => s + 1)} />
+          <BuildProduct activeProduct={activeProduct!} readiness={readiness} onBuilt={() => setBuildSignal((s) => s + 1)} />
         </Card>
       )}
       {config && (

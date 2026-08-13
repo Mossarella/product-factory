@@ -66,6 +66,14 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const templateRules = (template?.rules as unknown as TemplateRule[] | undefined) ?? []
   const validation = template ? validateProduct(configForValidation, templateRules) : null
+  const requiredFailures = (validation ?? []).filter((entry) => entry.required && entry.status === 'missing')
+  if (requiredFailures.length > 0) {
+    return NextResponse.json({
+      error: 'Product is not ready to package.',
+      code: 'BUILD_REQUIREMENTS_BLOCKED',
+      blocking: requiredFailures.map((entry) => ({ id: entry.ruleId, label: entry.label, detail: entry.detail ?? 'Required template requirement is missing.' })),
+    }, { status: 422 })
+  }
   const folderCounts = product.folders.map((label) => ({ label, count: mascotFiles.filter((file) => file.folder === label).length }))
   const readmeText = buildReadmeText(resolveTemplateData({
     productName: product.product_name,
@@ -115,8 +123,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { error: updateError } = await supabase.from('products').update({ build_version: version }).eq('owner_id', user.id).eq('id', product.id)
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-  const hasRequiredFailures = (validation ?? []).some((entry) => entry.required && entry.status === 'missing')
-  return NextResponse.json({ version, manifest, warnings: manifest.warnings, hasRequiredFailures, changelog })
+  return NextResponse.json({ version, manifest, warnings: manifest.warnings, hasRequiredFailures: false, changelog })
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {

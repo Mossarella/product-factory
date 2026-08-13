@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import type { BuildReadiness } from '@/lib/build-readiness'
 
 const STEPS = [
   'Validate files',
@@ -24,10 +25,11 @@ interface BuildResult {
 
 interface Props {
   activeProduct: string
+  readiness?: BuildReadiness | null
   onBuilt?: () => void
 }
 
-export function BuildProduct({ activeProduct, onBuilt }: Props) {
+export function BuildProduct({ activeProduct, readiness, onBuilt }: Props) {
   const [building, setBuilding] = useState(false)
   const [revealedSteps, setRevealedSteps] = useState(0)
   const [result, setResult] = useState<BuildResult | null>(null)
@@ -35,6 +37,10 @@ export function BuildProduct({ activeProduct, onBuilt }: Props) {
   const [notes, setNotes] = useState('')
 
   async function build() {
+    if (readiness && !readiness.canBuild) {
+      setError('Resolve the blocking requirements before generating a package.')
+      return
+    }
     setBuilding(true)
     setError(null)
     setResult(null)
@@ -70,6 +76,28 @@ export function BuildProduct({ activeProduct, onBuilt }: Props) {
 
   return (
     <div className="font-mono">
+      {readiness && (
+        <Card className={`mb-3 border p-3 ring-0 ${readiness.canBuild ? readiness.warnings.length ? 'border-yellow-500/30 bg-yellow-950/10' : 'border-emerald-500/30 bg-emerald-950/10' : 'border-red-500/30 bg-red-950/10'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className={`text-xs font-bold tracking-widest ${readiness.canBuild ? readiness.warnings.length ? 'text-yellow-300' : 'text-emerald-300' : 'text-red-300'}`}>
+                {readiness.canBuild ? readiness.warnings.length ? '⚠ READY WITH WARNINGS' : '✓ READY TO PACKAGE' : `✗ ${readiness.blocking.length} BLOCKING CHECK${readiness.blocking.length === 1 ? '' : 'S'}`}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">{readiness.canBuild ? readiness.warnings.length ? 'Review these warnings before generating the ZIP.' : 'All required checks passed.' : 'Resolve the items below before generating the ZIP.'}</p>
+            </div>
+            <span className="text-xs text-zinc-500">{readiness.items.filter((item) => item.ok).length}/{readiness.items.length}</span>
+          </div>
+          {readiness.items.some((item) => !item.ok) && (
+            <ul className="mt-3 space-y-1 border-t border-white/5 pt-2 text-xs">
+              {readiness.items.filter((item) => !item.ok).map((item) => (
+                <li key={item.id} className={item.severity === 'blocking' ? 'text-red-300' : 'text-yellow-300'}>
+                  {item.severity === 'blocking' ? '✗' : '⚠'} {item.label}: <span className="text-zinc-400">{item.detail}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       <Input
         placeholder="What changed? (optional)"
         value={notes}
@@ -80,11 +108,11 @@ export function BuildProduct({ activeProduct, onBuilt }: Props) {
       <Button
         type="button"
         variant="default"
-        disabled={building}
+        disabled={building || Boolean(readiness && !readiness.canBuild)}
         onClick={() => void build()}
         className="w-full border border-violet-600 bg-violet-600 py-3 text-base font-bold text-zinc-100 hover:bg-violet-500 disabled:opacity-50"
       >
-        {building ? 'Building…' : '📦 Build Product'}
+        {building ? 'Building…' : readiness && !readiness.canBuild ? 'Resolve Requirements' : '📦 Build Product'}
       </Button>
 
       {building && (

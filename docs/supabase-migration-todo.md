@@ -38,7 +38,9 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Migrate product source-file uploads, deletes, slot assets, Veado assets, and downloads.
 - [x] Migrate generated ZIP builds, manifests, changelogs, version downloads, and reverts.
 - [x] Implement private download authorization through authenticated Supabase Storage requests.
-- [ ] Verify ZIP creation and download behavior end to end against the live project.
+- [x] Verify ZIP creation and download behavior at the route/integration-test level; live browser verification remains pending.
+- [x] Add pre-build completeness checks with blocking and warning states in Factory.
+- [x] Reject missing required template rules before ZIP assembly and Storage writes.
 
 ## P2 — Remove unstable infrastructure
 
@@ -70,4 +72,4 @@ Completed locally and remotely:
 - [x] First typed products API cutover.
 - [x] Migration architecture documentation.
 
-Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. The Supabase foundation, Product Templates, Settings, Factory adapters, license activation/status, and six-product sample loader are migrated. Stripe checkout, billing portal, and webhook work is intentionally deferred; remaining core focus is product packaging, Etsy listing generation, and end-to-end build/download verification.
+Collection, dashboard, and build/download routes now use Supabase Auth, Postgres, and private Storage. The Supabase foundation, Product Templates, Settings, Factory adapters, license activation/status, six-product sample loader, and packaging readiness UX are migrated. Stripe checkout, billing portal, and webhook work is intentionally deferred; remaining core focus is Etsy listing generation, package inspection, reusable assets, and live browser verification.
