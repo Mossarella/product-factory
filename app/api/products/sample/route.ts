@@ -1,73 +1,52 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 import { SAMPLE_PRODUCTS } from '@/lib/sample-products'
 
 export async function POST() {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const userId = session.user.id
-    let created = 0
-    let existing = 0
+    const names = SAMPLE_PRODUCTS.map((sample) => sample.name)
+    const { data: existingProducts, error: existingError } = await supabase
+      .from('products')
+      .select('name')
+      .eq('owner_id', user.id)
+      .in('name', names)
 
-    // Sample loading is an explicit demo action, so it intentionally bypasses
-    // the normal free-plan product limit and remains safe to repeat.
-    await prisma.$transaction(async (tx) => {
-      for (const sample of SAMPLE_PRODUCTS) {
-        const product = await tx.product.findUnique({
-          where: { userId_name: { userId, name: sample.name } },
-          select: { id: true },
-        })
+    if (existingError) throw existingError
+    const existingNames = new Set((existingProducts ?? []).map((product) => product.name))
 
-        await tx.product.upsert({
-          where: { userId_name: { userId, name: sample.name } },
-          update: {
-            sku: sample.sku,
-            productName: sample.productName,
-            etsyTitle: sample.etsyTitle,
-            description: sample.description,
-            notes: sample.notes,
-            contact: sample.contact,
-            price: sample.price,
-            currency: sample.currency,
-            licenseType: sample.licenseType,
-            commercialPrice: sample.commercialPrice ?? null,
-            folders: sample.folders,
-            etsyTags: sample.etsyTags,
-          },
-          create: {
-            userId,
-            name: sample.name,
-            sku: sample.sku,
-            productName: sample.productName,
-            etsyTitle: sample.etsyTitle,
-            description: sample.description,
-            notes: sample.notes,
-            contact: sample.contact,
-            price: sample.price,
-            currency: sample.currency,
-            licenseType: sample.licenseType,
-            commercialPrice: sample.commercialPrice ?? null,
-            folders: sample.folders,
-            etsyTags: sample.etsyTags,
-            complete: false,
-          },
-          select: { id: true },
-        })
+    const rows = SAMPLE_PRODUCTS.map((sample) => ({
+      owner_id: user.id,
+      name: sample.name,
+      sku: sample.sku,
+      product_name: sample.productName,
+      etsy_title: sample.etsyTitle,
+      description: sample.description,
+      notes: sample.notes,
+      contact: sample.contact,
+      price: sample.price,
+      currency: sample.currency,
+      license_type: sample.licenseType,
+      commercial_price: sample.commercialPrice ?? null,
+      folders: sample.folders,
+      etsy_tags: sample.etsyTags,
+      complete: false,
+    }))
 
-        if (product) existing += 1
-        else created += 1
-      }
-    })
+    const { error: upsertError } = await supabase
+      .from('products')
+      .upsert(rows, { onConflict: 'owner_id,name' })
 
+    if (upsertError) throw upsertError
+
+    const existing = SAMPLE_PRODUCTS.filter((sample) => existingNames.has(sample.name)).length
     return NextResponse.json({
-      created,
+      created: SAMPLE_PRODUCTS.length - existing,
       existing,
-      products: SAMPLE_PRODUCTS.map((sample) => sample.name),
+      products: names,
     })
   } catch (error) {
     console.error('[sample-products] failed to load sample collection', error)

@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,6 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
-  const [devLoginUrl, setDevLoginUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,20 +23,18 @@ function LoginForm() {
     if (!trimmed) return
     setLoading(true)
     setError('')
-    setDevLoginUrl(null)
     try {
-      const result = await signIn('nodemailer', { email: trimmed, redirect: false, callbackUrl })
-      if (result?.error) {
-        setError('Could not send magic link. Check your email address and try again.')
+      const supabase = createClient()
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackUrl)}`
+      const { error: signInError } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: { emailRedirectTo: redirectTo },
+      })
+      if (signInError) {
+        setError(signInError.message)
         return
       }
       setSent(true)
-      // Fetch dev login URL — returns null in production, full URL in dev
-      const res = await fetch(`/api/auth/dev-url?email=${encodeURIComponent(trimmed)}`)
-      if (res.ok) {
-        const data = await res.json() as { devLoginUrl: string | null }
-        if (data.devLoginUrl) setDevLoginUrl(data.devLoginUrl)
-      }
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -66,29 +63,13 @@ function LoginForm() {
                 type="button"
                 variant="link"
                 size="xs"
-                onClick={() => { setSent(false); setEmail(''); setDevLoginUrl(null) }}
+                onClick={() => { setSent(false); setEmail('') }}
                 className="mt-3 text-zinc-600 hover:text-zinc-400 transition-colors"
               >
                 Use a different email
               </Button>
             </Card>
 
-            {devLoginUrl && (
-              <Card className="border border-amber-700 bg-amber-950/40 p-4">
-                <p className="text-xs uppercase tracking-widest text-amber-500 mb-2">
-                  Dev mode — skip email
-                </p>
-                <a
-                  href={devLoginUrl}
-                  className="block w-full text-center border border-amber-600 bg-amber-600 px-4 py-2 text-sm text-zinc-950 font-bold hover:bg-amber-500 transition-colors"
-                >
-                  Login as {email} →
-                </a>
-                <p className="mt-2 text-xs text-amber-800">
-                  Only shown when NODE_ENV ≠ production.
-                </p>
-              </Card>
-            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

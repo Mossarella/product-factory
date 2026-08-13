@@ -1,31 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 import { sanitizeName } from '@/lib/api-files'
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const products = await prisma.product.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'asc' },
-    select: { name: true, complete: true, createdAt: true },
-  })
+  const { data: products, error } = await supabase
+    .from('products')
+    .select('name, complete, created_at')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json(
-    products.map((p) => ({
-      name: p.name,
-      complete: p.complete,
-      createdAt: p.createdAt.toISOString(),
+    products.map((product) => ({
+      name: product.name,
+      complete: product.complete,
+      createdAt: product.created_at,
     })),
   )
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { name } = (await request.json()) as { name: string }
   const sanitizedName = sanitizeName(name ?? '')
@@ -33,55 +37,67 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product name is required' }, { status: 400 })
   }
 
-  const productCount = await prisma.product.count({ where: { userId } })
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } })
-  if ((user?.plan ?? 'free') === 'free' && productCount >= 3) {
+  const [{ count: productCount }, { data: profile }] = await Promise.all([
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('owner_id', user.id),
+    supabase.from('profiles').select('plan').eq('id', user.id).maybeSingle(),
+  ])
+
+  if ((profile?.plan ?? 'free') === 'free' && (productCount ?? 0) >= 3) {
     return NextResponse.json({ error: 'Free plan limit reached' }, { status: 403 })
   }
 
-  const existing = await prisma.product.findUnique({
-    where: { userId_name: { userId, name: sanitizedName } },
-  })
+  const { data: existing } = await supabase
+    .from('products')
+    .select('id')
+    .eq('owner_id', user.id)
+    .eq('name', sanitizedName)
+    .maybeSingle()
+
   if (existing) return NextResponse.json({ error: 'Product already exists' }, { status: 409 })
 
-  const product = await prisma.product.create({
-    data: {
-      userId,
+  const { data: product, error } = await supabase
+    .from('products')
+    .insert({
+      owner_id: user.id,
       name: sanitizedName,
       sku: '',
-      productName: sanitizedName,
-      etsyTitle: '',
+      product_name: sanitizedName,
+      etsy_title: '',
       description: '',
       notes: '',
       contact: '',
       price: 0,
       currency: 'USD',
-      licenseType: 'personal',
+      license_type: 'personal',
       folders: ['Main'],
-      etsyTags: [],
+      etsy_tags: [],
       complete: false,
-    },
-    include: { files: true },
-  })
+    })
+    .select('*')
+    .single()
+
+  if (error || !product) {
+    return NextResponse.json({ error: error?.message ?? 'Could not create product' }, { status: 500 })
+  }
 
   return NextResponse.json(
     {
       name: product.name,
       sku: product.sku,
-      productName: product.productName,
-      etsyTitle: product.etsyTitle,
+      productName: product.product_name,
+      etsyTitle: product.etsy_title,
       description: product.description,
       notes: product.notes,
       contact: product.contact,
-      price: product.price,
+      price: Number(product.price),
       currency: product.currency,
-      licenseType: product.licenseType,
-      commercialPrice: product.commercialPrice ?? undefined,
+      licenseType: product.license_type,
+      commercialPrice: product.commercial_price == null ? undefined : Number(product.commercial_price),
       folders: product.folders,
       mascotFiles: [],
-      etsyTags: product.etsyTags,
+      etsyTags: product.etsy_tags,
       complete: product.complete,
-      createdAt: product.createdAt.toISOString(),
+      createdAt: product.created_at,
     },
     { status: 201 },
   )

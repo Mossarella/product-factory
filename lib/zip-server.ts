@@ -3,7 +3,6 @@ import { createHash } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { assetPath, firstFile } from './api-files'
-import { getObject, productKey } from './object-storage'
 import { sanitizeAssetFilename } from './utils'
 
 export interface BuildMascotFile {
@@ -78,6 +77,7 @@ export async function buildZipBuffer(opts: {
   version: number
   template: { id: string; name: string } | null
   validation: ValidationEntry[] | null
+  downloadFile: (storagePath: string) => Promise<Buffer | null>
 }): Promise<{ buffer: Buffer; manifest: BuildManifest }> {
   const zip = new JSZip()
   const warnings: string[] = []
@@ -87,13 +87,13 @@ export async function buildZipBuffer(opts: {
   const grouped = groupFiles(opts.mascotFiles)
   for (const [folder, files] of grouped) {
     for (const [index, file] of files.entries()) {
-      const object = await getObject(productKey(opts.productId, 'mascot-files', file.filename))
-      if (!object) {
+      const body = await opts.downloadFile(`mascot-files/${file.filename}`)
+      if (!body) {
         warnings.push(`Skipped missing file: ${file.origName}`)
         continue
       }
       const zipFilename = resolveFilename(opts.displayProductName, file, index, files.length)
-      zip.folder('Files')!.folder(folder)!.file(zipFilename, object.body)
+      zip.folder('Files')!.folder(folder)!.file(zipFilename, body)
       manifestFiles.push({ folder, zipFilename, origName: file.origName })
     }
   }
@@ -102,14 +102,14 @@ export async function buildZipBuffer(opts: {
 
   const overriddenKeys = new Set(opts.fixedAssetFiles.map((f) => f.assetKey))
   for (const asset of opts.fixedAssetFiles) {
-    const object = await getObject(productKey(opts.productId, 'fixed-assets', asset.filename))
-    if (!object) {
+    const body = await opts.downloadFile(`fixed-assets/${asset.filename}`)
+    if (!body) {
       warnings.push(`Skipped missing fixed asset: ${asset.assetKey}`)
       continue
     }
     const ext = extension(asset.origName) || 'png'
     const zipFilename = `${sanitizeAssetFilename(asset.assetKey)}.${ext}`
-    zip.file(zipFilename, object.body)
+    zip.file(zipFilename, body)
     manifestAssets.push({ assetKey: asset.assetKey, zipFilename, source: 'override' })
   }
 

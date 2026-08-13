@@ -61,6 +61,10 @@ function buildOptions(overrides: Partial<Parameters<typeof buildZipBuffer>[0]> =
     version: 1,
     template: null,
     validation: null,
+    downloadFile: async (storagePath: string) => {
+      const object = await mockGetObject(`products/product-1/${storagePath}`)
+      return object?.body ?? null
+    },
     ...overrides,
   }
 }

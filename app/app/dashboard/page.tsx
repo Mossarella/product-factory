@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
+import { PRODUCT_FILES_BUCKET, productStoragePath } from '@/lib/supabase/storage'
 import Link from 'next/link'
 import { greeting, formatDate } from '@/lib/utils'
 import { computeStats } from '@/lib/dashboard-stats'
@@ -9,25 +9,32 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
 
 export default async function DashboardPage() {
-  const session = await auth()
-  if (!session?.user?.id) redirect('/login')
-  const userId = session.user.id
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  const products = await prisma.product.findMany({
-    where: { userId },
-    select: {
-      id: true,
-      name: true,
-      complete: true,
-      description: true,
-      etsyTitle: true,
-      etsyTags: true,
-      createdAt: true,
-      files: { select: { id: true, origName: true } },
-    },
+  const { data: productRows, error: productsError } = await supabase.from('products').select('id, name, complete, description, etsy_title, etsy_tags, created_at').eq('owner_id', user.id).order('created_at', { ascending: false })
+  if (productsError) throw new Error(productsError.message)
+  const rows = productRows ?? []
+  const productIds = rows.map((product) => product.id)
+  const { data: fileRows, error: filesError } = productIds.length
+    ? await supabase.from('product_files').select('id, product_id, original_name').eq('owner_id', user.id).in('product_id', productIds)
+    : { data: [], error: null }
+  if (filesError) throw new Error(filesError.message)
+  const products = rows.map((product) => ({
+    id: product.id,
+    name: product.name,
+    complete: product.complete,
+    description: product.description,
+    etsyTitle: product.etsy_title,
+    etsyTags: product.etsy_tags,
+    createdAt: product.created_at,
+    files: (fileRows ?? []).filter((file) => file.product_id === product.id).map((file) => ({ id: file.id, origName: file.original_name })),
+  }))
+  const { total, readyToPublish, needsReview, missingHero, needReadme, thisMonth, noGifPreview, sharedTags } = await computeStats(products, async (product) => {
+    const { data: object } = await supabase.storage.from(PRODUCT_FILES_BUCKET).download(productStoragePath(user.id, product.id, 'etsy-slots', 'etsy-hero'))
+    return !object
   })
-
-  const { total, readyToPublish, needsReview, missingHero, needReadme, thisMonth, noGifPreview, sharedTags } = await computeStats(products)
 
   const stats = [
     { label: 'Total Products', value: total, color: 'text-zinc-100' },
@@ -44,7 +51,7 @@ export default async function DashboardPage() {
       <div className="mb-8 border-b border-white/10 pb-6">
         <div className="mb-2 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.28em] text-violet-300/70"><span className="h-1.5 w-1.5 bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,.9)]" /> Command deck / overview</div>
         <h1 className="text-3xl font-black uppercase tracking-tight text-zinc-100 font-mono">
-          {greeting(session.user.name)}
+          {greeting(user.user_metadata?.full_name || user.email || 'Operator')}
         </h1>
         <p className="mt-1 text-xs font-mono text-zinc-500">{formatDate()}</p>
       </div>

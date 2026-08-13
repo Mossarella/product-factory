@@ -1,165 +1,149 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
-import type { Product, MascotFile, FixedAssetFile, ProductBuild } from '@prisma/client'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-type ProductWithFiles = Product & { files: MascotFile[]; fixedAssetFiles: FixedAssetFile[]; builds: ProductBuild[] }
+async function getConfig(supabase: Awaited<ReturnType<typeof createClient>>, ownerId: string, productName: string) {
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('*')
+    .eq('owner_id', ownerId)
+    .eq('name', productName)
+    .maybeSingle()
 
-function toConfig(p: ProductWithFiles) {
+  if (productError) throw productError
+  if (!product) return null
+
+  const [{ data: files, error: filesError }, { data: fixedAssetFiles, error: assetsError }, { data: builds, error: buildsError }] = await Promise.all([
+    supabase.from('product_files').select('*').eq('owner_id', ownerId).eq('product_id', product.id).order('created_at', { ascending: true }),
+    supabase.from('fixed_asset_files').select('*').eq('owner_id', ownerId).eq('product_id', product.id).order('created_at', { ascending: true }),
+    supabase.from('product_builds').select('version, created_at').eq('owner_id', ownerId).eq('product_id', product.id).order('version', { ascending: false }).limit(1),
+  ])
+
+  if (filesError) throw filesError
+  if (assetsError) throw assetsError
+  if (buildsError) throw buildsError
+
   return {
-    name: p.name,
-    sku: p.sku,
-    productName: p.productName,
-    etsyTitle: p.etsyTitle,
-    description: p.description,
-    notes: p.notes,
-    contact: p.contact,
-    price: p.price,
-    currency: p.currency,
-    licenseType: p.licenseType,
-    commercialPrice: p.commercialPrice ?? undefined,
-    folders: p.folders,
-    mascotFiles: p.files.map((f) => ({
-      id: f.id,
-      filename: f.filename,
-      origName: f.origName,
-      folder: f.folder,
-      variant: f.variant,
+    name: product.name,
+    sku: product.sku,
+    productName: product.product_name,
+    etsyTitle: product.etsy_title,
+    description: product.description,
+    notes: product.notes,
+    contact: product.contact,
+    price: Number(product.price),
+    currency: product.currency,
+    licenseType: product.license_type,
+    commercialPrice: product.commercial_price == null ? undefined : Number(product.commercial_price),
+    folders: product.folders,
+    mascotFiles: (files ?? []).map((file) => ({
+      id: file.id,
+      filename: file.filename,
+      origName: file.original_name,
+      folder: file.folder,
+      variant: file.variant,
     })),
-    fixedAssetFiles: p.fixedAssetFiles.map((f) => ({
-      id: f.id,
-      assetKey: f.assetKey,
-      filename: f.filename,
-      origName: f.origName,
+    fixedAssetFiles: (fixedAssetFiles ?? []).map((file) => ({
+      id: file.id,
+      assetKey: file.asset_key,
+      filename: file.filename,
+      origName: file.original_name,
     })),
-    etsyTags: p.etsyTags,
-    templateId: p.templateId ?? null,
-    latestBuild: p.builds[0] ? { version: p.builds[0].version, createdAt: p.builds[0].createdAt.toISOString() } : null,
-    complete: p.complete,
-    createdAt: p.createdAt.toISOString(),
+    etsyTags: product.etsy_tags,
+    templateId: product.template_id,
+    latestBuild: builds?.[0] ? { version: builds[0].version, createdAt: builds[0].created_at } : null,
+    complete: product.complete,
+    createdAt: product.created_at,
   }
 }
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET(_request: Request, { params }: RouteContext) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { name } = await params
-  const productName = decodeURIComponent(name)
-
-  const product = await prisma.product.findUnique({
-    where: { userId_name: { userId: session.user.id, name: productName } },
-    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
-  })
-  if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-
-  return NextResponse.json(toConfig(product))
+  const config = await getConfig(supabase, user.id, decodeURIComponent(name))
+  if (!config) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+  return NextResponse.json(config)
 }
 
-export async function POST(request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+export async function POST(request: Request, { params }: RouteContext) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { name } = await params
   const productName = decodeURIComponent(name)
-
   let body: Record<string, unknown>
   try {
-    body = JSON.parse(await request.text())
+    body = JSON.parse(await request.text()) as Record<string, unknown>
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const mascotFiles = (body.mascotFiles as Array<{
-    id?: string
-    filename: string
-    origName: string
-    folder: string
-    variant: string
-  }>) ?? []
-
-  const fixedAssetFiles = (body.fixedAssetFiles as Array<{
-    id?: string
-    assetKey: string
-    filename: string
-    origName: string
-  }>) ?? []
-
-  const product = await prisma.product.upsert({
-    where: { userId_name: { userId, name: productName } },
-    update: {
-      sku: (body.sku as string) ?? '',
-      productName: (body.productName as string) ?? productName,
-      etsyTitle: (body.etsyTitle as string) ?? '',
-      description: (body.description as string) ?? '',
-      notes: (body.notes as string) ?? '',
-      contact: (body.contact as string) ?? '',
-      price: (body.price as number) ?? 0,
-      currency: (body.currency as string) ?? 'USD',
-      licenseType: (body.licenseType as string) ?? 'personal',
-      commercialPrice: (body.commercialPrice as number | null | undefined) ?? null,
-      folders: (body.folders as string[]) ?? ['Main'],
-      etsyTags: (body.etsyTags as string[]) ?? [],
-      templateId: (body.templateId as string | null | undefined) ?? null,
-      complete: (body.complete as boolean) ?? false,
-    },
-    create: {
-      userId,
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .upsert({
+      owner_id: user.id,
       name: productName,
       sku: (body.sku as string) ?? '',
-      productName: (body.productName as string) ?? productName,
-      etsyTitle: (body.etsyTitle as string) ?? '',
+      product_name: (body.productName as string) ?? productName,
+      etsy_title: (body.etsyTitle as string) ?? '',
       description: (body.description as string) ?? '',
       notes: (body.notes as string) ?? '',
       contact: (body.contact as string) ?? '',
       price: (body.price as number) ?? 0,
       currency: (body.currency as string) ?? 'USD',
-      licenseType: (body.licenseType as string) ?? 'personal',
-      commercialPrice: (body.commercialPrice as number | null | undefined) ?? null,
+      license_type: (body.licenseType as string) ?? 'personal',
+      commercial_price: (body.commercialPrice as number | null | undefined) ?? null,
       folders: (body.folders as string[]) ?? ['Main'],
-      etsyTags: (body.etsyTags as string[]) ?? [],
-      templateId: (body.templateId as string | null | undefined) ?? null,
+      etsy_tags: (body.etsyTags as string[]) ?? [],
+      template_id: (body.templateId as string | null | undefined) ?? null,
       complete: (body.complete as boolean) ?? false,
-    },
-    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
-  })
+    }, { onConflict: 'owner_id,name' })
+    .select('id')
+    .single()
 
-  // Replace mascot files
-  await prisma.mascotFile.deleteMany({ where: { productId: product.id } })
+  if (productError || !product) {
+    return NextResponse.json({ error: productError?.message ?? 'Could not save product' }, { status: 500 })
+  }
+
+  const mascotFiles = (body.mascotFiles as Array<{ id?: string; filename: string; origName: string; folder: string; variant: string }>) ?? []
+  const fixedAssetFiles = (body.fixedAssetFiles as Array<{ id?: string; assetKey: string; filename: string; origName: string }>) ?? []
+
+  const { error: deleteFilesError } = await supabase.from('product_files').delete().eq('owner_id', user.id).eq('product_id', product.id)
+  if (deleteFilesError) return NextResponse.json({ error: deleteFilesError.message }, { status: 500 })
   if (mascotFiles.length > 0) {
-    await prisma.mascotFile.createMany({
-      data: mascotFiles.map((f) => ({
-        ...(f.id ? { id: f.id } : {}),
-        productId: product.id,
-        filename: f.filename,
-        origName: f.origName,
-        folder: f.folder,
-        variant: f.variant,
-      })),
-    })
+    const { error } = await supabase.from('product_files').insert(mascotFiles.map((file) => ({
+      ...(file.id ? { id: file.id } : {}),
+      owner_id: user.id,
+      product_id: product.id,
+      filename: file.filename,
+      original_name: file.origName,
+      folder: file.folder,
+      variant: file.variant,
+    })))
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Replace fixed asset files
-  await prisma.fixedAssetFile.deleteMany({ where: { productId: product.id } })
+  const { error: deleteAssetsError } = await supabase.from('fixed_asset_files').delete().eq('owner_id', user.id).eq('product_id', product.id)
+  if (deleteAssetsError) return NextResponse.json({ error: deleteAssetsError.message }, { status: 500 })
   if (fixedAssetFiles.length > 0) {
-    await prisma.fixedAssetFile.createMany({
-      data: fixedAssetFiles.map((f) => ({
-        ...(f.id ? { id: f.id } : {}),
-        productId: product.id,
-        assetKey: f.assetKey,
-        filename: f.filename,
-        origName: f.origName,
-      })),
-    })
+    const { error } = await supabase.from('fixed_asset_files').insert(fixedAssetFiles.map((file) => ({
+      ...(file.id ? { id: file.id } : {}),
+      owner_id: user.id,
+      product_id: product.id,
+      asset_key: file.assetKey,
+      filename: file.filename,
+      original_name: file.origName,
+    })))
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const updated = await prisma.product.findUnique({
-    where: { id: product.id },
-    include: { files: true, fixedAssetFiles: true, builds: { orderBy: { version: 'desc' }, take: 1 } },
-  })
-
-  return NextResponse.json(toConfig(updated!))
+  const config = await getConfig(supabase, user.id, productName)
+  return NextResponse.json(config)
 }

@@ -1,36 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
-import { getObject, productKey } from '@/lib/object-storage'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { PRODUCT_BUILDS_BUCKET, productStoragePath } from '@/lib/supabase/storage'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-export async function GET(_request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+export async function GET(_request: Request, { params }: RouteContext) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { name } = await params
-  const productName = decodeURIComponent(name)
-
-  const product = await prisma.product.findUnique({
-    where: { userId_name: { userId, name: productName } },
-    include: { builds: { orderBy: { version: 'desc' }, take: 1 } },
-  })
+  const { data: product, error: productError } = await supabase.from('products').select('id, name, product_name').eq('owner_id', user.id).eq('name', decodeURIComponent(name)).maybeSingle()
+  if (productError) return NextResponse.json({ error: productError.message }, { status: 500 })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+  const { data: build, error: buildError } = await supabase.from('product_builds').select('version, filename, storage_path').eq('owner_id', user.id).eq('product_id', product.id).order('version', { ascending: false }).limit(1).maybeSingle()
+  if (buildError) return NextResponse.json({ error: buildError.message }, { status: 500 })
+  if (!build) return NextResponse.json({ error: 'No build found' }, { status: 404 })
 
-  const latestBuild = product.builds[0]
-  if (!latestBuild) return NextResponse.json({ error: 'No build found' }, { status: 404 })
-
-  const object = await getObject(productKey(product.id, 'builds', latestBuild.filename))
-  if (!object) return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
-
-  const downloadName = `${(product.productName || product.name).replace(/[^\w\- ]/g, '')}Pack.zip`
-  return new NextResponse(new Uint8Array(object.body), {
-    headers: {
-      'Content-Type': 'application/zip',
-      'Content-Disposition': `attachment; filename="${downloadName}"`,
-    },
-  })
+  const storagePath = build.storage_path ?? productStoragePath(user.id, product.id, build.filename)
+  const { data: object, error: downloadError } = await supabase.storage.from(PRODUCT_BUILDS_BUCKET).download(storagePath)
+  if (downloadError || !object) return NextResponse.json({ error: 'Build file not found' }, { status: 404 })
+  const downloadName = `${(product.product_name || product.name).replace(/[^\w\- ]/g, '')}Pack.zip`
+  return new NextResponse(await object.arrayBuffer(), { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${downloadName}"` } })
 }

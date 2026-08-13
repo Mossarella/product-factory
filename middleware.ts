@@ -1,35 +1,21 @@
-import NextAuth from 'next-auth'
-import authConfig from './auth.config'
+import { NextResponse, type NextRequest } from 'next/server'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { NextResponse } from 'next/server'
+import { updateSession } from '@/lib/supabase/proxy'
 
-export default NextAuth(authConfig).auth((req) => {
-  const { pathname } = req.nextUrl
+export default async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  const { response, user } = await updateSession(request)
 
-  if (req.method === 'POST' && pathname.startsWith('/api/products/') && pathname.endsWith('/ai')) {
-    const result = checkRateLimit(`ai:${req.auth?.user?.id ?? 'anonymous'}`, 10, 60_000)
-
-    if (!result.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } }
-      )
-    }
-  }
-
-  if (req.method === 'POST' && pathname === '/api/auth/signin/nodemailer') {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-    const result = checkRateLimit(`signin:${ip}`, 5, 15 * 60_000)
+  if (request.method === 'POST' && pathname.startsWith('/api/products/') && pathname.endsWith('/ai')) {
+    const result = checkRateLimit(`ai:${user?.id ?? 'anonymous'}`, 10, 60_000)
 
     if (!result.allowed) {
       return NextResponse.json(
         { error: 'Too many requests' },
-        { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } }
+        { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } },
       )
     }
   }
-
-  const isLoggedIn = !!req.auth
 
   const needsAuth =
     pathname.startsWith('/app') ||
@@ -39,12 +25,14 @@ export default NextAuth(authConfig).auth((req) => {
     pathname === '/api/buy' ||
     pathname === '/api/billing/portal'
 
-  if (!isLoggedIn && needsAuth) {
-    const loginUrl = new URL('/login', req.nextUrl.origin)
-    loginUrl.searchParams.set('callbackUrl', pathname)
+  if (!user && needsAuth) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('callbackUrl', `${pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(loginUrl)
   }
-})
+
+  return response
+}
 
 export const config = {
   matcher: [
@@ -54,6 +42,6 @@ export const config = {
     '/api/activate',
     '/api/buy',
     '/api/billing/portal',
-    '/api/auth/:path*',
+    '/auth/callback',
   ],
 }

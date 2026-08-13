@@ -1,22 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { prisma } from '@/lib/db'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { contentTypeFor, readBodyBuffer, sanitizeFilename } from '@/lib/api-files'
-import { productKey, putObject } from '@/lib/object-storage'
+import { productStoragePath, PRODUCT_FILES_BUCKET } from '@/lib/supabase/storage'
 import { MAX_PRODUCT_FILE_BYTES } from '@/lib/utils'
 
 interface RouteContext {
   params: Promise<{ name: string }>
 }
 
-export async function POST(request: NextRequest, { params }: RouteContext) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = session.user.id
+export async function POST(request: Request, { params }: RouteContext) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { name } = await params
   const productName = decodeURIComponent(name)
-
-  const product = await prisma.product.findUnique({ where: { userId_name: { userId, name: productName } } })
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('owner_id', user.id)
+    .eq('name', productName)
+    .maybeSingle()
+  if (productError) return NextResponse.json({ error: productError.message }, { status: 500 })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
   const contentLength = Number(request.headers.get('content-length') ?? '0')
@@ -30,8 +35,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     if (buffer.byteLength > MAX_PRODUCT_FILE_BYTES) {
       return NextResponse.json({ error: 'File must be 50MB or smaller' }, { status: 413 })
     }
-    await putObject(productKey(product.id, 'mascot-files', filename), buffer, contentTypeFor(filename))
-    return NextResponse.json({ success: true })
+
+    const storagePath = productStoragePath(user.id, product.id, 'mascot-files', filename)
+    const { error: uploadError } = await supabase.storage
+      .from(PRODUCT_FILES_BUCKET)
+      .upload(storagePath, buffer, { contentType: contentTypeFor(filename), upsert: true })
+    if (uploadError) throw uploadError
+
+    const { error: metadataError } = await supabase
+      .from('product_files')
+      .upsert({
+        owner_id: user.id,
+        product_id: product.id,
+        filename,
+        original_name: request.headers.get('x-filename') ?? filename,
+        folder: 'Main',
+        variant: '',
+        storage_path: storagePath,
+      }, { onConflict: 'id' })
+    if (metadataError) throw metadataError
+
+    return NextResponse.json({ success: true, filename, storagePath })
   } catch {
     return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
   }
