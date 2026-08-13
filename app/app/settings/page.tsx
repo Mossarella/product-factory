@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -11,8 +11,9 @@ import { cn } from '@/lib/cn'
 import { MAX_AVATAR_BYTES, avatarColor, getInitials } from '@/lib/utils'
 
 export default function SettingsPage() {
-  const { data: session, update } = useSession()
-  const [name, setName] = useState(session?.user?.name ?? '')
+  const [user, setUser] = useState<{ email?: string | null; user_metadata?: { full_name?: string | null } } | null>(null)
+  const [name, setName] = useState('')
+  const [image, setImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveFlash, setSaveFlash] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -25,8 +26,15 @@ export default function SettingsPage() {
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch('/api/profile').then((r) => (r.ok ? r.json() : null)).then((data) => {
+    const supabase = createClient()
+    void Promise.all([
+      supabase.auth.getUser(),
+      fetch('/api/profile').then((r) => (r.ok ? r.json() : null)),
+    ]).then(([authResult, data]) => {
+      const nextUser = authResult.data.user
+      setUser(nextUser ? { email: nextUser.email, user_metadata: nextUser.user_metadata } : null)
       if (!data) return
+      setName(data.name ?? nextUser?.user_metadata?.full_name ?? '')
       setShopName(data.shopName ?? '')
       setShopContact(data.shopContact ?? '')
       setShopDescription(data.shopDescription ?? '')
@@ -34,8 +42,7 @@ export default function SettingsPage() {
     })
   }, [])
 
-  const email = session?.user?.email ?? null
-  const image = session?.user?.image ?? null
+  const email = user?.email ?? null
 
   async function saveName() {
     const trimmed = name.trim()
@@ -47,7 +54,7 @@ export default function SettingsPage() {
       body: JSON.stringify({ name: trimmed }),
     })
     if (res.ok) {
-      await update({ name: trimmed })
+      setName(trimmed)
       setSaveFlash(true)
       setTimeout(() => setSaveFlash(false), 2000)
     }
@@ -62,7 +69,7 @@ export default function SettingsPage() {
       body: JSON.stringify({ name, shopName, shopContact, shopDescription, readmeFooter }),
     })
     if (res.ok) {
-      await update({ shopName, shopContact, shopDescription, readmeFooter })
+      setShopName(shopName)
       setShopSaveFlash(true)
       setTimeout(() => setShopSaveFlash(false), 2000)
     }
@@ -85,7 +92,7 @@ export default function SettingsPage() {
     })
     if (res.ok) {
       const data = await res.json() as { image: string }
-      await update({ image: data.image })
+      setImage(data.image)
     } else {
       const body = await res.json().catch(() => ({}))
       setAvatarError(body.error || 'Could not upload image')

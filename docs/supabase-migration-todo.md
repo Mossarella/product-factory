@@ -25,8 +25,9 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Replace Prisma reads and writes in Collection, including product config, file uploads/downloads, slot assets, Veado assets, rename, duplicate, and delete.
 - [ ] Port the idempotent six-product sample loader.
 - [x] Replace Product Templates CRUD data access.
-- [ ] Replace Settings profile/avatar data access.
-- [ ] Replace Factory adapters and remaining dependent actions.
+- [x] Replace Settings profile and avatar data access.
+- [x] Replace Factory profile, license-status, template, product, and build adapters.
+- [ ] Migrate Factory license activation and Stripe checkout/portal routes after license/subscription schema mapping.
 - [ ] Verify that every query remains owner-scoped through both repository filters and RLS.
 
 ## P1 — Supabase Storage and packaging
