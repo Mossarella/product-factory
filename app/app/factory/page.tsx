@@ -264,27 +264,26 @@ export default function Home() {
     await refreshProducts()
   }
 
-  const saveProduct = useCallback(async () => {
+  const saveProduct = useCallback(async (): Promise<boolean> => {
     setSaveError(null)
-    if (!activeProduct || !config) return
+    if (!activeProduct || !config) return false
     if (files.some((file) => !file.file || !file.folder)) {
       window.alert('Each product file needs a file and folder.')
-      return
+            return false
     }
-
     const persistableAssets = fixedAssets.filter((asset) => asset.blob && (!asset.builtin || asset.manuallyPicked))
     const oversizedFile = files.find((file) => file.file.size > MAX_PRODUCT_FILE_BYTES)
     if (oversizedFile) {
       setSaveError(`${oversizedFile.file.name} is larger than 50MB.`)
-      return
+      return false
     }
     const oversizedAsset = persistableAssets.find((asset) => asset.blob!.size > MAX_PRODUCT_FILE_BYTES)
     if (oversizedAsset) {
       setSaveError(`${oversizedAsset.label} is larger than 50MB.`)
-      return
+            return false
     }
-
     try {
+
       const encodedName = encodeURIComponent(activeProduct)
       await Promise.all(files.map(async (file) => {
         const response = await fetch(`/api/products/${encodedName}/file`, {
@@ -333,8 +332,10 @@ export default function Home() {
       setDirty(false)
       setSaveFlash(true)
       setTimeout(() => setSaveFlash(false), 2000)
+      return true
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save product')
+      return false
     }
   }, [activeProduct, config, etsyTags, files, fixedAssets, refreshProducts, selectedTemplateId])
 
@@ -507,6 +508,8 @@ export default function Home() {
               etsyTags={etsyTags}
               shopIdentity={shopIdentity}
               onTagsChange={handleTagsChange}
+              onConfigChange={handleConfigChange}
+              onSaveListing={saveProduct}
               heroImageLoaded={heroImageLoaded}
             />
           </div>

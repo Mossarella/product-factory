@@ -35,8 +35,8 @@ export function ProductInfo({ config, onChange }: Props) {
         </label>
         <label className="flex-1">
           <span className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">Etsy Title</span>
-          <Input value={config.etsyTitle} onChange={(event) => onChange({ etsyTitle: event.target.value })} />
-          <span className={`mt-1 block text-xs ${counterClass}`}>{titleLength} / 140</span>
+          <Input maxLength={140} value={config.etsyTitle} onChange={(event) => onChange({ etsyTitle: event.target.value.slice(0, 140) })} aria-describedby="etsy-title-counter" />
+          <span id="etsy-title-counter" className={`mt-1 block text-xs ${counterClass}`}>{titleLength} / 140</span>
         </label>
       </div>
 
