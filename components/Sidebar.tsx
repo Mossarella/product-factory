@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useSession, signOut } from 'next-auth/react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { avatarColor, getInitials } from '@/lib/utils'
 import { cn } from '@/lib/cn'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -64,11 +65,19 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const name = session?.user?.name ?? null
-  const email = session?.user?.email ?? null
-  const image = session?.user?.image ?? null
-  const shopLabel = session?.user?.shopName || name || 'My Shop'
+  const router = useRouter()
+  const [profile, setProfile] = useState<{ name?: string | null; shopName?: string | null } | null>(null)
+  const [email, setEmail] = useState<string | null>(null)
+  const [image, setImage] = useState<string | null>(null)
+  useEffect(() => {
+    const supabase = createClient()
+    void Promise.all([supabase.auth.getUser(), fetch('/api/profile').then((response) => response.ok ? response.json() : null)]).then(([authResult, nextProfile]) => {
+      setEmail(authResult.data.user?.email ?? null)
+      setProfile(nextProfile)
+    })
+  }, [])
+  const name = profile?.name ?? null
+  const shopLabel = profile?.shopName || name || 'My Shop'
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-screen w-56 shrink-0 flex-col border-r border-violet-400/15 bg-zinc-950/95 shadow-[12px_0_40px_rgba(0,0,0,.22)]">
@@ -126,7 +135,9 @@ export function Sidebar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => {
+                void createClient().auth.signOut().then(() => router.push('/'))
+              }}
               className="font-mono text-sm"
             >
               Sign out

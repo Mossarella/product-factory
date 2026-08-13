@@ -16,7 +16,7 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [ ] Add a development-only test login path for `test@example.com` that cannot be enabled in production.
 - [x] Add profile bootstrap logic for new `auth.users` records.
 - [x] Protect authenticated routes with verified Supabase claims.
-- [ ] Add login, logout, expired-session, and callback regression tests.
+- [ ] Add login, logout, expired-session, and callback regression tests. Supabase logout is now wired in the Sidebar.
 
 ## P1 — Supabase data access
 
@@ -41,7 +41,7 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 
 ## P2 — Remove unstable infrastructure
 
-- [ ] Remove Auth.js and Nodemailer after Supabase Auth tests pass.
+- [ ] Remove Auth.js and Nodemailer after Supabase Auth tests pass. The authenticated app layout, Sidebar, Settings, and AI route no longer depend on Auth.js; licensing and Stripe routes remain.
 - [ ] Remove Prisma runtime usage and local PostgreSQL assumptions after Supabase repository tests pass.
 - [ ] Remove the S3/MinIO helper and Docker storage dependency after Storage tests pass.
 - [ ] Update environment documentation and deployment configuration.
