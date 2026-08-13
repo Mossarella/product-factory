@@ -27,7 +27,8 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Replace Product Templates CRUD data access.
 - [x] Replace Settings profile and avatar data access.
 - [x] Replace Factory profile, license-status, template, product, and build adapters.
-- [ ] Migrate Factory license activation and Stripe checkout/portal routes after license/subscription schema mapping.
+- [x] Migrate Factory license activation and license-status routes to Supabase RPCs.
+- [ ] Migrate Stripe checkout/portal/webhook routes after payment-provider integration testing.
 - [ ] Verify that every query remains owner-scoped through both repository filters and RLS.
 
 ## P1 — Supabase Storage and packaging

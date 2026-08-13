@@ -1,18 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
-import { redeemKey } from '@/lib/keys'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
-export async function POST(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST(request: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { key } = await request.json() as { key: string }
-  const result = await redeemKey(key, session.user.id)
+  const body = await request.json().catch(() => null) as { key?: unknown } | null
+  const key = typeof body?.key === 'string' ? body.key.trim() : ''
+  if (!key) return NextResponse.json({ error: 'License key is required' }, { status: 400 })
 
-  if ('error' in result) {
-    const status = result.error === 'Invalid license key' ? 404 : 409
-    return NextResponse.json({ error: result.error }, { status })
+  const { data, error } = await supabase.rpc('redeem_license_key', { p_key: key })
+  if (error) {
+    const status = error.message.includes('Invalid or already-used') ? 404 : 409
+    return NextResponse.json({ error: error.message }, { status })
   }
-
-  return NextResponse.json(result)
+  const result = data?.[0]
+  if (!result) return NextResponse.json({ error: 'License activation failed' }, { status: 409 })
+  return NextResponse.json({ plan: result.plan, activatedAt: result.activated_at })
 }
