@@ -79,6 +79,7 @@ export default function Home() {
   const [config, setConfig] = useState<ProductConfig | null>(null)
   const [files, setFiles] = useState<FileEntry[]>([])
   const [fixedAssets, setFixedAssets] = useState<FixedAssetDef[]>(INITIAL_FIXED_ASSETS)
+  const [loadouts, setLoadouts] = useState<{ id: string; name: string; assetKeys: string[] }[]>([])
   const [templates, setTemplates] = useState<{ id: string; name: string; assets: string[]; rules: TemplateRule[] }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [etsyTags, setEtsyTags] = useState<string[]>([])
@@ -107,6 +108,13 @@ export default function Home() {
       ])
     })()
   }, [refreshProducts])
+
+  useEffect(() => {
+    fetch('/api/asset-loadouts')
+      .then(async (r) => (r.ok ? r.json() : []))
+      .then(setLoadouts)
+      .catch(() => setLoadouts([]))
+  }, [])
 
   useEffect(() => {
     fetch('/api/product-templates')
@@ -344,6 +352,34 @@ export default function Home() {
     setZipPreviewText((current) => current === null ? buildZipTree(config.productName, files, fixedAssets) : null)
   }
 
+  const saveLoadout = async (name: string) => {
+    const assetKeys = fixedAssets.filter((asset) => asset.blob).map((asset) => asset.id)
+    const response = await fetch('/api/asset-loadouts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, assetKeys }),
+    })
+    if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? 'Could not save loadout')
+    const created = await response.json() as { id: string; name: string; assetKeys: string[] }
+    setLoadouts((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)))
+  }
+
+  const applyLoadout = (assetKeys: string[]) => {
+    const keySet = new Set(assetKeys)
+    setFixedAssets((current) => current.map((asset) => ({
+      ...asset,
+      blob: keySet.has(asset.id) ? asset.blob : null,
+      manuallyPicked: keySet.has(asset.id) ? asset.manuallyPicked : false,
+    })))
+    setDirty(true)
+  }
+
+  const deleteLoadout = async (id: string) => {
+    const response = await fetch(`/api/asset-loadouts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error('Could not delete loadout')
+    setLoadouts((current) => current.filter((loadout) => loadout.id !== id))
+  }
+
   const addCustomAsset = () => {
     setFixedAssets((current) => [...current, {
       id: crypto.randomUUID(), label: 'Custom asset', slot: null, zipName: 'CUSTOM.png', builtin: false, accept: '*/*', blob: null,
@@ -487,6 +523,10 @@ export default function Home() {
             )
           }
           onAddCustom={addCustomAsset}
+          loadouts={loadouts}
+          onSaveLoadout={saveLoadout}
+          onApplyLoadout={applyLoadout}
+          onDeleteLoadout={deleteLoadout}
         />
       </Card>
       {config && (

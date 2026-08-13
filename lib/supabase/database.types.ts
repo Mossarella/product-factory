@@ -40,6 +40,12 @@ export type Database = {
         Update: { build_version?: number; commercial_price?: number | null; complete?: boolean; contact?: string; created_at?: string; currency?: string; description?: string; etsy_tags?: string[]; etsy_title?: string; folders?: string[]; id?: string; license_type?: string; name?: string; notes?: string; owner_id?: string; price?: number; product_name?: string; sku?: string; template_id?: string | null; updated_at?: string }
         Relationships: []
       }
+      asset_loadouts: {
+        Row: { asset_keys: string[]; created_at: string; id: string; name: string; owner_id: string; updated_at: string }
+        Insert: { asset_keys?: string[]; created_at?: string; id?: string; name: string; owner_id: string; updated_at?: string }
+        Update: { asset_keys?: string[]; created_at?: string; id?: string; name?: string; owner_id?: string; updated_at?: string }
+        Relationships: []
+      }
       license_keys: {
         Row: { id: string; issued_at: string; key: string; plan: string; used_at: string | null; used_by_user_id: string | null }
         Insert: { id?: string; issued_at?: string; key: string; plan?: string; used_at?: string | null; used_by_user_id?: string | null }
