@@ -28,6 +28,12 @@ export type Database = {
         Update: { created_at?: string; filename?: string; folder?: string; id?: string; original_name?: string; owner_id?: string; product_id?: string; storage_path?: string | null; variant?: string }
         Relationships: []
       }
+      product_events: {
+        Row: { created_at: string; event_type: string; id: string; metadata: Json; owner_id: string; product_id: string | null }
+        Insert: { created_at?: string; event_type: string; id?: string; metadata?: Json; owner_id: string; product_id?: string | null }
+        Update: { created_at?: string; event_type?: string; id?: string; metadata?: Json; owner_id?: string; product_id?: string | null }
+        Relationships: []
+      }
       product_templates: {
         Row: { assets: string[]; created_at: string; id: string; name: string; owner_id: string; rules: Json; updated_at: string }
         Insert: { assets?: string[]; created_at?: string; id?: string; name: string; owner_id: string; rules?: Json; updated_at?: string }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeStats } from '@/lib/dashboard-stats'
+import { aggregateDashboardEvents } from '@/lib/dashboard-events'
 import { PRODUCT_FILES_BUCKET, productStoragePath } from '@/lib/supabase/storage'
 
 export async function GET() {
@@ -17,6 +18,14 @@ export async function GET() {
     : { data: [], error: null }
   if (filesError) return NextResponse.json({ error: filesError.message }, { status: 500 })
 
+  const { data: eventRows, error: eventsError } = await supabase.from('product_events').select('event_type, created_at, metadata').eq('owner_id', user.id).in('event_type', ['package_created', 'asset_reused']).order('created_at', { ascending: false })
+  if (eventsError) return NextResponse.json({ error: eventsError.message }, { status: 500 })
+  const eventMetrics = aggregateDashboardEvents((eventRows ?? []).map((event) => ({
+    eventType: event.event_type as 'package_created' | 'asset_reused',
+    createdAt: event.created_at,
+    metadata: (event.metadata ?? {}) as Record<string, unknown>,
+  })))
+
   const stats = await computeStats(productRows.map((product) => ({
     id: product.id,
     name: product.name,
@@ -31,5 +40,5 @@ export async function GET() {
     return !object
   })
 
-  return NextResponse.json({ ...stats, lastExport: null })
+  return NextResponse.json({ ...stats, ...eventMetrics })
 }

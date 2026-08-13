@@ -4,6 +4,7 @@ import { PRODUCT_FILES_BUCKET, productStoragePath } from '@/lib/supabase/storage
 import Link from 'next/link'
 import { greeting, formatDate } from '@/lib/utils'
 import { computeStats } from '@/lib/dashboard-stats'
+import { aggregateDashboardEvents } from '@/lib/dashboard-events'
 import { Card } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
@@ -21,6 +22,14 @@ export default async function DashboardPage() {
     ? await supabase.from('product_files').select('id, product_id, original_name').eq('owner_id', user.id).in('product_id', productIds)
     : { data: [], error: null }
   if (filesError) throw new Error(filesError.message)
+  const { data: eventRows, error: eventsError } = await supabase.from('product_events').select('event_type, created_at, metadata').eq('owner_id', user.id).in('event_type', ['package_created', 'asset_reused']).order('created_at', { ascending: false })
+  if (eventsError) throw new Error(eventsError.message)
+  const { productsPackaged, filesReused, lastExport } = aggregateDashboardEvents((eventRows ?? []).map((event) => ({
+    eventType: event.event_type as 'package_created' | 'asset_reused',
+    createdAt: event.created_at,
+    metadata: (event.metadata ?? {}) as Record<string, unknown>,
+  })))
+
   const products = rows.map((product) => ({
     id: product.id,
     name: product.name,
@@ -42,7 +51,9 @@ export default async function DashboardPage() {
     { label: 'Needs Review', value: needsReview, color: 'text-amber-400' },
     { label: 'Missing Hero', value: missingHero, color: missingHero > 0 ? 'text-red-400' : 'text-zinc-500' },
     { label: 'Need README', value: needReadme, color: needReadme > 0 ? 'text-red-400' : 'text-zinc-500' },
-    { label: 'Last Export', value: 'Never', color: 'text-zinc-600' },
+    { label: 'Products Packaged', value: productsPackaged, color: 'text-violet-300' },
+    { label: 'Files Reused', value: filesReused, color: 'text-cyan-300' },
+    { label: 'Last Export', value: lastExport ? new Date(lastExport).toLocaleDateString() : 'Never', color: lastExport ? 'text-zinc-100' : 'text-zinc-600' },
   ]
 
   return (
@@ -94,11 +105,17 @@ export default async function DashboardPage() {
             <p className="text-xs text-zinc-600 font-mono mt-2">products share identical tag sets</p>
           </Card>
 
-          {/*
-            TODO: Average Export Time — needs explicit export event tracking
-            TODO: README reused — needs fixed asset system (readme, thank you card, contact)
-            TODO: Shared Assets Saved — needs asset reuse tracking
-          */}
+          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
+            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Last Package</p>
+            <p className="text-lg font-bold font-mono text-zinc-100">{lastExport ? new Date(lastExport).toLocaleDateString() : 'Never'}</p>
+            <p className="text-xs text-zinc-600 font-mono mt-2">successful package event</p>
+          </Card>
+
+          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
+            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Assets Reused</p>
+            <p className="text-4xl font-bold font-mono text-cyan-300">{filesReused}</p>
+            <p className="text-xs text-zinc-600 font-mono mt-2">fixed assets included in packages</p>
+          </Card>
         </div>
       </div>
 

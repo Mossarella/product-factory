@@ -7,6 +7,15 @@ interface RouteContext {
   params: Promise<{ name: string; version: string }>
 }
 
+async function cleanupFailedRevert(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, productId: string, storagePath: string, version: number, removeBuildRow: boolean) {
+  const { error: storageCleanupError } = await supabase.storage.from(PRODUCT_BUILDS_BUCKET).remove([storagePath])
+  if (storageCleanupError) console.error('Failed to clean up orphaned reverted ZIP', storageCleanupError)
+  if (removeBuildRow) {
+    const { error: rowCleanupError } = await supabase.from('product_builds').delete().eq('owner_id', userId).eq('product_id', productId).eq('version', version)
+    if (rowCleanupError) console.error('Failed to clean up failed reverted build row', rowCleanupError)
+  }
+}
+
 export async function POST(_request: Request, { params }: RouteContext) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -34,8 +43,14 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   const changelog = `Reverted to v${targetVersion}`
   const { error: insertError } = await supabase.from('product_builds').insert({ owner_id: user.id, product_id: product.id, version: newVersion, filename, file_size: buffer.byteLength, manifest: JSON.parse(JSON.stringify(manifest)), changelog, reverted_from: targetVersion, storage_path: storagePath })
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  if (insertError) {
+    await cleanupFailedRevert(supabase, user.id, product.id, storagePath, newVersion, false)
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
   const { error: updateError } = await supabase.from('products').update({ build_version: newVersion }).eq('owner_id', user.id).eq('id', product.id)
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+  if (updateError) {
+    await cleanupFailedRevert(supabase, user.id, product.id, storagePath, newVersion, true)
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
   return NextResponse.json({ version: newVersion, revertedFrom: targetVersion, changelog })
 }

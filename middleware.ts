@@ -21,9 +21,7 @@ export default async function middleware(request: NextRequest) {
     pathname.startsWith('/app') ||
     pathname.startsWith('/api/products') ||
     pathname === '/api/license' ||
-    pathname === '/api/activate' ||
-    pathname === '/api/buy' ||
-    pathname === '/api/billing/portal'
+    pathname === '/api/activate'
 
   if (!user && needsAuth) {
     const loginUrl = new URL('/login', request.url)
@@ -40,8 +38,6 @@ export const config = {
     '/api/products/:path*',
     '/api/license',
     '/api/activate',
-    '/api/buy',
-    '/api/billing/portal',
     '/auth/callback',
   ],
 }

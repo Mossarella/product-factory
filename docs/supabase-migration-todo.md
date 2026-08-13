@@ -30,6 +30,7 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 - [x] Migrate Factory license activation and license-status routes to Supabase RPCs.
 - [ ] Migrate Stripe checkout/portal/webhook routes after payment-provider integration testing.
 - [ ] Verify that every query remains owner-scoped through both repository filters and RLS.
+- [x] Apply and verify the owner-scoped product events migration for dashboard telemetry.
 
 ## P1 — Supabase Storage and packaging
 
@@ -44,15 +45,15 @@ This checklist tracks the ground-up replacement of the unstable Auth.js, Nodemai
 
 ## P2 — Remove unstable infrastructure
 
-- [ ] Remove Auth.js and Nodemailer after Supabase Auth tests pass. The authenticated app layout, Sidebar, Settings, and AI route no longer depend on Auth.js; licensing and Stripe routes remain.
-- [ ] Remove Prisma runtime usage and local PostgreSQL assumptions after Supabase repository tests pass.
-- [ ] Remove the S3/MinIO helper and Docker storage dependency after Storage tests pass.
+- [x] Remove Auth.js and Nodemailer from the active runtime. Historical migration notes remain in `docs/`.
+- [x] Remove Prisma runtime usage, seed/schema files, and local PostgreSQL assumptions from the active runtime.
+- [x] Remove the S3/MinIO helper and Docker storage dependency from the active runtime.
 - [ ] Update environment documentation and deployment configuration.
 - [ ] Remove obsolete development bypasses and secrets.
 
 ## P2 — Verification and deployment
 
-- [ ] Run TypeScript, ESLint, unit, integration, and Playwright tests.
+- [ ] Run TypeScript, ESLint, unit, integration, and Playwright tests. Dashboard Playwright smoke coverage passes; the authenticated packaging spec remains gated on `SUPABASE_E2E_EMAIL` and `SUPABASE_E2E_MAGIC_LINK`.
 - [ ] Add RLS isolation tests proving one user cannot read or modify another user's products or files.
 - [ ] Add Storage policy tests for upload, read, update, delete, and unauthorized access.
 - [ ] Select a persistent Next.js deployment host.
