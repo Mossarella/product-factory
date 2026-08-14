@@ -1,4 +1,5 @@
 import type { BuildManifest, ValidationEntry } from '@/lib/zip-server'
+import type { Json } from '@/lib/supabase/database.types'
 
 export interface ReleaseListingSnapshot {
   productName: string
@@ -27,6 +28,30 @@ export interface ReleaseSummary {
 export interface ReleaseSnapshot {
   listing: ReleaseListingSnapshot
   summary: ReleaseSummary
+}
+
+function isRecord(value: Json): value is { [key: string]: Json | undefined } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function validateReleaseSnapshotArtifacts(input: {
+  listing: Json
+  summary: Json
+  productId: string
+  productName: string
+  version: number
+}): boolean {
+  if (!isRecord(input.listing) || !isRecord(input.summary)) return false
+  const listingTags = input.listing.tags
+  return input.listing.productName === input.productName
+    && typeof input.listing.title === 'string'
+    && typeof input.listing.description === 'string'
+    && Array.isArray(listingTags)
+    && listingTags.every((tag) => typeof tag === 'string')
+    && input.summary.productId === input.productId
+    && input.summary.productName === input.productName
+    && input.summary.version === input.version
+    && typeof input.summary.builtAt === 'string'
 }
 
 export function buildEtsyListingText(listing: ReleaseListingSnapshot): string {

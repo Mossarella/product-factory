@@ -73,7 +73,14 @@ export function ReleasePanel({ activeProduct, buildVersion, refreshSignal = 0, c
       })
       const body = await response.json().catch(() => ({})) as Partial<ReleaseResponse> & { error?: string; code?: string }
       if (!response.ok) {
-        setError(body.code === 'RELEASE_ARTIFACTS_MISSING' ? 'Build this product again to embed release artifacts.' : body.error || 'Could not finalize release')
+        const errorMessage = body.code === 'STALE_BUILD'
+          ? 'This package is stale. Refresh the product and finalize the latest build.'
+          : body.code === 'RELEASE_ARTIFACTS_MISSING'
+            ? 'Build this product again to embed release artifacts.'
+            : body.code === 'RELEASE_ARTIFACTS_INVALID' || body.code === 'RELEASE_ARTIFACTS_MISMATCH'
+              ? 'This ZIP has invalid or mismatched release metadata. Rebuild the product before finalizing.'
+              : body.error || 'Could not finalize release'
+        setError(errorMessage)
         return
       }
       if (body.release) {
@@ -97,7 +104,8 @@ export function ReleasePanel({ activeProduct, buildVersion, refreshSignal = 0, c
         <span className="shrink-0 text-[10px] uppercase tracking-widest text-zinc-600">{releaseCountLabel}</span>
       </div>
 
-      <Card className={`mb-3 border p-3 ring-0 ${isCurrentReleased ? 'border-emerald-500/30 bg-emerald-950/10' : buildVersion ? 'border-violet-500/30 bg-violet-950/10' : 'border-zinc-800 bg-zinc-950/40'}`}>
+              <Card className={`mb-3 border p-3 ring-0 ${isCurrentReleased ? 'border-emerald-500/30 bg-emerald-950/10' : buildVersion ? 'border-violet-500/30 bg-violet-950/10' : 'border-zinc-800 bg-zinc-950/40'}`}>
+
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className={`text-xs font-bold tracking-widest ${isCurrentReleased ? 'text-emerald-300' : buildVersion ? 'text-violet-200' : 'text-zinc-500'}`}>
