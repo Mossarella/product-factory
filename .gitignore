@@ -1,10 +1,32 @@
-# Product catalog — local only, not shared via git
-products/
+# Product catalog — local only
+/products/
+
+# Avatar uploads — local only
+/avatars/
+
+# License data — never commit
+license.json
+keys.json
+
+# Environment
+.env.local
+.env
+
+# Next.js
+.next/
+out/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Node
+node_modules/
+npm-debug.log*
 
 # System
 .DS_Store
 Thumbs.db
-
-# Logs
 *.log
-node_modules/

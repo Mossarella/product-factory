@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env
+.env.*
+docs
+tests
+*.md
+docker-compose.yml
+tsconfig.ci.tsbuildinfo
+tsconfig.tsbuildinfo
+.github

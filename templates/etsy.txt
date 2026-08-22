@@ -34,6 +34,8 @@ You'll get a ZIP file with everything organised and ready to go.
 No physical item is shipped.
 
 ━━━ USAGE RIGHTS ━━━
+{{licenseBlock}}
+
 {{notes}}
 
 ━━━ QUESTIONS? ━━━

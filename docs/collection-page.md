@@ -1,0 +1,529 @@
+# Spec: Collection — Product Inventory Page
+
+## Overview
+A new sidebar section `/app/collection` showing all the user's products as a game-style
+item inventory. Left panel = scrollable product grid. Right panel = full scrollable detail
+view for the selected product.
+
+---
+
+## Route & files
+
+| File | Action |
+|---|---|
+| `app/app/collection/page.tsx` | New client component |
+| `components/Sidebar.tsx` | Add "Collection" nav item |
+
+---
+
+## Layout
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Collection            [12 products]   [search input]        │
+├──────────────────────────────┬───────────────────────────────┤
+│  Product grid (left, ~45%)   │  Detail panel (right, ~55%)   │
+│  2-column card grid          │  Scrollable                   │
+│  Scrollable independently    │                               │
+└──────────────────────────────┴───────────────────────────────┘
+```
+
+Full page height minus header: `h-[calc(100vh-120px)]`. Both panels scroll independently.
+
+---
+
+## Product Card (left panel)
+
+Fixed size: full width of column, ~180px tall.
+
+```
+┌────────────────────────┐
+│                        │
+│   ██  (initial avatar) │  ← 56×56 colored square with product initial
+│                        │
+│  Product Name          │  ← truncated, font-mono text-sm
+│  $8.50  ·  3 files     │  ← muted detail row
+│  ● Ready               │  ← status badge
+└────────────────────────┘
+```
+
+- Selected: `border-violet-500 bg-zinc-800/80`
+- Hover: `border-zinc-600`
+- Default: `border-zinc-800 bg-zinc-900/60`
+- Transition: `transition-colors`
+
+**Initial avatar**: deterministic color based on product name initial.
+Map first char to one of 6 colors (cycle through):
+```ts
+const AVATAR_COLORS = [
+  'bg-violet-700', 'bg-emerald-700', 'bg-amber-700',
+  'bg-sky-700', 'bg-rose-700', 'bg-teal-700',
+]
+function avatarColor(name: string) {
+  const code = name.charCodeAt(0) ?? 0
+  return AVATAR_COLORS[code % AVATAR_COLORS.length]
+}
+```
+
+**Status badge**:
+- `complete: true` → `text-emerald-400` dot + "Ready"
+- `complete: false` AND files > 0 OR etsyTitle set → `text-amber-400` dot + "In Progress"
+- Otherwise → `text-zinc-600` dot + "Empty"
+
+(Status based on summary data first pass; after detail is loaded, use mascotFiles.length + etsyTitle for accuracy.)
+
+---
+
+## Detail Panel (right panel)
+
+When no product is selected:
+```
+(centered, muted)
+Select a product to view details
+```
+
+When a product is selected: show loading spinner while fetching config, then render:
+
+### Header
+```
+ProductName                          [Open in Factory →]
+SKU-001  ·  Created 15 Jul 2025
+● Ready
+```
+
+### Sections (separated by `<hr className="border-zinc-800 my-5"/>`)
+
+**1. Pricing & License**
+```
+PRICE           LICENSE
+$8.50 USD       Personal
+```
+If `licenseType === 'both'`: show both prices.
+
+**2. Etsy Listing**
+```
+ETSY TITLE
+[title text, full wrap]
+
+DESCRIPTION
+[description, max 4 lines, truncated with "show more" toggle]
+```
+
+**3. Tags**
+Render each tag as a small chip:
+```tsx
+<span className="border border-zinc-700 px-2 py-0.5 text-xs font-mono text-zinc-400">
+  {tag}
+</span>
+```
+Wrap in `flex flex-wrap gap-1.5`.
+
+**4. Files**
+```
+FILES  (total count)
+────────────────────
+Main          8 files
+Transparent   4 files
+```
+Group `mascotFiles` by `folder`. Show folder rows.
+
+**5. Loadout**
+If `loadoutId` set, fetch loadout name from the already-loaded loadouts list (passed down or fetched).
+```
+LOADOUT
+Coloring Book
+```
+If none: show "— None"
+
+**6. Readiness checklist**
+```
+READINESS
+✓  Has files
+✓  Etsy title set
+✗  Description missing
+✓  Tags added
+✓  Marked complete
+```
+Items:
+- Has files: `mascotFiles.length > 0`
+- Etsy title: `etsyTitle.trim() !== ''`
+- Description: `description.trim() !== ''`
+- Tags: `etsyTags.length > 0`
+- Marked complete: `complete`
+
+---
+
+## Search / filter
+Simple text filter on product name (client-side).
+Input at top right of the header row:
+```tsx
+<input
+  placeholder="Search…"
+  value={search}
+  onChange={e => setSearch(e.target.value)}
+  className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none w-40"
+/>
+```
+Filter: `products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))`
+
+---
+
+## Data fetching
+
+```ts
+// On mount
+const [products, setProducts] = useState<ProductSummary[]>([])
+const [detailCache, setDetailCache] = useState<Record<string, ProductConfig>>({})
+const [selectedName, setSelectedName] = useState<string | null>(null)
+const [loadingDetail, setLoadingDetail] = useState(false)
+const [loadouts, setLoadouts] = useState<{ id: string; name: string }[]>([])
+
+useEffect(() => {
+  fetch('/api/products').then(r => r.json()).then(setProducts)
+  fetch('/api/loadouts').then(r => r.json()).then(setLoadouts)
+}, [])
+
+async function selectProduct(name: string) {
+  setSelectedName(name)
+  if (detailCache[name]) return  // already cached
+  setLoadingDetail(true)
+  const res = await fetch(`/api/products/${encodeURIComponent(name)}/config`)
+  const data = await res.json()
+  setDetailCache(prev => ({ ...prev, [name]: data }))
+  setLoadingDetail(false)
+}
+```
+
+---
+
+## Sidebar update
+
+Add to `NAV` array in `components/Sidebar.tsx` (after Dashboard, before Factory):
+
+```ts
+{
+  href: '/app/collection',
+  label: 'Collection',
+  icon: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="1" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="9" y="1" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="1" y="9" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="9" y="9" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
+},
+```
+
+---
+
+## Full component scaffold
+
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import { ProductConfig, ProductSummary } from '@/lib/types'
+
+// avatar color helper
+const AVATAR_COLORS = ['bg-violet-700','bg-emerald-700','bg-amber-700','bg-sky-700','bg-rose-700','bg-teal-700']
+function avatarColor(name: string) {
+  return AVATAR_COLORS[(name.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
+}
+
+// status
+function productStatus(p: ProductSummary): 'ready' | 'in-progress' | 'empty' {
+  if (p.complete) return 'ready'
+  return 'empty'  // refine to 'in-progress' after detail is loaded
+}
+function detailStatus(c: ProductConfig): 'ready' | 'in-progress' | 'empty' {
+  if (c.complete) return 'ready'
+  if (c.mascotFiles.length > 0 || c.etsyTitle.trim() !== '') return 'in-progress'
+  return 'empty'
+}
+
+const STATUS_STYLES = {
+  ready: { dot: 'bg-emerald-400', label: 'Ready', text: 'text-emerald-400' },
+  'in-progress': { dot: 'bg-amber-400', label: 'In Progress', text: 'text-amber-400' },
+  empty: { dot: 'bg-zinc-600', label: 'Empty', text: 'text-zinc-500' },
+}
+
+export default function CollectionPage() {
+  const [products, setProducts] = useState<ProductSummary[]>([])
+  const [detailCache, setDetailCache] = useState<Record<string, ProductConfig>>({})
+  const [selectedName, setSelectedName] = useState<string | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [loadouts, setLoadouts] = useState<{ id: string; name: string }[]>([])
+  const [search, setSearch] = useState('')
+  const [showFullDesc, setShowFullDesc] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/products').then(r => r.json()).then(setProducts)
+    fetch('/api/loadouts').then(r => r.json()).then(setLoadouts)
+  }, [])
+
+  async function selectProduct(name: string) {
+    setSelectedName(name)
+    setShowFullDesc(false)
+    if (detailCache[name]) return
+    setLoadingDetail(true)
+    const res = await fetch(`/api/products/${encodeURIComponent(name)}/config`)
+    const data: ProductConfig = await res.json()
+    setDetailCache(prev => ({ ...prev, [name]: data }))
+    setLoadingDetail(false)
+  }
+
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  )
+  const detail = selectedName ? detailCache[selectedName] : null
+
+  // files grouped by folder
+  const filesByFolder: Record<string, number> = {}
+  if (detail) {
+    for (const f of detail.mascotFiles) {
+      filesByFolder[f.folder] = (filesByFolder[f.folder] ?? 0) + 1
+    }
+  }
+
+  const loadoutName = detail?.loadoutId
+    ? (loadouts.find(l => l.id === detail.loadoutId)?.name ?? 'Unknown')
+    : null
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Page header */}
+      <div className="px-8 pt-8 pb-4 shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-100 font-mono">Collection</h1>
+            <p className="text-zinc-500 text-sm mt-1 font-mono">{products.length} products</p>
+          </div>
+          <input
+            placeholder="Search…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-mono text-zinc-300 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none w-44"
+          />
+        </div>
+      </div>
+
+      {/* Main two-panel area */}
+      <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
+        {/* Left — grid */}
+        <div className="w-72 shrink-0 overflow-y-auto pr-2">
+          {filtered.length === 0 && (
+            <p className="text-zinc-600 font-mono text-sm mt-4">No products found.</p>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            {filtered.map(p => {
+              const status = productStatus(p)
+              const s = STATUS_STYLES[status]
+              const isSelected = p.name === selectedName
+              return (
+                <button
+                  key={p.name}
+                  onClick={() => selectProduct(p.name)}
+                  className={`text-left border p-3 transition-colors ${ isSelected
+                    ? 'border-violet-500 bg-zinc-800/80'
+                    : 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-600'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className={`w-10 h-10 ${avatarColor(p.name)} flex items-center justify-center mb-3`}>
+                    <span className="text-white font-bold font-mono text-lg uppercase">
+                      {p.name[0]}
+                    </span>
+                  </div>
+                  {/* Name */}
+                  <p className="text-xs font-mono text-zinc-200 truncate leading-tight mb-1">{p.name}</p>
+                  {/* Status */}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                    <span className={`text-xs font-mono ${s.text}`}>{s.label}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px bg-zinc-800 shrink-0" />
+
+        {/* Right — detail */}
+        <div className="flex-1 overflow-y-auto">
+          {!selectedName && (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-zinc-600 font-mono text-sm">Select a product to view details.</p>
+            </div>
+          )}
+          {selectedName && loadingDetail && (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-zinc-600 font-mono text-sm animate-pulse">Loading…</p>
+            </div>
+          )}
+          {selectedName && !loadingDetail && detail && (() => {
+            const status = detailStatus(detail)
+            const s = STATUS_STYLES[status]
+            return (
+              <div className="pb-12">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-1">
+                  <div>
+                    <h2 className="text-xl font-bold text-zinc-100 font-mono">{detail.productName || detail.name}</h2>
+                    <p className="text-xs text-zinc-600 font-mono mt-0.5">
+                      {detail.sku && <span className="mr-3">{detail.sku}</span>}
+                      Created {formatDate(detail.createdAt)}
+                    </p>
+                  </div>
+                  <a
+                    href={`/app/factory`}
+                    className="border border-violet-700 bg-violet-700/20 px-4 py-1.5 text-xs text-violet-300 hover:bg-violet-700/40 font-mono transition-colors shrink-0 ml-4"
+                  >
+                    Open in Factory →
+                  </a>
+                </div>
+                <div className="flex items-center gap-1.5 mb-6">
+                  <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                  <span className={`text-sm font-mono ${s.text}`}>{s.label}</span>
+                </div>
+
+                <hr className="border-zinc-800 mb-5" />
+
+                {/* Pricing & License */}
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Pricing & License</p>
+                  <div className="flex gap-8">
+                    <div>
+                      <p className="text-xs text-zinc-600 font-mono mb-1">Price</p>
+                      <p className="text-lg font-bold font-mono text-zinc-100">
+                        ${detail.price.toFixed(2)} <span className="text-xs text-zinc-500">{detail.currency}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-600 font-mono mb-1">License</p>
+                      <p className="text-sm font-mono text-zinc-300 capitalize">{detail.licenseType}</p>
+                      {detail.licenseType === 'both' && detail.commercialPrice != null && (
+                        <p className="text-xs text-zinc-500 font-mono">Commercial: ${detail.commercialPrice.toFixed(2)}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-zinc-800 mb-5" />
+
+                {/* Etsy Listing */}
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Etsy Listing</p>
+                  {detail.etsyTitle ? (
+                    <p className="text-sm font-mono text-zinc-200 mb-3 leading-relaxed">{detail.etsyTitle}</p>
+                  ) : (
+                    <p className="text-sm font-mono text-zinc-600 mb-3 italic">No title set</p>
+                  )}
+                  {detail.description ? (
+                    <div>
+                      <p className={`text-xs font-mono text-zinc-400 leading-relaxed whitespace-pre-wrap ${!showFullDesc ? 'line-clamp-4' : ''}`}>
+                        {detail.description}
+                      </p>
+                      {detail.description.length > 200 && (
+                        <button
+                          onClick={() => setShowFullDesc(v => !v)}
+                          className="text-xs text-zinc-600 hover:text-zinc-400 font-mono mt-1 transition-colors"
+                        >
+                          {showFullDesc ? 'Show less' : 'Show more'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-mono text-zinc-600 italic">No description</p>
+                  )}
+                </div>
+
+                {/* Tags */}
+                {detail.etsyTags.length > 0 && (
+                  <>
+                    <hr className="border-zinc-800 mb-5" />
+                    <div className="mb-5">
+                      <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Tags</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {detail.etsyTags.map(tag => (
+                          <span key={tag} className="border border-zinc-700 px-2 py-0.5 text-xs font-mono text-zinc-400">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <hr className="border-zinc-800 mb-5" />
+
+                {/* Files */}
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">
+                    Files <span className="text-zinc-700">({detail.mascotFiles.length})</span>
+                  </p>
+                  {Object.keys(filesByFolder).length === 0 ? (
+                    <p className="text-xs font-mono text-zinc-600">No files uploaded yet.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {Object.entries(filesByFolder).map(([folder, count]) => (
+                        <div key={folder} className="flex justify-between text-xs font-mono">
+                          <span className="text-zinc-400">{folder}</span>
+                          <span className="text-zinc-600">{count} file{count !== 1 ? 's' : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <hr className="border-zinc-800 mb-5" />
+
+                {/* Loadout */}
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Loadout</p>
+                  <p className="text-sm font-mono text-zinc-300">{loadoutName ?? '— None'}</p>
+                </div>
+
+                <hr className="border-zinc-800 mb-5" />
+
+                {/* Readiness */}
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Readiness</p>
+                  {[
+                    { label: 'Has files', ok: detail.mascotFiles.length > 0 },
+                    { label: 'Etsy title set', ok: detail.etsyTitle.trim() !== '' },
+                    { label: 'Description written', ok: detail.description.trim() !== '' },
+                    { label: 'Tags added', ok: detail.etsyTags.length > 0 },
+                    { label: 'Marked complete', ok: detail.complete },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-2 text-xs font-mono mb-1.5">
+                      <span className={item.ok ? 'text-emerald-400' : 'text-zinc-600'}>
+                        {item.ok ? '✓' : '✗'}
+                      </span>
+                      <span className={item.ok ? 'text-zinc-400' : 'text-zinc-600'}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## Constraints
+- No new npm packages
+- Client component only — all data via fetch to existing API routes
+- No changes to API routes
+- Sidebar update: insert Collection item between Dashboard and Factory in the NAV array
