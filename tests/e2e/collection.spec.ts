@@ -82,3 +82,56 @@ test('duplicates a product from the collection', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirm' }).click()
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(duplicateName)
 })
+
+
+test('fetches Etsy inventory and manually matches a listing from the HUD panel', async ({ page }) => {
+  const email = 'admin@example.com'
+  const csrfResponse = await page.request.get('/api/auth/csrf')
+  expect(csrfResponse.ok()).toBeTruthy()
+  const { csrfToken } = await csrfResponse.json() as { csrfToken: string }
+  const signInResponse = await page.request.post('/api/auth/signin/nodemailer', {
+    form: { email, csrfToken, callbackUrl: '/app/collection' },
+  })
+  expect(signInResponse.ok()).toBeTruthy()
+  const devUrlResponse = await page.request.get(`/api/auth/dev-url?email=${encodeURIComponent(email)}`)
+  expect(devUrlResponse.ok()).toBeTruthy()
+  const { devLoginUrl } = await devUrlResponse.json() as { devLoginUrl: string | null }
+  await page.goto(devLoginUrl!)
+
+  let syncCalls = 0
+  let matchCalls = 0
+  await page.route('**/api/integrations/etsy/inventory', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ id: 'inventory-ui-1', etsy_listing_id: 77, title: 'Blue Wall Paint', state: 'active', sku: 'WALL-001', price: 12, quantity: 3, currency: 'USD', last_synced_at: new Date().toISOString() }]),
+    })
+  })
+  await page.route('**/api/integrations/etsy/inventory/sync', async (route) => {
+    syncCalls += 1
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'completed', itemsSeen: 1, itemsUpserted: 1 }) })
+  })
+  await page.route('**/api/integrations/etsy/inventory/inventory-ui-1/match', async (route) => {
+    matchCalls += 1
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ match: { id: 'match-ui-1' } }) })
+  })
+
+  await page.goto('/app/collection')
+  await page.getByRole('button', { name: 'Load sample collection' }).click()
+  await page.getByRole('button', { name: 'Warm Minimalist Wall Art Print' }).click()
+
+  const panel = page.getByTestId('etsy-inventory-panel')
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('Blue Wall Paint')).toBeVisible()
+  await expect(panel.getByText('3 qty')).toBeVisible()
+
+  await panel.getByRole('button', { name: 'Fetch inventory' }).click()
+  await expect(panel.getByRole('status')).toContainText('1 Etsy listing cached')
+  expect(syncCalls).toBe(1)
+
+  const matcher = panel.getByRole('combobox', { name: 'Match Blue Wall Paint to Product Factory product' })
+  await matcher.selectOption({ label: 'Warm Minimalist Wall Art Print' })
+  await panel.getByRole('button', { name: 'Match to product' }).click()
+  await expect(panel.getByRole('status')).toContainText('Matched')
+  expect(matchCalls).toBe(1)
+})

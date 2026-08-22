@@ -11,6 +11,7 @@ import type { TemplateRule } from '@/lib/template-rules'
 import type { BuildManifest } from '@/lib/zip-server'
 import { buildReleaseSnapshot } from '@/lib/release-snapshot'
 import type { ProductConfig } from '@/lib/types'
+import { assertStorageCapacity, entitlementErrorResponse, getEntitlement } from '@/lib/entitlements'
 
 interface RouteContext {
   params: Promise<{ name: string }>
@@ -142,6 +143,14 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const previousManifest = (builds?.[0]?.manifest as unknown as BuildManifest) ?? null
   const changelog = trimmedNotes || generateChangelog(manifest, previousManifest)
+  try {
+    assertStorageCapacity(await getEntitlement(supabase), buffer.byteLength)
+  } catch (error) {
+    const response = entitlementErrorResponse(error)
+    if (response) return response
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not check storage quota' }, { status: 500 })
+  }
+
   const filename = `v${version}.zip`
   const storagePath = productStoragePath(user.id, product.id, filename)
   const { error: uploadError } = await supabase.storage.from(PRODUCT_BUILDS_BUCKET).upload(storagePath, buffer, { contentType: 'application/zip', upsert: true })

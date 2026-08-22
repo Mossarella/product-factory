@@ -23,9 +23,11 @@ export default function SettingsPage() {
   const [readmeFooter, setReadmeFooter] = useState('')
   const [shopSaving, setShopSaving] = useState(false)
   const [shopSaveFlash, setShopSaveFlash] = useState(false)
+  const [etsyError, setEtsyError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setEtsyError(new URLSearchParams(window.location.search).get('etsy_error'))
     const supabase = createClient()
     void Promise.all([
       supabase.auth.getUser(),
@@ -106,6 +108,19 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-black uppercase tracking-tight text-zinc-100 font-mono">Settings</h1>
         <p className="mt-1 text-xs font-mono text-zinc-500">Your profile and account details.</p>
       </div>
+
+      {etsyError && (
+        <Card className="mb-5 gap-2 border-red-400/20 bg-red-950/10 px-4 py-4 font-mono ring-1 ring-inset ring-red-400/5">
+          <h2 className="text-xs uppercase tracking-widest text-red-300">Etsy connection</h2>
+          <p className="text-xs text-red-200/80">
+            {etsyError === 'etsy_configuration_missing'
+              ? 'Etsy connection is not configured on this preview yet. The app needs the Etsy developer key, shared secret, and token encryption key before Etsy login can start.'
+              : etsyError === 'paid_plan_required'
+                ? 'Etsy sync is available after upgrading to the Creator plan.'
+                : `Etsy could not be connected (${etsyError}).`}
+          </p>
+        </Card>
+      )}
 
       <Card className="mb-5 gap-4 border-white/10 bg-zinc-900/45 px-4 py-4 font-mono ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest">Profile</h2>

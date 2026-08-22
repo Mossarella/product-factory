@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { contentTypeFor, readBodyBuffer, sanitizeFilename } from '@/lib/api-files'
 import { productStoragePath, PRODUCT_FILES_BUCKET } from '@/lib/supabase/storage'
 import { MAX_PRODUCT_FILE_BYTES } from '@/lib/utils'
+import { assertStorageCapacity, entitlementErrorResponse, getEntitlement } from '@/lib/entitlements'
 
 interface RouteContext {
   params: Promise<{ name: string }>
@@ -25,6 +26,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
   const contentLength = Number(request.headers.get('content-length') ?? '0')
+  try {
+    const entitlement = await getEntitlement(supabase)
+    if (contentLength > 0) assertStorageCapacity(entitlement, contentLength)
+  } catch (error) {
+    const response = entitlementErrorResponse(error)
+    if (response) return response
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not check storage quota' }, { status: 500 })
+  }
   if (contentLength > MAX_PRODUCT_FILE_BYTES) {
     return NextResponse.json({ error: 'File must be 50MB or smaller' }, { status: 413 })
   }
@@ -34,6 +43,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     const buffer = await readBodyBuffer(request)
     if (buffer.byteLength > MAX_PRODUCT_FILE_BYTES) {
       return NextResponse.json({ error: 'File must be 50MB or smaller' }, { status: 413 })
+    }
+    try {
+      const entitlement = await getEntitlement(supabase)
+      assertStorageCapacity(entitlement, buffer.byteLength)
+    } catch (error) {
+      const response = entitlementErrorResponse(error)
+      if (response) return response
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not check storage quota' }, { status: 500 })
     }
 
     const storagePath = productStoragePath(user.id, product.id, 'mascot-files', filename)
@@ -52,6 +69,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         folder: 'Main',
         variant: '',
         storage_path: storagePath,
+        file_size: buffer.byteLength,
       }, { onConflict: 'id' })
     if (metadataError) throw metadataError
 

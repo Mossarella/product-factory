@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { TemplateValidation } from '@/components/TemplateValidation'
 import { VersionHistory } from '@/components/VersionHistory'
 import { ReleasePanel } from '@/components/ReleasePanel'
+import { EtsyInventoryPanel } from '@/components/EtsyInventoryPanel'
 import { cn } from '@/lib/cn'
 import type { TemplateRule } from '@/lib/template-rules'
 import { productPlaceholder } from '@/lib/product-placeholder'
@@ -471,6 +472,12 @@ export default function CollectionPage() {
 
                 <div className="mb-5 border border-violet-400/20 bg-zinc-950/50 p-3 ring-1 ring-inset ring-violet-400/5">
                   <ReleasePanel activeProduct={detail.name} buildVersion={detail.latestBuild?.version ?? null} />
+                </div>
+
+                <Separator className="mb-5" />
+
+                <div className="mb-5">
+                  <EtsyInventoryPanel products={products} activeProduct={detail.name} />
                 </div>
 
                 <Separator className="mb-5" />

@@ -84,14 +84,14 @@ Collection, dashboard, and build/download routes now use Supabase Auth, Postgres
 
 - [x] Add authenticated two-owner RLS tests for products, product builds, product events, and product releases; live execution remains credential-gated.
 - [x] Add private Storage isolation tests for source files, build ZIPs, and release ZIPs covering upload, read, update, delete, and unauthorized access; live execution remains credential-gated.
-- [ ] Add route-level ownership tests for release history, finalization, and downloads.
-- [ ] Verify release Storage cleanup when database persistence fails.
+- [x] Add route-level ownership tests for release history, finalization, and downloads.
+- [x] Verify release Storage cleanup when database persistence fails.
 - [ ] Apply any required policy fixes discovered by Batch 1 tests.
 
 ### Batch 2 — Release workflow hardening
 
-- [ ] Test and polish Draft, Packaged, Released, and Release Failed states.
-- [ ] Cover stale build state, missing embedded artifacts, duplicate finalization, Storage failure, and database failure in the UI and API.
+- [ ] Test and polish Draft, Packaged, Released, and Release Failed states; Playwright UI assertions for all four states are implemented and remain credential-gated.
+- [ ] Cover duplicate finalization and Storage failure in the UI and API; route-level API coverage for duplicate finalization, Storage upload failure, stale builds, missing embedded artifacts, and database failure is implemented.
 - [ ] Verify idempotent release finalization and reproducible release downloads.
 - [ ] Add release history refresh behavior after build, revert, and finalization.
 

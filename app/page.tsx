@@ -154,7 +154,7 @@ export default function LandingPage() {
               <p className="text-3xl font-bold text-zinc-100 mb-1">$0</p>
               <p className="text-zinc-500 text-sm mb-6">No credit card needed</p>
               <ul className="space-y-2 mb-8">
-                {['Up to 3 products', 'Full feature access', 'Local storage only', 'ZIP download', 'Etsy listing generator'].map((item) => (
+                {['Up to 3 products', '100 MB private storage', 'ZIP download', 'Etsy metadata generator', 'Etsy sync unavailable'].map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm text-zinc-400">
                     <span className="text-emerald-500">✓</span> {item}
                   </li>
@@ -168,18 +168,18 @@ export default function LandingPage() {
               <div className="absolute top-0 right-0 border-l border-b border-violet-700 bg-violet-900 px-3 py-1 text-xs text-violet-300">
                 Recommended
               </div>
-              <p className="text-xs uppercase tracking-widest text-violet-400 mb-2">Pro</p>
+              <p className="text-xs uppercase tracking-widest text-violet-400 mb-2">Creator</p>
               <p className="text-3xl font-bold text-zinc-100 mb-1">$29</p>
               <p className="text-zinc-500 text-sm mb-6">One-time payment, lifetime access</p>
               <ul className="space-y-2 mb-8">
-                {['Unlimited products', 'Full feature access', 'Local storage only', 'ZIP download', 'Etsy listing generator', 'Priority support'].map((item) => (
+                {['500 products', '5 GB private storage', '100 MB maximum file', 'Live Etsy sync', 'One-click Etsy draft publishing', 'Three retained releases per product'].map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm text-zinc-300">
                     <span className="text-violet-400">✓</span> {item}
                   </li>
                 ))}
               </ul>
               <Link href="/api/buy" className={cn(buttonVariants({ variant: 'default' }), 'h-auto w-full rounded-none border-violet-600 bg-violet-600 px-4 py-2 font-normal text-zinc-100 hover:bg-violet-500 transition-colors')}>
-                Buy Pro — $29 one-time
+                Buy Creator — $29 one-time
               </Link>
             </Card>
           </div>

@@ -8,6 +8,7 @@ import { aggregateDashboardEvents } from '@/lib/dashboard-events'
 import { Card } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
+import { EtsyOverviewWidget } from '@/components/EtsyOverviewWidget'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -33,10 +34,10 @@ export default async function DashboardPage() {
   const products = rows.map((product) => ({
     id: product.id,
     name: product.name,
-    complete: product.complete,
-    description: product.description,
-    etsyTitle: product.etsy_title,
-    etsyTags: product.etsy_tags,
+    complete: Boolean(product.complete),
+    description: product.description ?? '',
+    etsyTitle: product.etsy_title ?? '',
+    etsyTags: product.etsy_tags ?? [],
     createdAt: product.created_at,
     files: (fileRows ?? []).filter((file) => file.product_id === product.id).map((file) => ({ id: file.id, origName: file.original_name })),
   }))
@@ -79,45 +80,44 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Insights */}
-      <div className="mt-8 border-t border-white/10 pt-6">
-        <p className="mb-4 text-[10px] uppercase tracking-[0.25em] text-violet-300/60 font-mono">Telemetry — This Month</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
-            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">This Month</p>
-            <p className="text-4xl font-bold font-mono text-zinc-100">{thisMonth}</p>
-            <p className="text-xs text-zinc-600 font-mono mt-2">products created</p>
-          </Card>
+      <div className="mt-8 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+        <div className="border-t border-white/10 pt-6">
+          <p className="mb-4 text-[10px] uppercase tracking-[0.25em] text-violet-300/60 font-mono">Telemetry — This Month</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">This Month</p>
+              <p className="text-4xl font-bold font-mono text-zinc-100">{thisMonth}</p>
+              <p className="text-xs text-zinc-600 font-mono mt-2">products created</p>
+            </Card>
 
-          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
-            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">No GIF Preview</p>
-            <p className={`text-4xl font-bold font-mono ${noGifPreview > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>
-              {noGifPreview}
-            </p>
-            <p className="text-xs text-zinc-600 font-mono mt-2">products don&apos;t contain a GIF preview</p>
-          </Card>
+            <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">No GIF Preview</p>
+              <p className={`text-4xl font-bold font-mono ${noGifPreview > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>{noGifPreview}</p>
+              <p className="text-xs text-zinc-600 font-mono mt-2">products don&apos;t contain a GIF preview</p>
+            </Card>
 
-          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
-            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Identical Tags</p>
-            <p className={`text-4xl font-bold font-mono ${sharedTags > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>
-              {sharedTags}
-            </p>
-            <p className="text-xs text-zinc-600 font-mono mt-2">products share identical tag sets</p>
-          </Card>
+            <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 !py-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Identical Tags</p>
+              <p className={`text-4xl font-bold font-mono ${sharedTags > 0 ? 'text-amber-400' : 'text-zinc-500'}`}>{sharedTags}</p>
+              <p className="text-xs text-zinc-600 font-mono mt-2">products share identical tag sets</p>
+            </Card>
 
-          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
-            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Last Package</p>
-            <p className="text-lg font-bold font-mono text-zinc-100">{lastExport ? new Date(lastExport).toLocaleDateString() : 'Never'}</p>
-            <p className="text-xs text-zinc-600 font-mono mt-2">successful package event</p>
-          </Card>
+            <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 !py-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Last Package</p>
+              <p className="text-lg font-bold font-mono text-zinc-100">{lastExport ? new Date(lastExport).toLocaleDateString() : 'Never'}</p>
+              <p className="text-xs text-zinc-600 font-mono mt-2">successful package event</p>
+            </Card>
 
-          <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 sm:!py-5">
-            <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Assets Reused</p>
-            <p className="text-4xl font-bold font-mono text-cyan-300">{filesReused}</p>
-            <p className="text-xs text-zinc-600 font-mono mt-2">fixed assets included in packages</p>
-          </Card>
+            <Card className="gap-0 rounded-none border-white/10 bg-zinc-900/55 px-4 !py-4 ring-1 ring-inset ring-violet-400/5 sm:px-5 !py-5">
+              <p className="text-xs uppercase tracking-widest text-zinc-600 font-mono mb-3">Assets Reused</p>
+              <p className="text-4xl font-bold font-mono text-cyan-300">{filesReused}</p>
+              <p className="text-xs text-zinc-600 font-mono mt-2">fixed assets included in packages</p>
+            </Card>
+          </div>
         </div>
+        <EtsyOverviewWidget />
       </div>
+
 
       {/* Quick action */}
       <div className="mt-8 border-t border-white/10 pt-6">

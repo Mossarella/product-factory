@@ -30,7 +30,7 @@ const INITIAL_FIXED_ASSETS: FixedAssetDef[] = [
 ]
 const DECORATIVE_ASSET_KEYS = ['readme', 'license']
 
-type License = { plan: 'free' | 'pro'; activatedAt?: string; subscriptionStatus?: string }
+type License = { plan: 'free' | 'pro'; activatedAt?: string; subscriptionStatus?: string; productCount?: number; productLimit?: number; storageUsedBytes?: number; storageLimitBytes?: number }
 
 function fileExtension(name: string) {
   const dot = name.lastIndexOf('.')
@@ -436,7 +436,7 @@ export default function Home() {
       </div>
       <p className="mb-6 text-xs font-mono text-zinc-500">Pack your digital product → generate README → download ZIP → list on Etsy</p>
 
-      <LicenseBanner plan={license.plan} activatedAt={license.activatedAt} subscriptionStatus={license.subscriptionStatus} onActivate={activateLicense} onBuyClick={buyLicense} onManageClick={manageSubscription} />
+      <LicenseBanner plan={license.plan} activatedAt={license.activatedAt} subscriptionStatus={license.subscriptionStatus} productCount={license.productCount} productLimit={license.productLimit} storageUsedBytes={license.storageUsedBytes} storageLimitBytes={license.storageLimitBytes} onActivate={activateLicense} onBuyClick={buyLicense} onManageClick={manageSubscription} />
 
       <Card className="gap-0 border-white/10 bg-zinc-900/45 px-4 ring-1 ring-inset ring-violet-400/5">
         <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-3">Product</h2>

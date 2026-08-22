@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PRODUCT_BUILDS_BUCKET, productReleaseStoragePath, releaseDownloadFilename } from '@/lib/release-storage'
 import type { Json } from '@/lib/supabase/database.types'
 import { validateReleaseSnapshotArtifacts } from '@/lib/release-snapshot'
+import { assertStorageCapacity, entitlementErrorResponse, getEntitlement } from '@/lib/entitlements'
 
 interface RouteContext {
   params: Promise<{ name: string }>
@@ -88,6 +89,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Release artifacts do not match this product and build version', code: 'RELEASE_ARTIFACTS_MISMATCH' }, { status: 422 })
   }
   const artifacts = extracted.artifacts
+
+  try {
+    assertStorageCapacity(await getEntitlement(supabase), buffer.byteLength)
+  } catch (error) {
+    const response = entitlementErrorResponse(error)
+    if (response) return response
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not check storage quota' }, { status: 500 })
+  }
 
   const bundleFilename = releaseDownloadFilename(product.product_name || product.name, version)
   const bundleStoragePath = productReleaseStoragePath(user.id, product.id, version, bundleFilename)

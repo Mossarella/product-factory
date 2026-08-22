@@ -94,6 +94,14 @@ describe('computeStats()', () => {
     expect(stats.sharedTags).toBe(2)
   })
 
+  it('tolerates legacy products with null Etsy tags and files', async () => {
+    const stats = await computeStats([makeProduct({ etsyTags: null, files: null, description: null })])
+    expect(stats.total).toBe(1)
+    expect(stats.sharedTags).toBe(0)
+    expect(stats.noGifPreview).toBe(1)
+    expect(stats.needReadme).toBe(1)
+  })
+
   it('returns zero stats for empty product list', async () => {
     const stats = await computeStats([])
     expect(stats.total).toBe(0)

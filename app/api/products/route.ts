@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeName } from '@/lib/api-files'
+import { assertProductCapacity, entitlementErrorResponse, getEntitlement } from '@/lib/entitlements'
 
 export async function GET() {
   const supabase = await createClient()
@@ -37,13 +38,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product name is required' }, { status: 400 })
   }
 
-  const [{ count: productCount }, { data: profile }] = await Promise.all([
-    supabase.from('products').select('id', { count: 'exact', head: true }).eq('owner_id', user.id),
-    supabase.from('profiles').select('plan').eq('id', user.id).maybeSingle(),
-  ])
-
-  if ((profile?.plan ?? 'free') === 'free' && (productCount ?? 0) >= 3) {
-    return NextResponse.json({ error: 'Free plan limit reached' }, { status: 403 })
+  try {
+    const entitlement = await getEntitlement(supabase)
+    assertProductCapacity(entitlement)
+  } catch (error) {
+    const response = entitlementErrorResponse(error)
+    if (response) return response
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not check product quota' }, { status: 500 })
   }
 
   const { data: existing } = await supabase

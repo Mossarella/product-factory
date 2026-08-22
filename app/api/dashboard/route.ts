@@ -29,10 +29,10 @@ export async function GET() {
   const stats = await computeStats(productRows.map((product) => ({
     id: product.id,
     name: product.name,
-    complete: product.complete,
-    description: product.description,
-    etsyTitle: product.etsy_title,
-    etsyTags: product.etsy_tags,
+    complete: Boolean(product.complete),
+    description: product.description ?? '',
+    etsyTitle: product.etsy_title ?? '',
+    etsyTags: product.etsy_tags ?? [],
     createdAt: product.created_at,
     files: (files ?? []).filter((file) => file.product_id === product.id).map((file) => ({ id: file.id, origName: file.original_name })),
   })), async (product) => {

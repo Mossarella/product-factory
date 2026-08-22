@@ -1,16 +1,16 @@
 const REQUIRED_VARS = [
-  'DATABASE_URL',
-  'AUTH_SECRET',
-  'AUTH_URL',
-  'S3_ENDPOINT',
-  'S3_BUCKET',
-  'S3_ACCESS_KEY_ID',
-  'S3_SECRET_ACCESS_KEY',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
 ] as const
 
-const OPTIONAL_VARS = [
+const FEATURE_VARS = [
+  'SUPABASE_SERVICE_ROLE_KEY',
   'STRIPE_SECRET_KEY',
-  'ANTHROPIC_API_KEY',
+  'STRIPE_CREATOR_PRICE_ID',
+  'STRIPE_WEBHOOK_SECRET',
+  'ETSY_API_KEYSTRING',
+  'ETSY_SHARED_SECRET',
+  'ETSY_TOKEN_ENCRYPTION_KEY',
 ] as const
 
 export function validateEnv(): void {
@@ -21,23 +21,8 @@ export function validateEnv(): void {
     throw new Error(`Missing required environment variables: ${missingRequired.join(', ')}`)
   }
 
-  const missingSmtp = ['SMTP_HOST', 'AUTH_EMAIL_FROM'].filter((name) => !process.env[name])
-  if (missingSmtp.length > 0) {
-    throw new Error(`Missing required SMTP environment variables: ${missingSmtp.join(', ')}`)
-  }
-
-  const hasSmtpUser = Boolean(process.env.SMTP_USER)
-  const hasSmtpPassword = Boolean(process.env.SMTP_PASSWORD)
-  if (hasSmtpUser !== hasSmtpPassword) {
-    throw new Error('SMTP_USER and SMTP_PASSWORD must be provided together')
-  }
-
-  if (process.env.SMTP_PORT && !/^\d+$/.test(process.env.SMTP_PORT)) {
-    throw new Error('SMTP_PORT must be a number')
-  }
-
-  const missingOptional = OPTIONAL_VARS.filter((name) => !process.env[name])
-  for (const name of missingOptional) {
+  const missingFeatures = FEATURE_VARS.filter((name) => !process.env[name])
+  for (const name of missingFeatures) {
     console.warn(`[env] ${name} is not set — related features will be disabled at request time.`)
   }
 }

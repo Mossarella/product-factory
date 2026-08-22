@@ -10,10 +10,22 @@ export type Database = {
   __InternalSupabase: { PostgrestVersion: "14.15" }
   public: {
     Tables: {
+      account_entitlements: {
+        Row: { created_at: string; owner_id: string; provider_customer_id: string | null; provider_order_id: string | null; purchased_at: string | null; tier: string; updated_at: string }
+        Insert: { created_at?: string; owner_id: string; provider_customer_id?: string | null; provider_order_id?: string | null; purchased_at?: string | null; tier?: string; updated_at?: string }
+        Update: { created_at?: string; owner_id?: string; provider_customer_id?: string | null; provider_order_id?: string | null; purchased_at?: string | null; tier?: string; updated_at?: string }
+        Relationships: []
+      }
+      billing_purchases: {
+        Row: { amount_cents: number; completed_at: string | null; created_at: string; currency: string; id: string; owner_id: string; provider: string; provider_order_id: string; status: string; tier: string; updated_at: string }
+        Insert: { amount_cents: number; completed_at?: string | null; created_at?: string; currency?: string; id?: string; owner_id: string; provider?: string; provider_order_id: string; status?: string; tier: string; updated_at?: string }
+        Update: { amount_cents?: number; completed_at?: string | null; created_at?: string; currency?: string; id?: string; owner_id?: string; provider?: string; provider_order_id?: string; status?: string; tier?: string; updated_at?: string }
+        Relationships: []
+      }
       fixed_asset_files: {
-        Row: { asset_key: string; created_at: string; filename: string; id: string; original_name: string; owner_id: string; product_id: string; storage_path: string | null }
-        Insert: { asset_key: string; created_at?: string; filename: string; id?: string; original_name: string; owner_id: string; product_id: string; storage_path?: string | null }
-        Update: { asset_key?: string; created_at?: string; filename?: string; id?: string; original_name?: string; owner_id?: string; product_id?: string; storage_path?: string | null }
+        Row: { asset_key: string; created_at: string; file_size: number; filename: string; id: string; original_name: string; owner_id: string; product_id: string; storage_path: string | null }
+        Insert: { asset_key: string; created_at?: string; file_size?: number; filename: string; id?: string; original_name: string; owner_id: string; product_id: string; storage_path?: string | null }
+        Update: { asset_key?: string; created_at?: string; file_size?: number; filename?: string; id?: string; original_name?: string; owner_id?: string; product_id?: string; storage_path?: string | null }
         Relationships: []
       }
       product_builds: {
@@ -23,9 +35,9 @@ export type Database = {
         Relationships: []
       }
       product_files: {
-        Row: { created_at: string; filename: string; folder: string; id: string; original_name: string; owner_id: string; product_id: string; storage_path: string | null; variant: string }
-        Insert: { created_at?: string; filename: string; folder?: string; id?: string; original_name: string; owner_id: string; product_id: string; storage_path?: string | null; variant?: string }
-        Update: { created_at?: string; filename?: string; folder?: string; id?: string; original_name?: string; owner_id?: string; product_id?: string; storage_path?: string | null; variant?: string }
+        Row: { created_at: string; file_size: number; filename: string; folder: string; id: string; original_name: string; owner_id: string; product_id: string; storage_path: string | null; variant: string }
+        Insert: { created_at?: string; file_size?: number; filename: string; folder?: string; id?: string; original_name: string; owner_id: string; product_id: string; storage_path?: string | null; variant?: string }
+        Update: { created_at?: string; file_size?: number; filename?: string; folder?: string; id?: string; original_name?: string; owner_id?: string; product_id?: string; storage_path?: string | null; variant?: string }
         Relationships: []
       }
       product_events: {
@@ -75,6 +87,7 @@ export type Database = {
     Functions: {
       get_my_license: { Args: Record<PropertyKey, never>; Returns: { activated_at: string | null; plan: string; subscription_status: string | null }[] }
       redeem_license_key: { Args: { p_key: string }; Returns: { activated_at: string; plan: string }[] }
+      get_my_entitlement: { Args: Record<PropertyKey, never>; Returns: { etsy_enabled: boolean; max_file_bytes: number; product_count: number; product_limit: number; release_retention: number; storage_limit_bytes: number; storage_used_bytes: number; tier: string }[] }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

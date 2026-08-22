@@ -9,22 +9,32 @@ interface Props {
   plan: 'free' | 'pro'
   activatedAt?: string
   subscriptionStatus?: string
+  productCount?: number
+  productLimit?: number
+  storageUsedBytes?: number
+  storageLimitBytes?: number
   onActivate: (key: string) => Promise<void>
   onBuyClick: () => void
   onManageClick: () => void
 }
 
-export function LicenseBanner({ plan, activatedAt, subscriptionStatus, onActivate, onBuyClick, onManageClick }: Props) {
+export function LicenseBanner({ plan, activatedAt, subscriptionStatus, productCount = 0, productLimit = 3, storageUsedBytes = 0, storageLimitBytes = 104857600, onActivate, onBuyClick, onManageClick }: Props) {
   const [key, setKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  const storageLabel = storageLimitBytes >= 1073741824
+    ? `${(storageUsedBytes / 1073741824).toFixed(1)} / ${(storageLimitBytes / 1073741824).toFixed(0)} GB`
+    : `${(storageUsedBytes / 1048576).toFixed(1)} / ${(storageLimitBytes / 1048576).toFixed(0)} MB`
 
   if (plan === 'pro') {
     return (
       <Card className="border border-emerald-800 bg-emerald-950/40 px-3 py-2 font-mono text-xs text-emerald-400">
         <div className="flex flex-wrap items-center gap-2">
           <span>✓ Pro</span>
+          <span className="text-emerald-300/80">{productCount} / {productLimit} products</span>
+          <span className="text-emerald-300/80">{storageLabel}</span>
           {activatedAt && <span className="text-zinc-600">activated {activatedAt}</span>}
           {subscriptionStatus && (
             <Button
@@ -69,7 +79,7 @@ export function LicenseBanner({ plan, activatedAt, subscriptionStatus, onActivat
   return (
     <Card className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-mono text-sm">
       <div className="flex flex-wrap items-center gap-4">
-        <span className="text-zinc-400">Free plan — <span className="text-zinc-300">3 products max</span></span>
+        <span className="text-zinc-400">Free plan — <span className="text-zinc-300">{productCount} / {productLimit} products · {storageLabel}</span></span>
         <form onSubmit={submit} className="flex flex-1 flex-wrap items-center gap-2">
           <Input
             value={key}

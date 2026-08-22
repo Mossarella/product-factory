@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { updateSession } from '@/lib/supabase/proxy'
+import { getPublicOrigin } from '@/lib/public-origin'
 
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -24,7 +25,7 @@ export default async function middleware(request: NextRequest) {
     pathname === '/api/activate'
 
   if (!user && needsAuth) {
-    const loginUrl = new URL('/login', request.url)
+    const loginUrl = new URL('/login', getPublicOrigin(request))
     loginUrl.searchParams.set('callbackUrl', `${pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(loginUrl)
   }

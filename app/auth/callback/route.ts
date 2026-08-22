@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getPublicOrigin } from '@/lib/public-origin'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  const next = searchParams.get('next')
+  const requestUrl = new URL(request.url)
+  const origin = getPublicOrigin(request)
+  const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next')
   const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/app'
 
   if (code) {
